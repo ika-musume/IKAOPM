@@ -350,88 +350,134 @@ end
 //
 
 reg     [4:0]   cyc7r_pdelta_shift_control;
-reg     [11:0]  cyc7r_pdelta_abs_rom;
-reg     [4:0]   cyc7r_pdelta_tune_rom;
-reg     [3:0]   cyc7r_pdelta_tune_control;
+reg     [11:0]  cyc7r_pdelta_base;
+reg     [3:0]   cyc7r_pdelta_increment;
+reg     [3:0]   cyc7r_pdelta_increment_multiply;
+reg             cyc7r_pdelta_calcmode;
 
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
 
-        //phase rom
+        //The original chip's bit order is scrambled! 
         case(cyc6r_final_pitchval[9:4])
-            6'h00: begin cyc7r_pdelta_tune_rom <= 5'b10011; cyc7r_pdelta_abs_rom <= 12'b010100_010011; end
-            6'h01: begin cyc7r_pdelta_tune_rom <= 5'b10011; cyc7r_pdelta_abs_rom <= 12'b010100_100110; end
-            6'h02: begin cyc7r_pdelta_tune_rom <= 5'b10011; cyc7r_pdelta_abs_rom <= 12'b010100_111001; end
-            6'h03: begin cyc7r_pdelta_tune_rom <= 5'b00101; cyc7r_pdelta_abs_rom <= 12'b010101_001100; end
-            6'h04: begin cyc7r_pdelta_tune_rom <= 5'b00101; cyc7r_pdelta_abs_rom <= 12'b010101_100000; end
-            6'h05: begin cyc7r_pdelta_tune_rom <= 5'b00101; cyc7r_pdelta_abs_rom <= 12'b010101_110100; end
-            6'h06: begin cyc7r_pdelta_tune_rom <= 5'b10101; cyc7r_pdelta_abs_rom <= 12'b010110_001000; end
-            6'h07: begin cyc7r_pdelta_tune_rom <= 5'b00101; cyc7r_pdelta_abs_rom <= 12'b010110_011101; end
-            6'h08: begin cyc7r_pdelta_tune_rom <= 5'b10101; cyc7r_pdelta_abs_rom <= 12'b010110_110010; end
-            6'h09: begin cyc7r_pdelta_tune_rom <= 5'b10101; cyc7r_pdelta_abs_rom <= 12'b010111_000111; end
-            6'h0A: begin cyc7r_pdelta_tune_rom <= 5'b00111; cyc7r_pdelta_abs_rom <= 12'b010111_011101; end
-            6'h0B: begin cyc7r_pdelta_tune_rom <= 5'b00111; cyc7r_pdelta_abs_rom <= 12'b010111_110011; end
+            6'h00: begin cyc7r_pdelta_base <= 12'b010100_010011; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b10011; end
+            6'h01: begin cyc7r_pdelta_base <= 12'b010100_100110; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b10011; end
+            6'h02: begin cyc7r_pdelta_base <= 12'b010100_111001; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b10011; end
+            6'h03: begin cyc7r_pdelta_base <= 12'b010101_001100; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b00101; end
+            6'h04: begin cyc7r_pdelta_base <= 12'b010101_100000; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b00101; end
+            6'h05: begin cyc7r_pdelta_base <= 12'b010101_110100; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b00101; end
+            6'h06: begin cyc7r_pdelta_base <= 12'b010110_001000; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b10101; end
+            6'h07: begin cyc7r_pdelta_base <= 12'b010110_011101; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b00101; end
+            6'h08: begin cyc7r_pdelta_base <= 12'b010110_110010; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b10101; end
+            6'h09: begin cyc7r_pdelta_base <= 12'b010111_000111; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b10101; end
+            6'h0A: begin cyc7r_pdelta_base <= 12'b010111_011101; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b00111; end
+            6'h0B: begin cyc7r_pdelta_base <= 12'b010111_110011; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b00111; end
 
-            6'h10: begin cyc7r_pdelta_tune_rom <= 5'b00111; cyc7r_pdelta_abs_rom <= 12'b011000_001001; end
-            6'h11: begin cyc7r_pdelta_tune_rom <= 5'b00111; cyc7r_pdelta_abs_rom <= 12'b011000_011111; end
-            6'h12: begin cyc7r_pdelta_tune_rom <= 5'b10111; cyc7r_pdelta_abs_rom <= 12'b011000_110110; end
-            6'h13: begin cyc7r_pdelta_tune_rom <= 5'b10111; cyc7r_pdelta_abs_rom <= 12'b011001_001101; end
-            6'h14: begin cyc7r_pdelta_tune_rom <= 5'b10111; cyc7r_pdelta_abs_rom <= 12'b011001_100101; end
-            6'h15: begin cyc7r_pdelta_tune_rom <= 5'b01001; cyc7r_pdelta_abs_rom <= 12'b011001_111100; end
-            6'h16: begin cyc7r_pdelta_tune_rom <= 5'b01001; cyc7r_pdelta_abs_rom <= 12'b011010_010101; end
-            6'h17: begin cyc7r_pdelta_tune_rom <= 5'b01001; cyc7r_pdelta_abs_rom <= 12'b011010_101101; end
-            6'h18: begin cyc7r_pdelta_tune_rom <= 5'b11001; cyc7r_pdelta_abs_rom <= 12'b011011_000110; end
-            6'h19: begin cyc7r_pdelta_tune_rom <= 5'b11001; cyc7r_pdelta_abs_rom <= 12'b011011_011111; end
-            6'h1A: begin cyc7r_pdelta_tune_rom <= 5'b01011; cyc7r_pdelta_abs_rom <= 12'b011011_111001; end
-            6'h1B: begin cyc7r_pdelta_tune_rom <= 5'b01011; cyc7r_pdelta_abs_rom <= 12'b011100_010011; end
+            6'h10: begin cyc7r_pdelta_base <= 12'b011000_001001; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b00111; end
+            6'h11: begin cyc7r_pdelta_base <= 12'b011000_011111; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b00111; end
+            6'h12: begin cyc7r_pdelta_base <= 12'b011000_110110; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b10111; end
+            6'h13: begin cyc7r_pdelta_base <= 12'b011001_001101; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b10111; end
+            6'h14: begin cyc7r_pdelta_base <= 12'b011001_100101; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b10111; end
+            6'h15: begin cyc7r_pdelta_base <= 12'b011001_111100; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01001; end
+            6'h16: begin cyc7r_pdelta_base <= 12'b011010_010101; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01001; end
+            6'h17: begin cyc7r_pdelta_base <= 12'b011010_101101; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01001; end
+            6'h18: begin cyc7r_pdelta_base <= 12'b011011_000110; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11001; end
+            6'h19: begin cyc7r_pdelta_base <= 12'b011011_011111; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11001; end
+            6'h1A: begin cyc7r_pdelta_base <= 12'b011011_111001; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01011; end
+            6'h1B: begin cyc7r_pdelta_base <= 12'b011100_010011; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01011; end
 
-            6'h20: begin cyc7r_pdelta_tune_rom <= 5'b01011; cyc7r_pdelta_abs_rom <= 12'b011100_101101; end
-            6'h21: begin cyc7r_pdelta_tune_rom <= 5'b11011; cyc7r_pdelta_abs_rom <= 12'b011101_001000; end
-            6'h22: begin cyc7r_pdelta_tune_rom <= 5'b11011; cyc7r_pdelta_abs_rom <= 12'b011101_100011; end
-            6'h23: begin cyc7r_pdelta_tune_rom <= 5'b01101; cyc7r_pdelta_abs_rom <= 12'b011101_111110; end
-            6'h24: begin cyc7r_pdelta_tune_rom <= 5'b01101; cyc7r_pdelta_abs_rom <= 12'b011110_011010; end
-            6'h25: begin cyc7r_pdelta_tune_rom <= 5'b01101; cyc7r_pdelta_abs_rom <= 12'b011110_110111; end
-            6'h26: begin cyc7r_pdelta_tune_rom <= 5'b11101; cyc7r_pdelta_abs_rom <= 12'b011111_010011; end
-            6'h27: begin cyc7r_pdelta_tune_rom <= 5'b01111; cyc7r_pdelta_abs_rom <= 12'b011111_110000; end
-            6'h28: begin cyc7r_pdelta_tune_rom <= 5'b01111; cyc7r_pdelta_abs_rom <= 12'b100000_001110; end
-            6'h29: begin cyc7r_pdelta_tune_rom <= 5'b01111; cyc7r_pdelta_abs_rom <= 12'b100000_101100; end
-            6'h2A: begin cyc7r_pdelta_tune_rom <= 5'b11111; cyc7r_pdelta_abs_rom <= 12'b100001_001010; end
-            6'h2B: begin cyc7r_pdelta_tune_rom <= 5'b11111; cyc7r_pdelta_abs_rom <= 12'b100001_101001; end
+            6'h20: begin cyc7r_pdelta_base <= 12'b011100_101101; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01011; end
+            6'h21: begin cyc7r_pdelta_base <= 12'b011101_001000; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11011; end
+            6'h22: begin cyc7r_pdelta_base <= 12'b011101_100011; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11011; end
+            6'h23: begin cyc7r_pdelta_base <= 12'b011101_111110; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01101; end
+            6'h24: begin cyc7r_pdelta_base <= 12'b011110_011010; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01101; end
+            6'h25: begin cyc7r_pdelta_base <= 12'b011110_110111; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01101; end
+            6'h26: begin cyc7r_pdelta_base <= 12'b011111_010011; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11101; end
+            6'h27: begin cyc7r_pdelta_base <= 12'b011111_110000; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01111; end
+            6'h28: begin cyc7r_pdelta_base <= 12'b100000_001110; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01111; end
+            6'h29: begin cyc7r_pdelta_base <= 12'b100000_101100; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01111; end
+            6'h2A: begin cyc7r_pdelta_base <= 12'b100001_001010; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11111; end
+            6'h2B: begin cyc7r_pdelta_base <= 12'b100001_101001; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11111; end
+            
+            6'h30: begin cyc7r_pdelta_base <= 12'b100010_001001; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11111; end
+            6'h31: begin cyc7r_pdelta_base <= 12'b100010_101000; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11110; end
+            6'h32: begin cyc7r_pdelta_base <= 12'b100011_001001; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11110; end
+            6'h33: begin cyc7r_pdelta_base <= 12'b100011_101001; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11110; end
+            6'h34: begin cyc7r_pdelta_base <= 12'b100100_001011; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11110; end
+            6'h35: begin cyc7r_pdelta_base <= 12'b100100_101100; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11110; end
+            6'h36: begin cyc7r_pdelta_base <= 12'b100101_001110; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01110; end
+            6'h37: begin cyc7r_pdelta_base <= 12'b100101_110001; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01110; end
+            6'h38: begin cyc7r_pdelta_base <= 12'b100110_010100; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01110; end
+            6'h39: begin cyc7r_pdelta_base <= 12'b100110_111000; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01110; end
+            6'h3A: begin cyc7r_pdelta_base <= 12'b100111_011100; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01110; end
+            6'h3B: begin cyc7r_pdelta_base <= 12'b101000_000001; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01110; end
 
-            6'h30: begin cyc7r_pdelta_tune_rom <= 5'b11111; cyc7r_pdelta_abs_rom <= 12'b100010_001001; end
-            6'h31: begin cyc7r_pdelta_tune_rom <= 5'b11110; cyc7r_pdelta_abs_rom <= 12'b100010_101000; end
-            6'h32: begin cyc7r_pdelta_tune_rom <= 5'b11110; cyc7r_pdelta_abs_rom <= 12'b100011_001001; end
-            6'h33: begin cyc7r_pdelta_tune_rom <= 5'b11110; cyc7r_pdelta_abs_rom <= 12'b100011_101001; end
-            6'h34: begin cyc7r_pdelta_tune_rom <= 5'b11110; cyc7r_pdelta_abs_rom <= 12'b100100_001011; end
-            6'h35: begin cyc7r_pdelta_tune_rom <= 5'b11110; cyc7r_pdelta_abs_rom <= 12'b100100_101100; end
-            6'h36: begin cyc7r_pdelta_tune_rom <= 5'b01110; cyc7r_pdelta_abs_rom <= 12'b100101_001110; end
-            6'h37: begin cyc7r_pdelta_tune_rom <= 5'b01110; cyc7r_pdelta_abs_rom <= 12'b100101_110001; end
-            6'h38: begin cyc7r_pdelta_tune_rom <= 5'b01110; cyc7r_pdelta_abs_rom <= 12'b100110_010100; end
-            6'h39: begin cyc7r_pdelta_tune_rom <= 5'b01110; cyc7r_pdelta_abs_rom <= 12'b100110_111000; end
-            6'h3A: begin cyc7r_pdelta_tune_rom <= 5'b01110; cyc7r_pdelta_abs_rom <= 12'b100111_011100; end
-            6'h3B: begin cyc7r_pdelta_tune_rom <= 5'b01110; cyc7r_pdelta_abs_rom <= 12'b101000_000001; end
+            default: begin cyc7r_pdelta_base <= 12'b000000_000000; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b00000; end
         endcase
 
         cyc7r_pdelta_shift_control <= cyc6r_final_pitchval[12:8];
-        cyc7r_pdelta_tune_control <= cyc6r_final_pitchval[3:0];
+        cyc7r_pdelta_base <= cyc6r_final_pitchval[3:0];
     end
 end
 
 
 
 ///////////////////////////////////////////////////////////
-//////  Cycle 7: Key code to F-num conversion step 2
+//////  Cycle 8: Key code to F-num conversion step 2
 ////
 
 //  DESCRIPTION
-//Now we have to generate the value to tune the absolute phase
-//delta. YM2151 makes three addends by choosing and ORing the bits
-//from the ROM first, and then sums them. This will adjust the
-//absolute value in the next step(cycle 8)
+//Now we have to generate the value to adjust the pdelta base value.
+//YM2151 decompresses the ROM output we got in the previous step.
+//
+//in calcmode == 0, we can write the weird expression like this:
+//if(multiply[3:2] == 2'b11) and (increment[0] == 1'b0), then +4
+//if(multiply[3] == 1'b1), then +1
+//if(multiply[1] == 1'b1), then +8
+//if(multuply[0] == 1'b1), then +2
 
 //
-//  combinational part
+//  register part
 //
+
+reg     [4:0]   cyc8r_pdelta_shift_control;
+reg     [11:0]  cyc8r_pdelta_base;
+reg     [5:0]   cyc8r_multiplied_increment; //Maximum 31+15+7+3 = 56(11_1000), 1 bit of carry needed
+
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        if(cyc7r_pdelta_calcmode) begin
+            cyc8r_multiplied_increment <= {{1'b1, cyc7r_pdelta_increment} >> 0} & {5{cyc7r_pdelta_increment_multiply[3]}} +
+                                          {{1'b1, cyc7r_pdelta_increment} >> 1} & {5{cyc7r_pdelta_increment_multiply[2]}} +
+                                          {{1'b1, cyc7r_pdelta_increment} >> 2} & {5{cyc7r_pdelta_increment_multiply[1]}} +
+                                          {{1'b1, cyc7r_pdelta_increment} >> 3} & {5{cyc7r_pdelta_increment_multiply[0]}};
+        end
+        else begin
+            cyc8r_multiplied_increment <= {{1'b1, cyc7r_pdelta_increment[3:1], 1'b1} >> 0} & {5{cyc7r_pdelta_increment_multiply[3]}} +
+                                          {{1'b1, cyc7r_pdelta_increment[3:1], 1'b1} >> 1} & {5{cyc7r_pdelta_increment_multiply[2]}} +
+                                          {{1'b1, cyc7r_pdelta_increment[3:1], 1'b1} >> 3} & {5{cyc7r_pdelta_increment_multiply[0]}} +
+
+                                          {5'd4 & {5{&{cyc7r_pdelta_increment_multiply[3:2]} & ~cyc7r_pdelta_increment[0]}}} + 
+                                          {5'd1 & {5{cyc7r_pdelta_increment_multiply[3]}}} + 
+                                          {5'd8 & {5{cyc7r_pdelta_increment_multiply[1]}}} + 
+                                          {5'd2 & {5{cyc7r_pdelta_increment_multiply[0]}}};
+        end
+
+        cyc8r_pdelta_shift_control <= cyc7r_pdelta_shift_control;
+        cyc8r_pdelta_base <= cyc7r_pdelta_base;
+    end
+end
+
+
+
+///////////////////////////////////////////////////////////
+//////  Cycle 9: Key code to F-num conversion step 3
+////
+
+//  DESCRIPTION
+//This is the final step of F-num conversion.
+//Discard the LSB of "cyc8r_multiplied_increment" first.
+//Add them to the base next.
 
 
 
