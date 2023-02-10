@@ -15,9 +15,15 @@ module IKA2151_pg
     input   wire    [5:0]   i_KF, //Key Fraction
     input   wire    [2:0]   i_PMS, //Pulse Modulation Sensitivity
     input   wire    [1:0]   i_DT2, //Detune 2
+    input   wire    [1:0]   i_DT1, //Detune 2
+    input   wire    [7:0]   i_TEST, //test register
 
     //Vibrato
-    input   wire    [7:0]   i_LFP
+    input   wire    [7:0]   i_LFP,
+
+    //send signals to other modules
+    output  wire    [4:0]   o_EG_PDELTA_SHIFT_AMOUNT,
+    input   wire            i_PG_PHASE_RST
 );
 
 
@@ -228,7 +234,6 @@ end
 //  register part
 //
 
-
 reg     [6:0]   cyc4r_frac_detuned_pitchval; //carry + 6bit value
 reg     [6:0]   cyc4r_int_pitchval;
 reg     [1:0]   cyc4r_dt2;
@@ -319,26 +324,22 @@ end
 //////  Cycle 6: Overflow control
 ////
 
-//  DESCRIPTION
-//Controls the final pitch values to be saturated.
-
-//
-//  register part
-//
-
-reg    [12:0]  cyc6r_final_pitchval; //no carry here
-
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc6r_final_pitchval <= (cyc5r_int_detuned_pitchval[7] == 1'b1) ? 13'b111_1110_111111 : {cyc5r_int_detuned_pitchval[6:0], cyc5r_frac_detuned_pitchval};
-    end
-end
 
 
 
 ///////////////////////////////////////////////////////////
-//////  Cycle 7: Key code to F-num conversion step 1
+//////  Cycle 6: Overflow control, Keycode to F-num 1
 ////
+
+
+//  DESCRIPTION
+//Controls the final pitch values to be saturated.
+
+//
+//  combinational part
+//
+
+reg    [12:0]  cyc6c_final_pitchval; = (cyc5r_int_detuned_pitchval[7] == 1'b1) ? 13'b111_1110_111111 : {cyc5r_int_detuned_pitchval[6:0], cyc5r_frac_detuned_pitchval};
 
 //  DESCRIPTION
 //This ROM has absolute phase increment value(pdelta) and 
@@ -349,81 +350,82 @@ end
 //  register part
 //
 
-reg     [4:0]   cyc7r_pdelta_shift_control;
-reg     [11:0]  cyc7r_pdelta_base;
-reg     [3:0]   cyc7r_pdelta_increment;
-reg     [3:0]   cyc7r_pdelta_increment_multiply;
-reg             cyc7r_pdelta_calcmode;
+reg     [4:0]   cyc6r_pdelta_shift_amount;
+reg     [11:0]  cyc6r_pdelta_base;
+reg     [3:0]   cyc6r_pdelta_increment;
+reg     [3:0]   cyc6r_pdelta_increment_multiply;
+reg             cyc6r_pdelta_calcmode;
+assign  o_EG_PDELTA_SHIFT_AMOUNT = cyc6r_pdelta_shift_amount;
 
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
 
         //The original chip's bit order is scrambled! 
-        case(cyc6r_final_pitchval[9:4])
-            6'h00: begin cyc7r_pdelta_base <= 12'b010100_010011; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b10011; end
-            6'h01: begin cyc7r_pdelta_base <= 12'b010100_100110; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b10011; end
-            6'h02: begin cyc7r_pdelta_base <= 12'b010100_111001; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b10011; end
-            6'h03: begin cyc7r_pdelta_base <= 12'b010101_001100; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b00101; end
-            6'h04: begin cyc7r_pdelta_base <= 12'b010101_100000; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b00101; end
-            6'h05: begin cyc7r_pdelta_base <= 12'b010101_110100; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b00101; end
-            6'h06: begin cyc7r_pdelta_base <= 12'b010110_001000; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b10101; end
-            6'h07: begin cyc7r_pdelta_base <= 12'b010110_011101; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b00101; end
-            6'h08: begin cyc7r_pdelta_base <= 12'b010110_110010; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b10101; end
-            6'h09: begin cyc7r_pdelta_base <= 12'b010111_000111; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b10101; end
-            6'h0A: begin cyc7r_pdelta_base <= 12'b010111_011101; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b00111; end
-            6'h0B: begin cyc7r_pdelta_base <= 12'b010111_110011; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b00111; end
+        case(cyc6c_final_pitchval[9:4])
+            6'h00: begin cyc6r_pdelta_base <= 12'b010100_010011; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b10011; end
+            6'h01: begin cyc6r_pdelta_base <= 12'b010100_100110; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b10011; end
+            6'h02: begin cyc6r_pdelta_base <= 12'b010100_111001; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b10011; end
+            6'h03: begin cyc6r_pdelta_base <= 12'b010101_001100; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b00101; end
+            6'h04: begin cyc6r_pdelta_base <= 12'b010101_100000; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b00101; end
+            6'h05: begin cyc6r_pdelta_base <= 12'b010101_110100; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b00101; end
+            6'h06: begin cyc6r_pdelta_base <= 12'b010110_001000; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b10101; end
+            6'h07: begin cyc6r_pdelta_base <= 12'b010110_011101; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b00101; end
+            6'h08: begin cyc6r_pdelta_base <= 12'b010110_110010; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b10101; end
+            6'h09: begin cyc6r_pdelta_base <= 12'b010111_000111; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b10101; end
+            6'h0A: begin cyc6r_pdelta_base <= 12'b010111_011101; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b00111; end
+            6'h0B: begin cyc6r_pdelta_base <= 12'b010111_110011; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b00111; end
 
-            6'h10: begin cyc7r_pdelta_base <= 12'b011000_001001; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b00111; end
-            6'h11: begin cyc7r_pdelta_base <= 12'b011000_011111; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b00111; end
-            6'h12: begin cyc7r_pdelta_base <= 12'b011000_110110; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b10111; end
-            6'h13: begin cyc7r_pdelta_base <= 12'b011001_001101; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b10111; end
-            6'h14: begin cyc7r_pdelta_base <= 12'b011001_100101; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b10111; end
-            6'h15: begin cyc7r_pdelta_base <= 12'b011001_111100; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01001; end
-            6'h16: begin cyc7r_pdelta_base <= 12'b011010_010101; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01001; end
-            6'h17: begin cyc7r_pdelta_base <= 12'b011010_101101; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01001; end
-            6'h18: begin cyc7r_pdelta_base <= 12'b011011_000110; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11001; end
-            6'h19: begin cyc7r_pdelta_base <= 12'b011011_011111; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11001; end
-            6'h1A: begin cyc7r_pdelta_base <= 12'b011011_111001; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01011; end
-            6'h1B: begin cyc7r_pdelta_base <= 12'b011100_010011; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01011; end
+            6'h10: begin cyc6r_pdelta_base <= 12'b011000_001001; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b00111; end
+            6'h11: begin cyc6r_pdelta_base <= 12'b011000_011111; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b00111; end
+            6'h12: begin cyc6r_pdelta_base <= 12'b011000_110110; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b10111; end
+            6'h13: begin cyc6r_pdelta_base <= 12'b011001_001101; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b10111; end
+            6'h14: begin cyc6r_pdelta_base <= 12'b011001_100101; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b10111; end
+            6'h15: begin cyc6r_pdelta_base <= 12'b011001_111100; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b01001; end
+            6'h16: begin cyc6r_pdelta_base <= 12'b011010_010101; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b01001; end
+            6'h17: begin cyc6r_pdelta_base <= 12'b011010_101101; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b01001; end
+            6'h18: begin cyc6r_pdelta_base <= 12'b011011_000110; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b11001; end
+            6'h19: begin cyc6r_pdelta_base <= 12'b011011_011111; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b11001; end
+            6'h1A: begin cyc6r_pdelta_base <= 12'b011011_111001; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b01011; end
+            6'h1B: begin cyc6r_pdelta_base <= 12'b011100_010011; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b01011; end
 
-            6'h20: begin cyc7r_pdelta_base <= 12'b011100_101101; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01011; end
-            6'h21: begin cyc7r_pdelta_base <= 12'b011101_001000; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11011; end
-            6'h22: begin cyc7r_pdelta_base <= 12'b011101_100011; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11011; end
-            6'h23: begin cyc7r_pdelta_base <= 12'b011101_111110; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01101; end
-            6'h24: begin cyc7r_pdelta_base <= 12'b011110_011010; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01101; end
-            6'h25: begin cyc7r_pdelta_base <= 12'b011110_110111; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01101; end
-            6'h26: begin cyc7r_pdelta_base <= 12'b011111_010011; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11101; end
-            6'h27: begin cyc7r_pdelta_base <= 12'b011111_110000; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01111; end
-            6'h28: begin cyc7r_pdelta_base <= 12'b100000_001110; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01111; end
-            6'h29: begin cyc7r_pdelta_base <= 12'b100000_101100; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01111; end
-            6'h2A: begin cyc7r_pdelta_base <= 12'b100001_001010; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11111; end
-            6'h2B: begin cyc7r_pdelta_base <= 12'b100001_101001; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11111; end
+            6'h20: begin cyc6r_pdelta_base <= 12'b011100_101101; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b01011; end
+            6'h21: begin cyc6r_pdelta_base <= 12'b011101_001000; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b11011; end
+            6'h22: begin cyc6r_pdelta_base <= 12'b011101_100011; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b11011; end
+            6'h23: begin cyc6r_pdelta_base <= 12'b011101_111110; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b01101; end
+            6'h24: begin cyc6r_pdelta_base <= 12'b011110_011010; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b01101; end
+            6'h25: begin cyc6r_pdelta_base <= 12'b011110_110111; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b01101; end
+            6'h26: begin cyc6r_pdelta_base <= 12'b011111_010011; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b11101; end
+            6'h27: begin cyc6r_pdelta_base <= 12'b011111_110000; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b01111; end
+            6'h28: begin cyc6r_pdelta_base <= 12'b100000_001110; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b01111; end
+            6'h29: begin cyc6r_pdelta_base <= 12'b100000_101100; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b01111; end
+            6'h2A: begin cyc6r_pdelta_base <= 12'b100001_001010; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b11111; end
+            6'h2B: begin cyc6r_pdelta_base <= 12'b100001_101001; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b11111; end
             
-            6'h30: begin cyc7r_pdelta_base <= 12'b100010_001001; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11111; end
-            6'h31: begin cyc7r_pdelta_base <= 12'b100010_101000; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11110; end
-            6'h32: begin cyc7r_pdelta_base <= 12'b100011_001001; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11110; end
-            6'h33: begin cyc7r_pdelta_base <= 12'b100011_101001; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11110; end
-            6'h34: begin cyc7r_pdelta_base <= 12'b100100_001011; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11110; end
-            6'h35: begin cyc7r_pdelta_base <= 12'b100100_101100; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b11110; end
-            6'h36: begin cyc7r_pdelta_base <= 12'b100101_001110; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01110; end
-            6'h37: begin cyc7r_pdelta_base <= 12'b100101_110001; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01110; end
-            6'h38: begin cyc7r_pdelta_base <= 12'b100110_010100; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01110; end
-            6'h39: begin cyc7r_pdelta_base <= 12'b100110_111000; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01110; end
-            6'h3A: begin cyc7r_pdelta_base <= 12'b100111_011100; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01110; end
-            6'h3B: begin cyc7r_pdelta_base <= 12'b101000_000001; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b01110; end
+            6'h30: begin cyc6r_pdelta_base <= 12'b100010_001001; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b11111; end
+            6'h31: begin cyc6r_pdelta_base <= 12'b100010_101000; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b11110; end
+            6'h32: begin cyc6r_pdelta_base <= 12'b100011_001001; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b11110; end
+            6'h33: begin cyc6r_pdelta_base <= 12'b100011_101001; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b11110; end
+            6'h34: begin cyc6r_pdelta_base <= 12'b100100_001011; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b11110; end
+            6'h35: begin cyc6r_pdelta_base <= 12'b100100_101100; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b11110; end
+            6'h36: begin cyc6r_pdelta_base <= 12'b100101_001110; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b01110; end
+            6'h37: begin cyc6r_pdelta_base <= 12'b100101_110001; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b01110; end
+            6'h38: begin cyc6r_pdelta_base <= 12'b100110_010100; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b01110; end
+            6'h39: begin cyc6r_pdelta_base <= 12'b100110_111000; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b01110; end
+            6'h3A: begin cyc6r_pdelta_base <= 12'b100111_011100; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b01110; end
+            6'h3B: begin cyc6r_pdelta_base <= 12'b101000_000001; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b01110; end
 
-            default: begin cyc7r_pdelta_base <= 12'b000000_000000; {cyc7r_pdelta_increment[0], cyc7r_pdelta_increment[3:1], cyc7r_pdelta_calcmode} <= 5'b00000; end
+            default: begin cyc6r_pdelta_base <= 12'b000000_000000; {cyc6r_pdelta_increment[0], cyc6r_pdelta_increment[3:1], cyc6r_pdelta_calcmode} <= 5'b00000; end
         endcase
 
-        cyc7r_pdelta_shift_control <= cyc6r_final_pitchval[12:8];
-        cyc7r_pdelta_base <= cyc6r_final_pitchval[3:0];
+        cyc6r_pdelta_shift_amount <= cyc6c_final_pitchval[12:8];
+        cyc6r_pdelta_base <= cyc6c_final_pitchval[3:0];
     end
 end
 
 
 
 ///////////////////////////////////////////////////////////
-//////  Cycle 8: Key code to F-num conversion step 2
+//////  Cycle 7: Keycode to F-num 2
 ////
 
 //  DESCRIPTION
@@ -440,44 +442,340 @@ end
 //  register part
 //
 
-reg     [4:0]   cyc8r_pdelta_shift_control;
-reg     [11:0]  cyc8r_pdelta_base;
-reg     [5:0]   cyc8r_multiplied_increment; //Maximum 31+15+7+3 = 56(11_1000), 1 bit of carry needed
+reg     [4:0]   cyc7r_pdelta_shift_amount;
+reg     [11:0]  cyc7r_pdelta_base;
+reg     [5:0]   cyc7r_multiplied_increment; //Maximum 31+15+7+3 = 56(11_1000), 1 bit of carry needed
 
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        if(cyc7r_pdelta_calcmode) begin
-            cyc8r_multiplied_increment <= {{1'b1, cyc7r_pdelta_increment} >> 0} & {5{cyc7r_pdelta_increment_multiply[3]}} +
-                                          {{1'b1, cyc7r_pdelta_increment} >> 1} & {5{cyc7r_pdelta_increment_multiply[2]}} +
-                                          {{1'b1, cyc7r_pdelta_increment} >> 2} & {5{cyc7r_pdelta_increment_multiply[1]}} +
-                                          {{1'b1, cyc7r_pdelta_increment} >> 3} & {5{cyc7r_pdelta_increment_multiply[0]}};
+        cyc7r_pdelta_shift_amount <= cyc6r_pdelta_shift_amount;
+        cyc7r_pdelta_base <= cyc6r_pdelta_base;
+
+        if(cyc6r_pdelta_calcmode) begin
+            cyc7r_multiplied_increment <= {{1'b1, cyc6r_pdelta_increment} >> 0} & {5{cyc6r_pdelta_increment_multiply[3]}} +
+                                          {{1'b1, cyc6r_pdelta_increment} >> 1} & {5{cyc6r_pdelta_increment_multiply[2]}} +
+                                          {{1'b1, cyc6r_pdelta_increment} >> 2} & {5{cyc6r_pdelta_increment_multiply[1]}} +
+                                          {{1'b1, cyc6r_pdelta_increment} >> 3} & {5{cyc6r_pdelta_increment_multiply[0]}};
         end
         else begin
-            cyc8r_multiplied_increment <= {{1'b1, cyc7r_pdelta_increment[3:1], 1'b1} >> 0} & {5{cyc7r_pdelta_increment_multiply[3]}} +
-                                          {{1'b1, cyc7r_pdelta_increment[3:1], 1'b1} >> 1} & {5{cyc7r_pdelta_increment_multiply[2]}} +
-                                          {{1'b1, cyc7r_pdelta_increment[3:1], 1'b1} >> 3} & {5{cyc7r_pdelta_increment_multiply[0]}} +
+            cyc7r_multiplied_increment <= {{1'b1, cyc6r_pdelta_increment[3:1], 1'b1} >> 0} & {5{cyc6r_pdelta_increment_multiply[3]}} +
+                                          {{1'b1, cyc6r_pdelta_increment[3:1], 1'b1} >> 1} & {5{cyc6r_pdelta_increment_multiply[2]}} +
+                                          {{1'b1, cyc6r_pdelta_increment[3:1], 1'b1} >> 3} & {5{cyc6r_pdelta_increment_multiply[0]}} +
 
-                                          {5'd4 & {5{&{cyc7r_pdelta_increment_multiply[3:2]} & ~cyc7r_pdelta_increment[0]}}} + 
-                                          {5'd1 & {5{cyc7r_pdelta_increment_multiply[3]}}} + 
-                                          {5'd8 & {5{cyc7r_pdelta_increment_multiply[1]}}} + 
-                                          {5'd2 & {5{cyc7r_pdelta_increment_multiply[0]}}};
+                                          {5'd4 & {5{&{cyc6r_pdelta_increment_multiply[3:2]} & ~cyc6r_pdelta_increment[0]}}} + 
+                                          {5'd1 & {5{cyc6r_pdelta_increment_multiply[3]}}} + 
+                                          {5'd8 & {5{cyc6r_pdelta_increment_multiply[1]}}} + 
+                                          {5'd2 & {5{cyc6r_pdelta_increment_multiply[0]}}};
         end
-
-        cyc8r_pdelta_shift_control <= cyc7r_pdelta_shift_control;
-        cyc8r_pdelta_base <= cyc7r_pdelta_base;
     end
 end
 
 
 
 ///////////////////////////////////////////////////////////
-//////  Cycle 9: Key code to F-num conversion step 3
+//////  Cycle 8: Keycode to F-num 3, DT1/MUL latch
 ////
 
 //  DESCRIPTION
-//This is the final step of F-num conversion.
-//Discard the LSB of "cyc8r_multiplied_increment" first.
+//This is the third step of F-num conversion.
+//Discard the LSB of "cyc7r_multiplied_increment" first.
 //Add them to the base next.
+
+//
+//  register part
+//
+
+reg     [4:0]   cyc8r_pdelta_shift_amount;
+reg     [11:0]  cyc8r_pdelta_base;
+reg     [2:0]   cyc8r_dt1;
+reg     [3:0]   cyc8r_mul;
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        cyc8r_pdelta_shift_amount <= cyc7r_pdelta_shift_amount;
+        cyc8r_pdelta_base <= cyc7r_pdelta_base + {7'b0, cyc7r_multiplied_increment[5:1]}; //discard the LSB, ignore the MSB carry
+        cyc8r_dt1 <= i_DT1;
+        cyc8r_mul <= i_MUL;
+    end
+end
+
+
+
+///////////////////////////////////////////////////////////
+//////  Cycle 9: Keycode to F-num 4, DT1 decode
+////
+
+//  DESCRIPTION
+//This is the last step of F-num conversion. Shift the pdelta
+//value using the shift amount[4:3].
+//Calculate the intensity of detuning amount. Decode the base
+//detuning value from DT1 parameter.
+
+//
+//  combinational part
+//
+
+//intensity shifts the base value
+reg     [4:0]   cyc9c_dt1_intensity;
+always @(*) begin
+    case(cyc8r_dt1)
+        2'd0: cyc9c_dt1_intensity <= {1'b0, cyc8r_pdelta_shift_amount[4:2]} + 4'd0  + 1'd1;
+        2'd1: cyc9c_dt1_intensity <= {1'b0, cyc8r_pdelta_shift_amount[4:2]} + 4'd8  + 1'd1;
+        2'd2: cyc9c_dt1_intensity <= {1'b0, cyc8r_pdelta_shift_amount[4:2]} + 4'd10 + 1'd1;
+        2'd3: cyc9c_dt1_intensity <= {1'b0, cyc8r_pdelta_shift_amount[4:2]} + 4'd11 + 1'd1;
+    endcase
+end
+
+//generate the base value(PLA)
+wire    [1:0]   cyc9c_dt1_base_sel = (cyc8r_pdelta_shift_amount >= 5'd28) ? 2'd0 : cyc8r_pdelta_shift_amount[1:0];
+reg     [4:0]   cyc9c_dt1_base;
+always @(*) begin
+    case({cyc9c_dt1_intensity[0], cyc9c_dt1_base_sel})
+        //dt1 intensity is even
+        3'd0_00: cyc9c_dt1_base <= 5'b10000;
+        3'd0_01: cyc9c_dt1_base <= 5'b10001;
+        3'd0_10: cyc9c_dt1_base <= 5'b10011;
+        3'd0_11: cyc9c_dt1_base <= 5'b10100;
+
+        //dt1 intensity is odd
+        3'd1_00: cyc9c_dt1_base <= 5'b10110;
+        3'd1_01: cyc9c_dt1_base <= 5'b11000;
+        3'd1_10: cyc9c_dt1_base <= 5'b11011;
+        3'd1_11: cyc9c_dt1_base <= 5'b11101;
+    endcase
+end
+
+//
+//  register part
+//
+
+reg     [16:0]  cyc9r_shifted_pdelta;
+reg     [16:0]  cyc9r_pdelta_detuning_value;
+reg     [3:0]   cyc9r_mul;
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        case(cyc8r_pdelta_shift_amount[4:2])
+            3'd0: cyc9r_shifted_pdelta <= {7'b0000000, cyc8r_pdelta_base[11:2]}; //>>4
+            3'd1: cyc9r_shifted_pdelta <= {6'b000000, cyc8r_pdelta_base[11:1] }; //>>3
+            3'd2: cyc9r_shifted_pdelta <= {5'b00000, cyc8r_pdelta_base        }; //>>2
+            3'd3: cyc9r_shifted_pdelta <= {4'b0000, cyc8r_pdelta_base, 1'b0   }; //>>1
+            3'd4: cyc9r_shifted_pdelta <= {3'b000, cyc8r_pdelta_base, 2'b00   }; //zero
+            3'd5: cyc9r_shifted_pdelta <= {2'b00, cyc8r_pdelta_base, 3'b000   }; //<<1
+            3'd6: cyc9r_shifted_pdelta <= {1'b0, cyc8r_pdelta_base, 4'b0000   }; //<<2
+            3'd7: cyc9r_shifted_pdelta <= {     cyc8r_pdelta_base, 5'b00000   }; //<<3
+        endcase
+
+        if(cyc8r_dt1 == 1'b0) cyc9r_pdelta_detuning_value <= 17'd0; //dt1 is zero
+        else begin
+            case(cyc9c_dt1_intensity[4:1])
+                4'b0101: cyc9r_pdelta_detuning_value <= (cyc8r_dt1 == 1'b0) ? {16'b0, cyc9c_dt1_base[4]}   : ~{16'b0, cyc9c_dt1_base[4]}   + 1'd1; //10, 11
+                4'b0110: cyc9r_pdelta_detuning_value <= (cyc8r_dt1 == 1'b0) ? {15'b0, cyc9c_dt1_base[4:3]} : ~{15'b0, cyc9c_dt1_base[4:3]} + 1'd1; //12, 13
+                4'b0111: cyc9r_pdelta_detuning_value <= (cyc8r_dt1 == 1'b0) ? {14'b0, cyc9c_dt1_base[4:2]} : ~{14'b0, cyc9c_dt1_base[4:2]} + 1'd1; //14, 15
+                4'b1000: cyc9r_pdelta_detuning_value <= (cyc8r_dt1 == 1'b0) ? {13'b0, cyc9c_dt1_base[4:1]} : ~{13'b0, cyc9c_dt1_base[4:1]} + 1'd1; //16, 17
+                4'b1001: cyc9r_pdelta_detuning_value <= (cyc8r_dt1 == 1'b0) ? {12'b0, cyc9c_dt1_base}      : ~{12'b0, cyc9c_dt1_base}      + 1'd1; //18, 19
+                default: cyc9r_pdelta_detuning_value <= 17'd0; //else
+            endcase
+        end
+
+        cyc9r_mul <= cyc8r_mul;
+    end
+end
+
+
+
+///////////////////////////////////////////////////////////
+//////  Cycle 10: apply DT1
+////
+
+//  DESCRIPTION
+//Sum shifted pdelta and detuning value.
+//YM2151 adds low bits in this step, but we don't have to do it. 
+//Add everything within one cycle.
+
+//
+//  register part
+//
+
+reg     [16:0]  cyc10r_detuned_pdelta; //ignore carry
+reg     [3:0]   cyc10r_mul;
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        cyc10r_detuned_pdelta <= cyc9r_shifted_pdelta + cyc9r_pdelta_detuning_value;
+        cyc10r_mul <= cyc9r_mul;
+    end
+end
+
+
+
+///////////////////////////////////////////////////////////
+//////  Cycle 11: delay
+////
+
+//  DESCRIPTION
+//YM2151 adds high bits in this step.
+//Just latch multiplier. The original chip decodes mul value
+//here to feed some control signal for booth multiplier.
+
+//
+//  register part
+//
+
+reg     [16:0]  cyc11r_detuned_pdelta;
+reg     [3:0]   cyc11r_mul;
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        cyc11r_detuned_pdelta <= cyc10r_detuned_pdelta;
+        cyc11r_mul <= cyc10r_mul;
+    end
+end
+
+
+
+///////////////////////////////////////////////////////////
+//////  Cycle 12: apply mul
+////
+
+//
+//  register part
+//
+
+reg     [20:0]  cyc12r_multiplied_pdelta; //131071*15 = 1_1101_1111_1111_1111_0001, 21 bits
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        if(cyc11r_mul == 4'b0) cyc12r_multiplied_pdelta <= cyc11r_detuned_pdelta / 4'd2;
+        else begin
+            cyc12r_multiplied_pdelta <= cyc11r_detuned_pdelta * cyc11r_mul;
+        end
+    end
+end
+
+
+
+///////////////////////////////////////////////////////////
+//////  Cycle 13: delay
+////
+
+//
+//  register part
+//
+
+reg     [19:0]  cyc13r_multiplied_pdelta; //ignore carry
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        cyc13r_multiplied_pdelta <= cyc13r_multiplied_pdelta[19:0];
+    end
+end
+
+
+
+///////////////////////////////////////////////////////////
+//////  Cycle 14: reset phase
+////
+
+//
+//  register part
+//
+
+reg             cyc14r_phase_rst;
+reg     [19:0]  cyc14r_final_pdelta; 
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        cyc14r_phase_rst <= i_PG_PHASE_RST;
+        cyc14r_final_pdelta <= (i_PG_PHASE_RST) ? 20'd0 : cyc13r_multiplied_pdelta;
+    end
+end
+
+
+
+///////////////////////////////////////////////////////////
+//////  Cycle 15: delay
+////
+
+//
+//  register part
+//
+
+reg             cyc15r_phase_rst;
+reg     [19:0]  cyc15r_final_pdelta; 
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        cyc15r_phase_rst <= cyc14r_phase_rst;
+        cyc15r_final_pdelta <= cyc14r_final_pdelta;
+    end
+end
+
+
+
+///////////////////////////////////////////////////////////
+//////  Cycle 16: delay, reset previous phase
+////
+
+//
+//  register part
+//
+
+reg     [19:0]  cyc16r_final_pdelta; 
+reg     [19:0]  cyc16r_previous_phase;
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        cyc16r_final_pdelta <= cyc15r_final_pdelta;
+        cyc16r_previous_phase <= (cyc15r_phase_rst | i_TEST[3]) ? 20'd0 : cyc40r_previous_phase;
+    end
+end
+
+
+
+///////////////////////////////////////////////////////////
+//////  Cycle 17: sum previous phase and pdelta
+////
+
+//  DESCRIPTION
+//YM2151 adds low bits in this step. We will sum entire bits.
+
+//
+//  register part
+//
+
+reg     [19:0]  cyc17r_current_phase;
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        cyc17r_current_phase <= cyc16r_previous_phase + cyc16r_final_pdelta;
+    end
+end
+
+
+
+///////////////////////////////////////////////////////////
+//////  Cycle 18: delay 
+////
+
+//  DESCRIPTION
+//YM2151 adds high bits in this step.
+
+//
+//  register part
+//
+
+reg     [19:0]  cyc18r_current_phase;
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        cyc18r_current_phase <= cyc17r_current_phase;
+    end
+end
+
+///////////////////////////////////////////////////////////
+//////  Cycle 19-40: delay shift register 
+////
+
+//  DESCRIPTION
+//22 bit length shift register will store all 32 phases.
+
+//
+//  register part
+//
+
+
+
+
 
 
 
