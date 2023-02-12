@@ -23,7 +23,9 @@ module IKA2151_pg
 
     //send signals to other modules
     output  wire    [4:0]   o_EG_PDELTA_SHIFT_AMOUNT,
-    input   wire            i_PG_PHASE_RST
+    input   wire            i_PG_PHASE_RST,
+    output  wire    [9:0]   o_OP_ORIGINAL_PHASE,
+    output  wire            o_REG_PHASE_CH6_C2
 );
 
 
@@ -321,13 +323,6 @@ end
 
 
 ///////////////////////////////////////////////////////////
-//////  Cycle 6: Overflow control
-////
-
-
-
-
-///////////////////////////////////////////////////////////
 //////  Cycle 6: Overflow control, Keycode to F-num 1
 ////
 
@@ -548,6 +543,7 @@ end
 //  register part
 //
 
+reg     [19:0]  cyc9r_previous_phase;
 reg     [16:0]  cyc9r_shifted_pdelta;
 reg     [16:0]  cyc9r_pdelta_detuning_value;
 reg     [3:0]   cyc9r_mul;
@@ -577,6 +573,7 @@ always @(posedge i_EMUCLK) begin
         end
 
         cyc9r_mul <= cyc8r_mul;
+        cyc9r_previous_phase <= cyc19r_cyc40r_phase_sr[21]; //get previous phase from the cycle 40
     end
 end
 
@@ -595,12 +592,14 @@ end
 //  register part
 //
 
+reg     [19:0]  cyc10r_previous_phase;
 reg     [16:0]  cyc10r_detuned_pdelta; //ignore carry
 reg     [3:0]   cyc10r_mul;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         cyc10r_detuned_pdelta <= cyc9r_shifted_pdelta + cyc9r_pdelta_detuning_value;
         cyc10r_mul <= cyc9r_mul;
+        cyc10r_previous_phase <= cyc9r_previous_phase;
     end
 end
 
@@ -619,12 +618,14 @@ end
 //  register part
 //
 
+reg     [19:0]  cyc11r_previous_phase;
 reg     [16:0]  cyc11r_detuned_pdelta;
 reg     [3:0]   cyc11r_mul;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         cyc11r_detuned_pdelta <= cyc10r_detuned_pdelta;
         cyc11r_mul <= cyc10r_mul;
+        cyc11r_previous_phase <= cyc10r_previous_phase;
     end
 end
 
@@ -638,13 +639,16 @@ end
 //  register part
 //
 
-reg     [20:0]  cyc12r_multiplied_pdelta; //131071*15 = 1_1101_1111_1111_1111_0001, 21 bits
+reg     [19:0]  cyc12r_previous_phase;
+reg     [20:0]  cyc12r_multiplied_pdelta; //131071*15 = 1_1101_1111_1111_1111_0001, max 21 bits
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         if(cyc11r_mul == 4'b0) cyc12r_multiplied_pdelta <= cyc11r_detuned_pdelta / 4'd2;
         else begin
             cyc12r_multiplied_pdelta <= cyc11r_detuned_pdelta * cyc11r_mul;
         end
+
+        cyc12r_previous_phase <= cyc11r_previous_phase;
     end
 end
 
@@ -658,10 +662,12 @@ end
 //  register part
 //
 
+reg     [19:0]  cyc13r_previous_phase;
 reg     [19:0]  cyc13r_multiplied_pdelta; //ignore carry
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        cyc13r_multiplied_pdelta <= cyc13r_multiplied_pdelta[19:0];
+        cyc13r_multiplied_pdelta <= cyc12r_multiplied_pdelta[19:0];
+        cyc13r_previous_phase <= cyc12r_previous_phase;
     end
 end
 
@@ -675,12 +681,14 @@ end
 //  register part
 //
 
+reg     [19:0]  cyc14r_previous_phase;
 reg             cyc14r_phase_rst;
 reg     [19:0]  cyc14r_final_pdelta; 
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         cyc14r_phase_rst <= i_PG_PHASE_RST;
         cyc14r_final_pdelta <= (i_PG_PHASE_RST) ? 20'd0 : cyc13r_multiplied_pdelta;
+        cyc14r_previous_phase <= cyc13r_previous_phase;
     end
 end
 
@@ -694,12 +702,14 @@ end
 //  register part
 //
 
+reg     [19:0]  cyc15r_previous_phase;
 reg             cyc15r_phase_rst;
 reg     [19:0]  cyc15r_final_pdelta; 
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         cyc15r_phase_rst <= cyc14r_phase_rst;
         cyc15r_final_pdelta <= cyc14r_final_pdelta;
+        cyc15r_previous_phase <= cyc14r_previous_phase;
     end
 end
 
@@ -718,7 +728,7 @@ reg     [19:0]  cyc16r_previous_phase;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         cyc16r_final_pdelta <= cyc15r_final_pdelta;
-        cyc16r_previous_phase <= (cyc15r_phase_rst | i_TEST[3]) ? 20'd0 : cyc40r_previous_phase;
+        cyc16r_previous_phase <= (cyc15r_phase_rst | i_TEST[3]) ? 20'd0 : cyc15r_previous_phase;
     end
 end
 
@@ -735,7 +745,7 @@ end
 //  register part
 //
 
-reg     [19:0]  cyc17r_current_phase;
+reg     [19:0]  cyc17r_current_phase; //ignore carry
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         cyc17r_current_phase <= cyc16r_previous_phase + cyc16r_final_pdelta;
@@ -773,12 +783,29 @@ end
 //  register part
 //
 
+reg     [19:0]  cyc19r_cyc40r_phase_sr[0:21]; //22 stages shift register
 
+//first stage
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        cyc19r_cyc40r_phase_sr[0] <= cyc18r_current_phase;
+    end
+end
 
+//the other stages
+genvar stage;
+generate
+for(stage = 0; stage < 21; stage = stage + 1) begin : phase_sr
+    always @(posedge i_EMUCLK) begin
+        if(!phi1ncen_n) begin
+            cyc19r_cyc40r_phase_sr[stage + 1] <= cyc19r_cyc40r_phase_sr[stage];
+        end
+    end
+end
+endgenerate
 
-
-
-
+//last stage
+assign  o_OP_ORIGINAL_PHASE = cyc19r_cyc40r_phase_sr[21];
 
 
 
