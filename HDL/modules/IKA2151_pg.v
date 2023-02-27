@@ -10,23 +10,27 @@ module IKA2151_pg
     input   wire            i_phi1_PCEN_n, //positive edge clock enable for emulation
     input   wire            i_phi1_NCEN_n, //engative edge clock enable for emulation
 
+    //timings
+    input   wire            i_CYCLE_05, //ch6 c2 phase piso sr parallel load
+
     //register data
     input   wire    [6:0]   i_KC, //Key Code
     input   wire    [5:0]   i_KF, //Key Fraction
     input   wire    [2:0]   i_PMS, //Pulse Modulation Sensitivity
     input   wire    [1:0]   i_DT2, //Detune 2
-    input   wire    [1:0]   i_DT1, //Detune 2
+    input   wire    [1:0]   i_DT1, //Detune 1
     input   wire    [7:0]   i_TEST, //test register
 
     //Vibrato
     input   wire    [7:0]   i_LFP,
 
     //send signals to other modules
-    output  wire    [4:0]   o_EG_PDELTA_SHIFT_AMOUNT,
-    input   wire            i_PG_PHASE_RST,
-    output  wire    [9:0]   o_OP_ORIGINAL_PHASE,
-    output  wire            o_REG_PHASE_CH6_C2
+    input   wire            i_PG_PHASE_RST, //phase reset request signal from PG
+    output  wire    [4:0]   o_EG_PDELTA_SHIFT_AMOUNT, //send shift amount to EG
+    output  wire    [9:0]   o_OP_ORIGINAL_PHASE, //send phase data to OP
+    output  wire            o_REG_PHASE_CH6_C2 //send Ch6, Carrier2 phase data to REG serially
 );
+
 
 
 ///////////////////////////////////////////////////////////
@@ -56,7 +60,7 @@ wire            mrst_n = i_MRST_n;
 wire    [2:0]   cyc0c_ex_lfp_weight0 = (i_PMS == 3'd7) ? i_LFP[6:4]        : {1'b0, i_LFP[6:5]};
 wire    [2:0]   cyc0c_ex_lfp_weight1 = (i_PMS == 3'd7) ? {2'b00, i_LFP[6]} : 3'b000;
 wire            cyc0c_ex_lfp_weight2 = (i_PMS == 3'd7) ? ((i_LFP[6] & i_LFP[5]) | (i_LFP[5] & i_LFP[4])) : 
-                                      (i_PMS == 3'd6) ? (i_LFP[6] & i_LFP[5]) : 1'b0;
+                                       (i_PMS == 3'd6) ? (i_LFP[6] & i_LFP[5]) : 1'b0;
 wire    [3:0]   cyc0c_ex_lfp_weightsum = cyc0c_ex_lfp_weight0 + cyc0c_ex_lfp_weight1 + cyc0c_ex_lfp_weight2;
 
 
@@ -457,7 +461,7 @@ always @(posedge i_EMUCLK) begin
                                           {{1'b1, cyc6r_pdelta_increment[3:1], 1'b1} >> 1} & {5{cyc6r_pdelta_increment_multiply[2]}} +
                                           {{1'b1, cyc6r_pdelta_increment[3:1], 1'b1} >> 3} & {5{cyc6r_pdelta_increment_multiply[0]}} +
 
-                                          {5'd4 & {5{&{cyc6r_pdelta_increment_multiply[3:2]} & ~cyc6r_pdelta_increment[0]}}} + 
+                                          {5'd4 & {5{&{cyc6r_pdelta_increment_multiply[3:2], ~cyc6r_pdelta_increment[0]}}}} + 
                                           {5'd1 & {5{cyc6r_pdelta_increment_multiply[3]}}} + 
                                           {5'd8 & {5{cyc6r_pdelta_increment_multiply[1]}}} + 
                                           {5'd2 & {5{cyc6r_pdelta_increment_multiply[0]}}};
@@ -563,11 +567,12 @@ always @(posedge i_EMUCLK) begin
         if(cyc8r_dt1 == 1'b0) cyc9r_pdelta_detuning_value <= 17'd0; //dt1 is zero
         else begin
             case(cyc9c_dt1_intensity[4:1])
-                4'b0101: cyc9r_pdelta_detuning_value <= (cyc8r_dt1 == 1'b0) ? {16'b0, cyc9c_dt1_base[4]}   : ~{16'b0, cyc9c_dt1_base[4]}   + 1'd1; //10, 11
-                4'b0110: cyc9r_pdelta_detuning_value <= (cyc8r_dt1 == 1'b0) ? {15'b0, cyc9c_dt1_base[4:3]} : ~{15'b0, cyc9c_dt1_base[4:3]} + 1'd1; //12, 13
-                4'b0111: cyc9r_pdelta_detuning_value <= (cyc8r_dt1 == 1'b0) ? {14'b0, cyc9c_dt1_base[4:2]} : ~{14'b0, cyc9c_dt1_base[4:2]} + 1'd1; //14, 15
-                4'b1000: cyc9r_pdelta_detuning_value <= (cyc8r_dt1 == 1'b0) ? {13'b0, cyc9c_dt1_base[4:1]} : ~{13'b0, cyc9c_dt1_base[4:1]} + 1'd1; //16, 17
-                4'b1001: cyc9r_pdelta_detuning_value <= (cyc8r_dt1 == 1'b0) ? {12'b0, cyc9c_dt1_base}      : ~{12'b0, cyc9c_dt1_base}      + 1'd1; //18, 19
+                //                                                      DT1 is ? |-------- positive --------|   |------------- negative -----------|  intensity
+                4'b0101: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {16'b0, cyc9c_dt1_base[4]}   : ~{16'b0, cyc9c_dt1_base[4]}   + 1'd1; //10, 11
+                4'b0110: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {15'b0, cyc9c_dt1_base[4:3]} : ~{15'b0, cyc9c_dt1_base[4:3]} + 1'd1; //12, 13
+                4'b0111: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {14'b0, cyc9c_dt1_base[4:2]} : ~{14'b0, cyc9c_dt1_base[4:2]} + 1'd1; //14, 15
+                4'b1000: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {13'b0, cyc9c_dt1_base[4:1]} : ~{13'b0, cyc9c_dt1_base[4:1]} + 1'd1; //16, 17
+                4'b1001: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {12'b0, cyc9c_dt1_base}      : ~{12'b0, cyc9c_dt1_base}      + 1'd1; //18, 19
                 default: cyc9r_pdelta_detuning_value <= 17'd0; //else
             endcase
         end
@@ -777,7 +782,8 @@ end
 ////
 
 //  DESCRIPTION
-//22 bit length shift register will store all 32 phases.
+//10-bit processing chain above and 22-bit length shift register 
+//will store all 32 phases.
 
 //
 //  register part
