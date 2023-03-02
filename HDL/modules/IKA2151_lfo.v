@@ -12,7 +12,7 @@ module IKA2151_lfo
 
     //timings
     input   wire            i_CYCLE_12_28,
-    input   wire            i_CYCLE_05_21_n,
+    input   wire            i_CYCLE_05_21,
     input   wire            i_CYCLE_BYTE,
 
     //register data
@@ -23,7 +23,7 @@ module IKA2151_lfo
     input   wire    [7:0]   i_TEST, //test register
 
     //control signal
-    input   wire            i_LFRQ_UPDATE_n,
+    input   wire            i_LFRQ_UPDATE,
 
     output  wire    [7:0]   o_LFP,
     output  wire    [7:0]   o_LFA
@@ -49,7 +49,7 @@ reg             cycle_06_22, cycle_13_29, cycle_14_30, cycle_15_31;
 reg             debug_cycle_07_23;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        cycle_06_22 <= ~i_CYCLE_05_21_n;
+        cycle_06_22 <= i_CYCLE_05_21;
 
         cycle_13_29 <= i_CYCLE_12_28;
         cycle_14_30 <= cycle_13_29;
@@ -154,7 +154,7 @@ reg             hicntr_ld;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         hicntr_cout_dlyd1 <= hicntr_cout;
-        freq_update <= ~i_LFRQ_UPDATE_n;
+        freq_update <= i_LFRQ_UPDATE;
 
         hicntr_ld <= (hicntr_cout_dlyd1 | freq_update);
     end
@@ -193,7 +193,7 @@ end
 
     reg ddl2_en;
     always @(posedge i_EMUCLK) begin
-        if(!phi1pcen_n) ddl2_en <= ~i_CYCLE_05_21_n;
+        if(!phi1pcen_n) ddl2_en <= i_CYCLE_05_21;
     end
 
     reg ddl1, ddl2;
@@ -210,7 +210,7 @@ always @(posedge i_EMUCLK) begin
         if(cycle_14_30) hicntr_cout_step1 <= hicntr_cout; //not dlyd1! async latch elimination
     end
     if(!phi1pcen_n) begin //use positive edge
-        if(!i_CYCLE_05_21_n) hicntr_cout_step2 <= hicntr_cout_step1;
+        if(i_CYCLE_05_21) hicntr_cout_step2 <= hicntr_cout_step1;
     end
 end
 

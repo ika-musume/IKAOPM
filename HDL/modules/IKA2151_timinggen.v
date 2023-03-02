@@ -2,13 +2,12 @@ module IKA2151_timinggen
 (
     //chip clock
     input   wire            i_EMUCLK, //emulator master clock
-    input   wire            i_phiM_PCEN_n, //phiM clock enable
 
     //chip reset
     input   wire            i_IC_n,
+    output  reg             o_MRST_n = 1'b0, //core internal reset
 
-    //core internal reset
-    output  reg             o_MRST_n = 1'b0,
+    input   wire            i_phiM_PCEN_n, //phiM clock enable
 
     //phiM/2
     output  wire            o_phi1, //phi1 output
@@ -21,7 +20,7 @@ module IKA2151_timinggen
 
     //timings
     output  reg             o_CYCLE_12_28,
-    output  reg             o_CYCLE_05_21_n,
+    output  reg             o_CYCLE_05_21,
     output  reg             o_CYCLE_BYTE
 
     output  reg             o_CYCLE_31,
@@ -146,11 +145,11 @@ wire            sh2 = timinggen_cntr[4:3] == 2'b01; //01XXX
 //LFO
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        o_CYCLE_12_28   <= timinggen_cntr[3:0] == 4'b1011;
-        o_CYCLE_05_21_n <= ~(timinggen_cntr[3:0] == 4'b0100);
-        o_CYCLE_BYTE    <= (timinggen_cntr[3:1] == 3'b111) |
-                           (timinggen_cntr[3:1] == 3'b010) |
-                           (timinggen_cntr[3:2] == 2'b00);
+        o_CYCLE_12_28 <= timinggen_cntr[3:0] == 4'b1011;
+        o_CYCLE_05_21 <= (timinggen_cntr[3:0] == 4'b0100);
+        o_CYCLE_BYTE  <= (timinggen_cntr[3:1] == 3'b111) |
+                         (timinggen_cntr[3:1] == 3'b010) |
+                         (timinggen_cntr[3:2] == 2'b00);
     end
 end
 

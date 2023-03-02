@@ -19,6 +19,7 @@ module IKA2151_pg
     input   wire    [2:0]   i_PMS, //Pulse Modulation Sensitivity
     input   wire    [1:0]   i_DT2, //Detune 2
     input   wire    [1:0]   i_DT1, //Detune 1
+    input   wire    [3:0]   i_MUL,
     input   wire    [7:0]   i_TEST, //test register
 
     //Vibrato
@@ -102,7 +103,7 @@ end
 reg     [12:0]  cyc1c_lfp_deviance;
 wire    [13:0]  cyc1c_lfp_deviance_debug = (cyc0r_ex_lfp_sign == 1'b1) ? (~cyc1c_lfp_deviance + 7'h1) : cyc1c_lfp_deviance;
 always @(*) begin
-    case(pms_level)
+    case(cyc0r_pms_level)
         3'd0: cyc1c_lfp_deviance <= 13'b0;
         3'd1: cyc1c_lfp_deviance <= {11'b0, cyc0r_ex_lfp[6:5]      };
         3'd2: cyc1c_lfp_deviance <= {10'b0, cyc0r_ex_lfp[6:4]      };
@@ -126,7 +127,7 @@ wire    [12:0]  cyc1c_modded_raw_pitchval = (cyc0r_ex_lfp_sign == 1'b0) ? {i_KC,
 
 reg     [12:0]  cyc1r_modded_pitchval; //add or subtract LFP value from KC, KF
 reg             cyc1r_modded_pitchval_ovfl;
-reg             cyc1r_notegroup_nopmod; //this flag set when no "LFP" addend is given to a "note group" range(note group: 012/456/89A/CDE)
+reg             cyc1r_notegroup_nopitchmod; //this flag set when no "LFP" addend is given to a "note group" range(note group: 012/456/89A/CDE)
 reg             cyc1r_notegroup_ovfl; //note group overflow, e.g. 6(3'b1_10) + 2(3'b0_10)
 reg             cyc1r_lfp_sign;
 
@@ -135,7 +136,7 @@ always @(posedge i_EMUCLK) begin
         cyc1r_modded_pitchval      <= {cyc1c_int_adder[6:0], cyc1c_frac_adder[5:0]};
 
         cyc1r_modded_pitchval_ovfl <= cyc1c_int_adder[7];
-        cyc1r_notegroup_noaddend <= ~(cyc1c_lfp_deviance[6] | cyc1c_lfp_deviance[7]);
+        cyc1r_notegroup_nopitchmod <= ~(cyc1c_lfp_deviance[6] | cyc1c_lfp_deviance[7]);
         cyc1r_notegroup_ovfl <= cyc1c_notegroup_adder[2];
 
         //bypass
@@ -159,7 +160,7 @@ end
 //
 
 wire            cyc2c_int_adder_add1 = ((cyc1r_modded_pitchval[7:6] == 2'd3) | cyc1r_notegroup_ovfl) & ~cyc1r_lfp_sign;
-wire            cyc2c_int_adder_sub1 = ~(cyc1r_notegroup_noaddend | cyc1r_notegroup_ovfl | ~cyc1r_lfp_sign);
+wire            cyc2c_int_adder_sub1 = ~(cyc1r_notegroup_nopitchmod | cyc1r_notegroup_ovfl | ~cyc1r_lfp_sign);
 wire    [7:0]   cyc2c_int_adder = cyc1r_modded_pitchval[12:6] + {7{cyc2c_int_adder_sub1}} + cyc2c_int_adder_add1;
 
 
@@ -178,7 +179,7 @@ always @(posedge i_EMUCLK) begin
         cyc2r_rearranged_pitchval <= {cyc2c_int_adder[6:0], cyc1r_modded_pitchval[5:0]};
         cyc2r_rearranged_pitchval_ovfl <= cyc2c_int_adder[7];
 
-        cyc2r_int_adder_sub1 <= cyc2c_int_adder_sub1;
+        cyc2r_int_sub1 <= cyc2c_int_adder_sub1;
 
         cyc2r_modded_pitchval_ovfl <= cyc1r_modded_pitchval_ovfl;
         cyc2r_lfp_sign <= cyc1r_lfp_sign;
@@ -205,7 +206,7 @@ always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         casez({cyc2r_lfp_sign, cyc2r_modded_pitchval_ovfl, cyc2r_int_sub1, cyc2r_rearranged_pitchval_ovfl})
             //lfp = positive
-            4'b0000: cyc3r_saturated_pitchval <= step2_tuned_pitchval;
+            4'b0000: cyc3r_saturated_pitchval <= cyc2r_rearranged_pitchval;
             4'b00?1: cyc3r_saturated_pitchval <= 13'b111_1110_111111; //max
             4'b01?0: cyc3r_saturated_pitchval <= 13'b111_1110_111111;
             4'b01?1: cyc3r_saturated_pitchval <= 13'b111_1110_111111;
@@ -216,10 +217,10 @@ always @(posedge i_EMUCLK) begin
             4'b1001: cyc3r_saturated_pitchval <= 13'b000_0000_000000;
             4'b1010: cyc3r_saturated_pitchval <= 13'b000_0000_000000;
             4'b1011: cyc3r_saturated_pitchval <= 13'b000_0000_000000;
-            4'b1100: cyc3r_saturated_pitchval <= step2_tuned_pitchval;
-            4'b1101: cyc3r_saturated_pitchval <= step2_tuned_pitchval;
+            4'b1100: cyc3r_saturated_pitchval <= cyc2r_rearranged_pitchval;
+            4'b1101: cyc3r_saturated_pitchval <= cyc2r_rearranged_pitchval;
             4'b1110: cyc3r_saturated_pitchval <= 13'b000_0000_000000;
-            4'b1111: cyc3r_saturated_pitchval <= step2_tuned_pitchval;
+            4'b1111: cyc3r_saturated_pitchval <= cyc2r_rearranged_pitchval;
         endcase
 
         cyc3r_dt2 <= i_DT2;
@@ -246,7 +247,7 @@ reg     [1:0]   cyc4r_dt2;
 
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        case(cyc3_dt2)
+        case(cyc3r_dt2)
             2'd0: cyc4r_frac_detuned_pitchval <= cyc3r_saturated_pitchval[5:0] + 6'd0  + 1'd0;
             2'd1: cyc4r_frac_detuned_pitchval <= cyc3r_saturated_pitchval[5:0] + 6'd0  + 1'd0;
             2'd2: cyc4r_frac_detuned_pitchval <= cyc3r_saturated_pitchval[5:0] + 6'd52 + 1'd0; //fractional part +0.8125
@@ -279,45 +280,45 @@ always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         casez({cyc4r_dt2, cyc4r_frac_detuned_pitchval[6], cyc4r_int_pitchval[1:0]})
             //dt2 = 0
-            5'd00_0_00: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd0;
-            5'd00_0_01: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd0;
-            5'd00_0_10: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd0;
-            5'd00_0_11: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd0;
-            5'd00_1_00: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd0 + 7'd1;
-            5'd00_1_01: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd0 + 7'd1;
-            5'd00_1_10: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd0 + 7'd2;
-            5'd00_1_11: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd0 + 7'd2;
+            5'b00_0_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0;
+            5'b00_0_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0;
+            5'b00_0_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0;
+            5'b00_0_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0;
+            5'b00_1_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0 + 7'd1;
+            5'b00_1_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0 + 7'd1;
+            5'b00_1_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0 + 7'd2;
+            5'b00_1_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0 + 7'd2;
             //                                        |--------base value------| +  dt2 + carry(avoids notegroup violation)
 
             //dt2 = 1
-            5'd01_0_00: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd8;
-            5'd01_0_01: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd8;
-            5'd01_0_10: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd8;
-            5'd01_0_11: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd8;
-            5'd01_1_00: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd8 + 7'd1;
-            5'd01_1_01: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd8 + 7'd1;
-            5'd01_1_10: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd8 + 7'd2;
-            5'd01_1_11: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd8 + 7'd2;
+            5'b01_0_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8;
+            5'b01_0_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8;
+            5'b01_0_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8;
+            5'b01_0_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8;
+            5'b01_1_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8 + 7'd1;
+            5'b01_1_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8 + 7'd1;
+            5'b01_1_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8 + 7'd2;
+            5'b01_1_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8 + 7'd2;
 
             //dt2 = 2
-            5'd10_0_00: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd9;
-            5'd10_0_01: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd9;
-            5'd10_0_10: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd9 + 7'd1;
-            5'd10_0_11: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd9 + 7'd1;
-            5'd10_1_00: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd9 + 7'd1;
-            5'd10_1_01: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd9 + 7'd2;
-            5'd10_1_10: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd9 + 7'd2;
-            5'd10_1_11: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd9 + 7'd2;
+            5'b10_0_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9;
+            5'b10_0_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9;
+            5'b10_0_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9 + 7'd1;
+            5'b10_0_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9 + 7'd1;
+            5'b10_1_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9 + 7'd1;
+            5'b10_1_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9 + 7'd2;
+            5'b10_1_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9 + 7'd2;
+            5'b10_1_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9 + 7'd2;
 
             //dt2 = 3
-            5'd11_0_00: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd12;
-            5'd11_0_01: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd12;
-            5'd11_0_10: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd12;
-            5'd11_0_11: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd12;
-            5'd11_1_00: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd12 + 7'd1;
-            5'd11_1_01: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd12 + 7'd1;
-            5'd11_1_10: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd12 + 7'd2;
-            5'd11_1_11: cyc5r_int_detuned_pitchval <= cyc5r_int_detuned_pitchval + 7'd12 + 7'd2;
+            5'b11_0_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12;
+            5'b11_0_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12;
+            5'b11_0_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12;
+            5'b11_0_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12;
+            5'b11_1_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12 + 7'd1;
+            5'b11_1_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12 + 7'd1;
+            5'b11_1_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12 + 7'd2;
+            5'b11_1_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12 + 7'd2;
         endcase
 
         cyc5r_frac_detuned_pitchval <= cyc4r_frac_detuned_pitchval[5:0]; //discard carry
@@ -338,7 +339,7 @@ end
 //  combinational part
 //
 
-reg    [12:0]  cyc6c_final_pitchval; = (cyc5r_int_detuned_pitchval[7] == 1'b1) ? 13'b111_1110_111111 : {cyc5r_int_detuned_pitchval[6:0], cyc5r_frac_detuned_pitchval};
+wire   [12:0]  cyc6c_final_pitchval = (cyc5r_int_detuned_pitchval[7] == 1'b1) ? 13'b111_1110_111111 : {cyc5r_int_detuned_pitchval[6:0], cyc5r_frac_detuned_pitchval};
 
 //  DESCRIPTION
 //This ROM has absolute phase increment value(pdelta) and 
@@ -530,16 +531,16 @@ reg     [4:0]   cyc9c_dt1_base;
 always @(*) begin
     case({cyc9c_dt1_intensity[0], cyc9c_dt1_base_sel})
         //dt1 intensity is even
-        3'd0_00: cyc9c_dt1_base <= 5'b10000;
-        3'd0_01: cyc9c_dt1_base <= 5'b10001;
-        3'd0_10: cyc9c_dt1_base <= 5'b10011;
-        3'd0_11: cyc9c_dt1_base <= 5'b10100;
+        3'b0_00: cyc9c_dt1_base <= 5'b10000;
+        3'b0_01: cyc9c_dt1_base <= 5'b10001;
+        3'b0_10: cyc9c_dt1_base <= 5'b10011;
+        3'b0_11: cyc9c_dt1_base <= 5'b10100;
 
         //dt1 intensity is odd
-        3'd1_00: cyc9c_dt1_base <= 5'b10110;
-        3'd1_01: cyc9c_dt1_base <= 5'b11000;
-        3'd1_10: cyc9c_dt1_base <= 5'b11011;
-        3'd1_11: cyc9c_dt1_base <= 5'b11101;
+        3'b1_00: cyc9c_dt1_base <= 5'b10110;
+        3'b1_01: cyc9c_dt1_base <= 5'b11000;
+        3'b1_10: cyc9c_dt1_base <= 5'b11011;
+        3'b1_11: cyc9c_dt1_base <= 5'b11101;
     endcase
 end
 
@@ -578,7 +579,7 @@ always @(posedge i_EMUCLK) begin
         end
 
         cyc9r_mul <= cyc8r_mul;
-        cyc9r_previous_phase <= cyc19r_cyc40r_phase_sr[21]; //get previous phase from the cycle 40
+        cyc9r_previous_phase <= o_OP_ORIGINAL_PHASE; //get previous phase from the cycle 40, SR last step(21)
     end
 end
 
