@@ -21,7 +21,7 @@ module IKA2151_timinggen
     //timings
     output  reg             o_CYCLE_12_28,
     output  reg             o_CYCLE_05_21,
-    output  reg             o_CYCLE_BYTE
+    output  reg             o_CYCLE_BYTE,
 
     output  reg             o_CYCLE_31,
     output  reg             o_CYCLE_00_16,
@@ -158,7 +158,7 @@ always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         o_CYCLE_31          <= timinggen_cntr[4:0] == 5'b11111;
         o_CYCLE_00_16       <= timinggen_cntr[3:0] == 4'b1111;
-        o_CYCLE_01_TO_16_n  <= ~timinggen_cntr[4];
+        o_CYCLE_01_TO_16    <= ~timinggen_cntr[4];
     end
 end
 

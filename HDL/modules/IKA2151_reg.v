@@ -66,7 +66,7 @@ module IKA2151_reg #(
     output  wire    [4:0]   o_AR,
     output  wire    [4:0]   o_D1R,
     output  wire    [4:0]   o_D2R,
-    output  wire    [4:0]   o_RR,
+    output  wire    [3:0]   o_RR,
     output  wire    [3:0]   o_D1L,
     output  wire    [3:0]   o_TL,
     output  wire    [1:0]   o_AMS,

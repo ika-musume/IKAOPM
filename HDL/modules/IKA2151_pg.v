@@ -355,7 +355,6 @@ reg     [11:0]  cyc6r_pdelta_base;
 reg     [3:0]   cyc6r_pdelta_increment;
 reg     [3:0]   cyc6r_pdelta_increment_multiply;
 reg             cyc6r_pdelta_calcmode;
-assign  o_EG_PDELTA_SHIFT_AMOUNT = cyc6r_pdelta_shift_amount;
 
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
@@ -445,6 +444,7 @@ end
 reg     [4:0]   cyc7r_pdelta_shift_amount;
 reg     [11:0]  cyc7r_pdelta_base;
 reg     [5:0]   cyc7r_multiplied_increment; //Maximum 31+15+7+3 = 56(11_1000), 1 bit of carry needed
+assign  o_EG_PDELTA_SHIFT_AMOUNT = cyc7r_pdelta_shift_amount;
 
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
