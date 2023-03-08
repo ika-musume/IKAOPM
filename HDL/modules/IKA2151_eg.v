@@ -163,6 +163,9 @@ end
 ////
 
 /*
+    Note that the cycle numbers below are "elapsed" cycle, 
+    NOT the master cycle counter value
+
                                              previous KON data
                                      |----------(32 stages)---------|
     i_KON(cyc5) -> (cyc6 - cyc9) -+> (cyc10 - cyc37) -> (cyc6 - cyc9) -> -o|¯¯¯¯\
@@ -183,8 +186,8 @@ always @(posedge i_EMUCLK) begin
         cyc6r_cyc9r_kon_current_dlyline[0] <= i_KON;
         cyc6r_cyc9r_kon_current_dlyline[3:1] <= cyc6r_cyc9r_kon_current_dlyline[2:0];
 
-        cyc10r_cyc41r_kon_previous[0] <= cyc6r_cyc9r_kon_current_dlyline[3];
-        cyc10r_cyc41r_kon_previous[27:1] <= cyc10r_cyc41r_kon_previous[26:0];
+        cyc10r_cyc37r_kon_previous[0] <= cyc6r_cyc9r_kon_current_dlyline[3];
+        cyc10r_cyc37r_kon_previous[27:1] <= cyc10r_cyc37r_kon_previous[26:0];
 
         cyc6r_cyc9r_kon_previous[0] <= cyc10r_cyc37r_kon_previous[27];
         cyc6r_cyc9r_kon_previous[3:1] <= cyc6r_cyc9r_kon_previous[2:0];
@@ -198,6 +201,9 @@ end
 ////
 
 /*
+    Note that the cycle numbers below are "elapsed" cycle, 
+    NOT the master cycle counter value
+
     Envelope state machine holds the states of 32 operators
 
                   (state update)
@@ -215,10 +221,10 @@ localparam RELEASE = 2'd3;
 //  combinational part
 //
 
-//flags and prev state for FSM
+//flags and prev state for FSM, get the values from the last step of the attenuation level SR
 wire            cyc10c_first_decay_end;
-wire            cyc10c_env_level_max;
-wire            cyc10c_env_level_min;
+wire            cyc10c_prevatten_min;
+wire            cyc10c_prevatten_max;
 
 
 //
@@ -236,72 +242,10 @@ wire    [1:0]   cyc10c_envstate_previous = cyc6r_cyc9r_envstate_previous[3];
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         //if kon detected, make previous envstate ATTACK
-        cyc6r_cyc9r_envstate_previous[0] <= (~cyc11r_cyc37r_kon_previous[26] & i_KON) ? ATTACK : cyc11r_cyc37r_envstate_previous[26];
+        cyc6r_cyc9r_envstate_previous[0] <= (~cyc10r_cyc37r_kon_previous[26] & i_KON) ? ATTACK : cyc11r_cyc37r_envstate_previous[26];
         cyc6r_cyc9r_envstate_previous[1] <= cyc6r_cyc9r_envstate_previous[0];
         cyc6r_cyc9r_envstate_previous[2] <= cyc6r_cyc9r_envstate_previous[1];
         cyc6r_cyc9r_envstate_previous[3] <= cyc6r_cyc9r_envstate_previous[2];
-    end
-end
-
-//state machine
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        if(!mrst_n) begin
-            cyc10r_envstate_current <= RELEASE;
-        end
-        else begin
-            if(cyc9r_kon_detected) begin
-                cyc10r_envstate_current <= ATTACK; //start attack
-            end
-            else begin
-                if(cyc9r_kon_current) begin
-                    case(cyc10c_envstate_previous)
-                        //current state 0: attack
-                        2'd0: begin
-                            if(cyc10c_env_level_max) begin
-                                cyc10r_envstate_current <= FIRST_DECAY; //start first decay
-                            end
-                            else begin
-                                cyc10r_envstate_current <= ATTACK; //hold state
-                            end
-                        end
-
-                        //current state 1: first decay
-                        2'd1: begin
-                            if(cyc10c_env_level_min) begin
-                                cyc10r_envstate_current <= RELEASE; //start release
-                            end
-                            else begin
-                                if(cyc10c_first_decay_end) begin
-                                    cyc10r_envstate_current <= SECOND_DECAY; //start second decay
-                                end
-                                else begin
-                                    cyc10r_envstate_current <= FIRST_DECAY; //hold state
-                                end
-                            end
-                        end 
-
-                        //current state 2: second decay
-                        2'd2: begin
-                            if(cyc10c_env_level_min) begin
-                                cyc10r_envstate_current <= RELEASE; //start release
-                            end
-                            else begin
-                                cyc10r_envstate_current <= SECOND_DECAY; //hold state
-                            end
-                        end
-
-                        //current state 3: release
-                        2'd3: begin
-                            cyc10r_envstate_current <= RELEASE; //hold state
-                        end
-                    endcase                    
-                end
-                else begin
-                    cyc10r_envstate_current <= RELEASE; //key off -> start release
-                end
-            end
-        end
     end
 end
 
@@ -324,10 +268,73 @@ for(stage = 0; stage < 26; stage = stage + 1) begin : envstate_sr27
 end
 endgenerate
 
+//state machine
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        if(!mrst_n) begin
+            cyc10r_envstate_current <= RELEASE;
+        end
+        else begin
+            if(cyc9r_kon_detected) begin
+                cyc10r_envstate_current <= ATTACK; //start attack
+            end
+            else begin
+                if(cyc9r_kon_current) begin
+                    case(cyc10c_envstate_previous)
+                        //current state 0: attack
+                        2'd0: begin
+                            if(cyc10c_prevatten_min) begin
+                                cyc10r_envstate_current <= FIRST_DECAY; //start first decay
+                            end
+                            else begin
+                                cyc10r_envstate_current <= ATTACK; //hold state
+                            end
+                        end
+
+                        //current state 1: first decay
+                        2'd1: begin
+                            if(cyc10c_prevatten_max) begin
+                                cyc10r_envstate_current <= RELEASE; //start release
+                            end
+                            else begin
+                                if(cyc10c_first_decay_end) begin
+                                    cyc10r_envstate_current <= SECOND_DECAY; //start second decay
+                                end
+                                else begin
+                                    cyc10r_envstate_current <= FIRST_DECAY; //hold state
+                                end
+                            end
+                        end 
+
+                        //current state 2: second decay
+                        2'd2: begin
+                            if(cyc10c_prevatten_max) begin
+                                cyc10r_envstate_current <= RELEASE; //start release
+                            end
+                            else begin
+                                cyc10r_envstate_current <= SECOND_DECAY; //hold state
+                            end
+                        end
+
+                        //current state 3: release
+                        2'd3: begin
+                            cyc10r_envstate_current <= RELEASE; //hold state
+                        end
+                    endcase                    
+                end
+                else begin
+                    cyc10r_envstate_current <= RELEASE; //key off -> start release
+                end
+            end
+        end
+    end
+end
+
 
 
 ///////////////////////////////////////////////////////////
-//////  Data pipeline Cycle 8: EG param/KS latch 
+//////  Attenuation level preprocessing Cycle 8: 
+//////  EG param/KS latch 
 ////
 
 
@@ -357,11 +364,14 @@ end
 
 reg     [4:0]   cyc8r_egparam;
 reg             cyc8r_egparam_zero;
+reg     [3:0]   cyc8r_d1l;
 reg     [4:0]   cyc8r_keyscale;
+
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         cyc8r_egparam <= cyc8c_egparam;
         cyc8r_egparam_zero <= cyc8c_egparam == 5'd0;
+        cyc8r_d1l <= i_D1L;
 
         case(i_KS)
             2'd0: cyc8r_keyscale <= (cyc8c_egparam == 5'd0) ? 5'd0 : {3'b000, i_EG_PDELTA_SHIFT_AMOUNT[4:3]};
@@ -375,8 +385,10 @@ end
 
 
 ///////////////////////////////////////////////////////////
-//////  Data pipeline Cycle 9: apply KS
+//////  Attenuation level preprocessing Cycle 9: 
+//////  apply KS 
 ////
+
 
 //
 //  combinational part
@@ -391,6 +403,8 @@ wire    [6:0]   cyc9c_egparam_scaled_adder = {cyc8r_egparam, 1'b0} + {1'b0, cyc8
 
 reg             cyc9r_egparam_zero;
 reg     [5:0]   cyc9r_egparam_scaled;
+reg             cyc9r_egparam_scaled_fullrate;
+reg     [3:0]   cyc9r_d1l;
 
 reg             cyc9r_third_sample;
 reg     [1:0]   cyc9r_envcntr;
@@ -399,7 +413,9 @@ reg     [3:0]   cyc9r_attenrate;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         cyc9r_egparam_zero <= cyc8r_egparam_zero;
-        cyc9r_egparam_scaled <= cyc9c_egparam_scaled_adder[6] ? 6'd0 : cyc9c_egparam_scaled_adder[5:0]; //saturation
+        cyc9r_egparam_scaled <= cyc9c_egparam_scaled_adder[6] ? 6'd63 : cyc9c_egparam_scaled_adder[5:0]; //saturation
+        cyc9r_egparam_scaled_fullrate <= cyc9c_egparam_scaled_adder[5:1] == 5'b11111; //eg parameter max
+        cyc9r_d1l <= cyc8r_d1l;
 
         cyc9r_third_sample <= third_sample;
         cyc9r_envcntr <= envcntr;
@@ -410,10 +426,15 @@ end
 
 
 ///////////////////////////////////////////////////////////
-//////  Data pipeline Cycle 10: make envelope weight
+//////  Attenuation level preprocessing Cycle 10: 
+//////  make attenuation level delta weight
 ////
 
+
 /*
+
+    HOW ATTENUATION RATE GENERATOR WORKS:
+
     See "Attenuation rate generator" section. Attenrate value is determined
     from the counter value like below:
 
@@ -467,6 +488,14 @@ end
     envelope level often, than 1, 2, 3. If the envelope level changes frequently,
     the difference between the envelope level of the current sample and the next 
     sample becomes larger.
+
+
+    INTENSITY AND ENVELOPE DELTA WEIGHT:
+
+
+
+
+
 */
 
 //
@@ -505,14 +534,25 @@ wire    [5:0]   cyc10c_egparam_rateapplied = cyc9r_egparam_scaled + {attenrate, 
 //  register part
 //
 
+//envelope delta weight
 reg     [3:0]   cyc10r_envdeltaweight; //lv4, lv3, lv2, lv1
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
+        //only works every third sample
         if(cyc9r_third_sample) begin
+            //if egparam_scaled == 1111XX
             if     (cyc9r_egparam_scaled[5:2] == 4'b1111) cyc10r_envdeltaweight <= cyc10c_envdeltaweight_intensity ? 4'b1000 : 4'b1000;
+            
+            //if egparam_scaled == 1110XX
             else if(cyc9r_egparam_scaled[5:2] == 4'b1110) cyc10r_envdeltaweight <= cyc10c_envdeltaweight_intensity ? 4'b1000 : 4'b0100;
+            
+            //if egparam_scaled == 1101XX
             else if(cyc9r_egparam_scaled[5:2] == 4'b1101) cyc10r_envdeltaweight <= cyc10c_envdeltaweight_intensity ? 4'b0100 : 4'b0010;
+            
+            //if egparam_scaled == 1100XX
             else if(cyc9r_egparam_scaled[5:2] == 4'b1100) cyc10r_envdeltaweight <= cyc10c_envdeltaweight_intensity ? 4'b0010 : 4'b0001;
+            
+            //else, not 11XXXX
             else begin
                 if(cyc9r_egparam_zero) begin
                     cyc10r_envdeltaweight <= 4'b0000;
@@ -538,29 +578,199 @@ always @(posedge i_EMUCLK) begin
     end
 end
 
+//misc flags for envelope generator feedback
+reg             cyc10r_atten_inc; //attenuation level decrement mode(for decay and release)
+reg             cyc10r_atten_dec; //attenuation level increment mode(for attack)
+reg             cyc10r_fix_prevatten_max; //force previous attenuation level max(quiet)
+reg             cyc10r_enable_prevatten; //previous attenuation level enable(disable = 0)
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        cyc10r_atten_inc     <= ( cyc10c_envstate_previous == FIRST_DECAY &
+                                 ~cyc9r_kon_detected &
+                                 ~cyc10c_first_decay_end &
+                                 ~cyc10c_prevatten_max ) |
+                                ((cyc10c_envstate_previous == SECOND_DECAY | cyc10c_envstate_previous == RELEASE) &
+                                 ~cyc9r_kon_detected &
+                                 ~cyc10c_prevatten_max );
+
+        cyc10r_atten_dec      <= ( cyc10c_envstate_previous == ATTACK &
+                                   cyc9r_kon_current &
+                                  ~cyc10c_prevatten_min &
+                                  ~cyc9r_egparam_scaled_fullrate );
+
+        cyc10r_fix_prevatten_max <= ( cyc10c_envstate_previous != ATTACK ) & ~cyc9r_kon_detected & cyc10c_prevatten_max;
+
+        cyc10r_enable_prevatten  <= (~cyc9r_kon_detected &
+                                      cyc9r_egparam_scaled_fullrate) |
+                                     ~cyc9r_egparam_scaled_fullrate;
+    end
+end
+
 
 
 ///////////////////////////////////////////////////////////
-//////  Data pipeline Cycle 9: apply KS
+//////  Attenuation level SR storage
+////
+
+/*
+    Note that the cycle numbers below are "elapsed" cycle, 
+    NOT the master cycle counter value
+
+    start from cycle 11, this shift register stores all envelopes of 32 operators
+
+                                              <---------(25 stages)----------->
+    cyc6 -> cyc7 -> cyc8 -> cyc9 -> cyc10 -+> cyc11 -> cyc12 -> (cyc13 - cyc37)
+                                           |                               |
+      +--------------------------------------------------------------------+
+      V                                    |
+    cyc6 -> cyc7 -> cyc8 -> cyc9 -> cyc10 -+
+    <-------------(5 stages)------------>
+                      |
+                      +------------------> attenuation value output from cycle 8
+*/ 
+
+//
+//  cycle 11: latch weighted delta
+//
+
+wire    [9:0]   cyc10r_attnlevel_previous; //get feedback value from the last step of the attenuation level SR
+reg     [9:0]   cyc11r_attnlevel_previous_gated; //loud: 10'd0, quiet: 10'd1023
+reg     [9:0]   cyc11r_attnlevel_weighted_delta;
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        if(cyc10r_fix_prevatten_max | ~mrst_n) cyc11r_attnlevel_previous_gated <= 10'd1023;
+        else begin
+            if(cyc10r_enable_prevatten) cyc11r_attnlevel_previous_gated <= cyc10r_attnlevel_previous;
+            else                     cyc11r_attnlevel_previous_gated <= 10'd0;
+        end
+
+        case({cyc10r_atten_dec, cyc10r_atten_inc})
+            //off, no change
+            2'b00: cyc11r_attnlevel_weighted_delta <= 10'd0;
+
+            //attenuation level increment: quieter
+            2'b01: cyc11r_attnlevel_weighted_delta <= {6'b000000, cyc10r_envdeltaweight};
+
+            //attenuation level decrement: louder
+            2'b10: begin
+                case(cyc10r_envdeltaweight)
+                    4'b0001: cyc11r_attnlevel_weighted_delta <= {4'b1111, ~cyc10r_attnlevel_previous[9:5], ~cyc10r_attnlevel_previous[3]};
+                    4'b0010: cyc11r_attnlevel_weighted_delta <= {3'b111, ~cyc10r_attnlevel_previous[9:5], ~cyc10r_attnlevel_previous[3], ~cyc10r_attnlevel_previous[1]};
+                    4'b0100: cyc11r_attnlevel_weighted_delta <= {2'b11, ~cyc10r_attnlevel_previous[9:5], ~cyc10r_attnlevel_previous[3], {2{~cyc10r_attnlevel_previous[2]}}};
+                    4'b1000: cyc11r_attnlevel_weighted_delta <= {1'b1, ~cyc10r_attnlevel_previous[9:5], {4{~cyc10r_attnlevel_previous[4]}}};
+                    default: cyc11r_attnlevel_weighted_delta <= 10'd0;
+                endcase
+            end
+
+            //invalid, will not happen
+            2'b11: cyc11r_attnlevel_weighted_delta <= 10'd1023;
+        endcase
+
+    end
+end
+
+
+
+//
+//  cycle 12: add delta
+//
+
+reg     [9:0]   cyc12r_attnlevel_current;
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        cyc12r_attnlevel_current <= cyc11r_attnlevel_previous_gated + cyc11r_attnlevel_weighted_delta; //discard carry
+    end
+end
+
+
+
+//
+//  cycle from 13 to 37, from 6 to 10: shift register storage
+//
+
+//total 32 stages to store all levels, SR 30 stages and the remaining 2 stages for cyc11r + cyc12r
+reg     [1:0]   cyc13r_cyc37r_attenlevel_previous[0:24]; //25 stages
+reg     [1:0]   cyc6r_cyc10r_attenlevel_previous[0:4]; //5 stages
+
+//sr25 first stage
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        cyc13r_cyc37r_attenlevel_previous[0] <= cyc12r_attnlevel_current;
+    end
+end
+
+//sr25 the other stages
+generate
+for(stage = 0; stage < 23; stage = stage + 1) begin : attenlevel_sr25
+    always @(posedge i_EMUCLK) begin
+        if(!phi1ncen_n) begin
+            cyc13r_cyc37r_attenlevel_previous[stage + 1] <= cyc13r_cyc37r_attenlevel_previous[stage];
+        end
+    end
+end
+endgenerate
+
+//sr5
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        cyc6r_cyc10r_attenlevel_previous[0] <= cyc13r_cyc37r_attenlevel_previous[24];
+        cyc6r_cyc10r_attenlevel_previous[1] <= cyc6r_cyc10r_attenlevel_previous[0];
+        cyc6r_cyc10r_attenlevel_previous[2] <= cyc6r_cyc10r_attenlevel_previous[1];
+        cyc6r_cyc10r_attenlevel_previous[3] <= cyc6r_cyc10r_attenlevel_previous[2];
+        cyc6r_cyc10r_attenlevel_previous[4] <= cyc6r_cyc10r_attenlevel_previous[5];
+    end
+end
+
+//make misc flags: first get attenuation level of cycle 9 register
+wire    [9:0]   cyc9r_attenlevel_previous = cyc6r_cyc10r_attenlevel_previous[3];
+
+//first decay end, compare cyc9r_attenlevel_previous[9:4] with {(cyc9r_d1l == 4'd15), cyc9r_d1l, 1'b0} <- idk why
+assign  cyc10c_first_decay_end =  cyc9r_attenlevel_previous[9:4] == {(cyc9r_d1l == 4'd15), cyc9r_d1l, 1'b0}; //==? {(cyc9r_d1l == 4'd15), cyc9r_d1l, 1'b0, 4'bXXXX};
+
+//attenuation level is min(loud)
+assign  cyc10c_prevatten_min = cyc9r_attenlevel_previous == 10'd0;
+
+//attenuation level is around max(quiet), get cyc9r_attenlevel_previous[9:4] only. [3:0] don't care
+assign  cyc10c_prevatten_max = cyc9r_attenlevel_previous >= 10'd1008; //==? 10'b11_1111_xxxx;
+
+//send feedback value
+assign  cyc10r_attnlevel_previous = cyc6r_cyc10r_attenlevel_previous[4];
+
+
+
+///////////////////////////////////////////////////////////
+//////  Attenuation level postprocessing Cycle 7: 
+//////  EG param/KS latch 
 ////
 
 
 
 
 
-reg             cyc10r_env_underflow;
-
-//flag
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc10r_env_underflow <= (cyc10c_envstate_previous != ATTACK) & ~cyc9r_kon_detected & cyc10c_env_level_min;
-    end
-end
+///////////////////////////////////////////////////////////
+//////  Attenuation level postprocessing Cycle 8: 
+//////  shift LFA
+////
 
 
+///////////////////////////////////////////////////////////
+//////  Attenuation level postprocessing Cycle 9: 
+//////  apply LFA/underflow handling
+////
 
 
 
+
+///////////////////////////////////////////////////////////
+//////  Attenuation level postprocessing Cycle 10: 
+//////  apply TL/underflow handling
+////
+
+
+///////////////////////////////////////////////////////////
+//////  Attenuation level postprocessing Cycle 11: 
+//////  apply test bit
+////
 
 
 endmodule

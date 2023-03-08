@@ -87,7 +87,7 @@ IKA2151_timinggen TIMINGGEN (
 
 IKA2151_reg #(
     .USE_BRAM_FOR_SR8           (0                          ),
-    .USE_BRAM_FOR_SR32          (0                          ),
+    .USE_BRAM_FOR_SR32          (0                          )
 ) REG (
     .i_EMUCLK                   (i_EMUCLK                   ),
     .i_MRST_n                   (mrst_n                     ),
@@ -120,11 +120,11 @@ IKA2151_reg #(
     .o_CLKB                     (                           ),
     .o_TIMERCTRL                (                           ),
 
-    .o_LFRQ                     (                           ),
-    .o_PMD                      (                           ),
-    .o_AMD                      (                           ),
-    .o_W                        (                           ),
-    .o_LFRQ_UPDATE              (                           ),
+    .o_LFRQ                     (lfrq                       ),
+    .o_PMD                      (pmd                        ),
+    .o_AMD                      (amd                        ),
+    .o_W                        (w                          ),
+    .o_LFRQ_UPDATE              (lfrq_update                ),
 
     .o_KC                       (                           ),
     .o_KF                       (                           ),
@@ -165,7 +165,6 @@ IKA2151_lfo LFO (
     .i_AMD                      (amd                        ),
     .i_W                        (w                          ),
     .i_TEST                     (test                       ),
-    
     .i_LFRQ_UPDATE              (lfrq_update                ),
 
     .o_LFA                      (lfa                        ),
@@ -207,7 +206,7 @@ IKA2151_eg EG (
 
     .i_CYCLE_31                 (cycle_31                   ),
     .i_CYCLE_00_16              (cycle_00_16                ),
-    .i_CYCLE_01_TO_16           (cycle_01_to_16             )
+    .i_CYCLE_01_TO_16           (cycle_01_to_16             ),
 
     .i_KON                      (                           ),
     .i_KS                       (                           ),
@@ -224,8 +223,6 @@ IKA2151_eg EG (
     .o_OP_ENV_LEVEL             (                           ),
     .o_NOISE_ENV_LEVEL          (                           ),
     .o_REG_ENV_CH8_C2           (                           )
-)
-
-
+);
 
 endmodule
