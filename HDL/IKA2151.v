@@ -44,7 +44,7 @@ wire            mrst_n;
 
 //timings
 wire            cycle_12_28, cycle_05_21, cycle_byte; //to LFO
-wire            cycle_31, cycle_00_16, cycle_01_to_16; //to EG
+wire            cycle_03, cycle_31, cycle_00_16, cycle_01_to_16; //to EG
 
 //global
 wire    [7:0]   test;
@@ -80,6 +80,7 @@ IKA2151_timinggen TIMINGGEN (
     .o_CYCLE_05_21              (cycle_05_21                ),
     .o_CYCLE_BYTE               (cycle_byte                 ),
 
+    .o_CYCLE_03                 (cycle_03                   ),
     .o_CYCLE_31                 (cycle_31                   ),
     .o_CYCLE_00_16              (cycle_00_16                ),
     .o_CYCLE_01_TO_16           (cycle_01_to_16             )
@@ -204,6 +205,7 @@ IKA2151_eg EG (
     .i_phi1_PCEN_n              (phi1pcen_n                 ),
     .i_phi1_NCEN_n              (phi1ncen_n                 ),
 
+    .i_CYCLE_03                 (cycle_03                   ),
     .i_CYCLE_31                 (cycle_31                   ),
     .i_CYCLE_00_16              (cycle_00_16                ),
     .i_CYCLE_01_TO_16           (cycle_01_to_16             ),
@@ -220,9 +222,9 @@ IKA2151_eg EG (
 
     .i_LFA                      (                           ),
 
-    .o_OP_ENV_LEVEL             (                           ),
-    .o_NOISE_ENV_LEVEL          (                           ),
-    .o_REG_ENV_CH8_C2           (                           )
+    .o_OP_ATTENLEVEL            (                           ),
+    .o_NOISE_ATTENLEVEL         (                           ),
+    .o_REG_ATTENLEVEL_CH8_C2    (                           )
 );
 
 endmodule

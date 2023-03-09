@@ -11,6 +11,7 @@ module IKA2151_eg
     input   wire            i_phi1_NCEN_n, //engative edge clock enable for emulation
 
     //timings
+    input   wire            i_CYCLE_03,
     input   wire            i_CYCLE_31,
     input   wire            i_CYCLE_00_16,
     input   wire            i_CYCLE_01_TO_16,
@@ -24,6 +25,7 @@ module IKA2151_eg
     input   wire    [3:0]   i_RR,  //release rate
     input   wire    [3:0]   i_D1L, //first decay level
     input   wire    [3:0]   i_TL,  //total level
+    input   wire    [1:0]   i_AMS, //amplitude modulation sensitivity
     input   wire    [7:0]   i_LFA, //amplitude modulation from LFO
     input   wire    [7:0]   i_TEST, //test register
 
@@ -31,9 +33,9 @@ module IKA2151_eg
     input   wire    [4:0]   i_EG_PDELTA_SHIFT_AMOUNT,
 
     //output data
-    output  wire    [9:0]   o_OP_ENV_LEVEL, //envelope level
-    output  wire            o_NOISE_ENV_LEVEL, //envelope level(for noise module)
-    output  wire            o_REG_ENV_CH8_C2 //noise envelope level
+    output  wire    [9:0]   o_OP_ATTENLEVEL, //envelope level
+    output  wire            o_NOISE_ATTENLEVEL, //envelope level(for noise module)
+    output  wire            o_REG_ATTENLEVEL_CH8_C2 //noise envelope level
 );
 
 
@@ -169,8 +171,9 @@ end
                                              previous KON data
                                      |----------(32 stages)---------|
     i_KON(cyc5) -> (cyc6 - cyc9) -+> (cyc10 - cyc37) -> (cyc6 - cyc9) -> -o|¯¯¯¯\
-                                  |                                        | AND )--- positive edge detector
+                                  |                                        | AND )---
                                   +------------------------------------> --|____/
+                                                                    positive edge detector
 */
 
 //These shift registers holds KON values from previous 32 cycles
@@ -395,6 +398,7 @@ end
 //
 
 wire    [6:0]   cyc9c_egparam_scaled_adder = {cyc8r_egparam, 1'b0} + {1'b0, cyc8r_keyscale};
+wire    [9:0]   cyc40r_attenlevel_previous; //feedback from the last stage of the SR
 
 
 //
@@ -410,6 +414,8 @@ reg             cyc9r_third_sample;
 reg     [1:0]   cyc9r_envcntr;
 reg     [3:0]   cyc9r_attenrate;
 
+reg     [9:0]   cyc9r_attenlevel_previous;
+
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         cyc9r_egparam_zero <= cyc8r_egparam_zero;
@@ -420,6 +426,8 @@ always @(posedge i_EMUCLK) begin
         cyc9r_third_sample <= third_sample;
         cyc9r_envcntr <= envcntr;
         cyc9r_attenrate <= attenrate;
+
+        cyc9r_attenlevel_previous <= cyc40r_attenlevel_previous;
     end
 end
 
@@ -496,7 +504,9 @@ end
 
 
 
+
 */
+
 
 //
 //  combinational part
@@ -528,6 +538,15 @@ always @(*) begin
 end
 
 wire    [5:0]   cyc10c_egparam_rateapplied = cyc9r_egparam_scaled + {attenrate, 2'b00}; //discard carry
+
+//first decay end, compare cyc9r_attenlevel_previous[9:4] with {(cyc9r_d1l == 4'd15), cyc9r_d1l, 1'b0} <- idk why
+assign  cyc10c_first_decay_end =  cyc9r_attenlevel_previous[9:4] == {(cyc9r_d1l == 4'd15), cyc9r_d1l, 1'b0}; //==? {(cyc9r_d1l == 4'd15), cyc9r_d1l, 1'b0, 4'bXXXX};
+
+//attenuation level is min(loud)
+assign  cyc10c_prevatten_min = cyc9r_attenlevel_previous == 10'd0;
+
+//attenuation level is around max(quiet), get cyc9r_attenlevel_previous[9:4] only. [3:0] don't care
+assign  cyc10c_prevatten_max = cyc9r_attenlevel_previous >= 10'd1008; //==? 10'b11_1111_xxxx;
 
 
 //
@@ -606,10 +625,17 @@ always @(posedge i_EMUCLK) begin
     end
 end
 
+reg     [9:0]   cyc10r_attenlevel_previous;
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        cyc10r_attenlevel_previous <= cyc9r_attenlevel_previous;
+    end
+end
+
 
 
 ///////////////////////////////////////////////////////////
-//////  Attenuation level SR storage
+//////  Attenuation level SR storage: Cycle 11 to 40
 ////
 
 /*
@@ -618,52 +644,50 @@ end
 
     start from cycle 11, this shift register stores all envelopes of 32 operators
 
-                                              <---------(25 stages)----------->
-    cyc6 -> cyc7 -> cyc8 -> cyc9 -> cyc10 -+> cyc11 -> cyc12 -> (cyc13 - cyc37)
-                                           |                               |
-      +--------------------------------------------------------------------+
-      V                                    |
-    cyc6 -> cyc7 -> cyc8 -> cyc9 -> cyc10 -+
-    <-------------(5 stages)------------>
-                      |
-                      +------------------> attenuation value output from cycle 8
+                                                  <---------(30 stages)----------->
+    cyc6  -> cyc7  -> cyc8  -> cyc9  -> cyc10 -+> cyc11 -> cyc12 -> (cyc13 - cyc40) --> attenuation value output from cycle 40
+                                               |                               |
+                                 +---------------------------------------------+
+                                 V             |
+    c                          cyc9  -> cyc10 -+
+                               <--(2 stages)-->
+
 */ 
 
 //
 //  cycle 11: latch weighted delta
 //
 
-wire    [9:0]   cyc10r_attnlevel_previous; //get feedback value from the last step of the attenuation level SR
-reg     [9:0]   cyc11r_attnlevel_previous_gated; //loud: 10'd0, quiet: 10'd1023
-reg     [9:0]   cyc11r_attnlevel_weighted_delta;
+reg     [9:0]   cyc11r_attenlevel_previous_gated; //loud: 10'd0, quiet: 10'd1023
+reg     [9:0]   cyc11r_attenlevel_weighted_delta;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        if(cyc10r_fix_prevatten_max | ~mrst_n) cyc11r_attnlevel_previous_gated <= 10'd1023;
+        if(cyc10r_fix_prevatten_max | ~mrst_n) cyc11r_attenlevel_previous_gated <= 10'd1023;
         else begin
-            if(cyc10r_enable_prevatten) cyc11r_attnlevel_previous_gated <= cyc10r_attnlevel_previous;
-            else                     cyc11r_attnlevel_previous_gated <= 10'd0;
+            if(cyc10r_enable_prevatten) cyc11r_attenlevel_previous_gated <= cyc10r_attenlevel_previous;
+            else                        cyc11r_attenlevel_previous_gated <= 10'd0;
         end
 
         case({cyc10r_atten_dec, cyc10r_atten_inc})
             //off, no change
-            2'b00: cyc11r_attnlevel_weighted_delta <= 10'd0;
+            2'b00: cyc11r_attenlevel_weighted_delta <= 10'd0;
 
             //attenuation level increment: quieter
-            2'b01: cyc11r_attnlevel_weighted_delta <= {6'b000000, cyc10r_envdeltaweight};
+            2'b01: cyc11r_attenlevel_weighted_delta <= {6'b000000, cyc10r_envdeltaweight};
 
             //attenuation level decrement: louder
             2'b10: begin
                 case(cyc10r_envdeltaweight)
-                    4'b0001: cyc11r_attnlevel_weighted_delta <= {4'b1111, ~cyc10r_attnlevel_previous[9:5], ~cyc10r_attnlevel_previous[3]};
-                    4'b0010: cyc11r_attnlevel_weighted_delta <= {3'b111, ~cyc10r_attnlevel_previous[9:5], ~cyc10r_attnlevel_previous[3], ~cyc10r_attnlevel_previous[1]};
-                    4'b0100: cyc11r_attnlevel_weighted_delta <= {2'b11, ~cyc10r_attnlevel_previous[9:5], ~cyc10r_attnlevel_previous[3], {2{~cyc10r_attnlevel_previous[2]}}};
-                    4'b1000: cyc11r_attnlevel_weighted_delta <= {1'b1, ~cyc10r_attnlevel_previous[9:5], {4{~cyc10r_attnlevel_previous[4]}}};
-                    default: cyc11r_attnlevel_weighted_delta <= 10'd0;
+                    4'b0001: cyc11r_attenlevel_weighted_delta <= {4'b1111, ~cyc10r_attenlevel_previous[9:5], ~cyc10r_attenlevel_previous[3]};
+                    4'b0010: cyc11r_attenlevel_weighted_delta <= {3'b111, ~cyc10r_attenlevel_previous[9:5], ~cyc10r_attenlevel_previous[3], ~cyc10r_attenlevel_previous[1]};
+                    4'b0100: cyc11r_attenlevel_weighted_delta <= {2'b11, ~cyc10r_attenlevel_previous[9:5], ~cyc10r_attenlevel_previous[3], {2{~cyc10r_attenlevel_previous[2]}}};
+                    4'b1000: cyc11r_attenlevel_weighted_delta <= {1'b1, ~cyc10r_attenlevel_previous[9:5], {4{~cyc10r_attenlevel_previous[4]}}};
+                    default: cyc11r_attenlevel_weighted_delta <= 10'd0;
                 endcase
             end
 
             //invalid, will not happen
-            2'b11: cyc11r_attnlevel_weighted_delta <= 10'd1023;
+            2'b11: cyc11r_attenlevel_weighted_delta <= 10'd1023;
         endcase
 
     end
@@ -675,102 +699,160 @@ end
 //  cycle 12: add delta
 //
 
-reg     [9:0]   cyc12r_attnlevel_current;
+reg     [9:0]   cyc12r_attenlevel_current;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        cyc12r_attnlevel_current <= cyc11r_attnlevel_previous_gated + cyc11r_attnlevel_weighted_delta; //discard carry
+        cyc12r_attenlevel_current <= cyc11r_attenlevel_previous_gated + cyc11r_attenlevel_weighted_delta; //discard carry
     end
 end
 
 
 
 //
-//  cycle from 13 to 37, from 6 to 10: shift register storage
+//  cycle from 13 to 40: shift register storage
 //
 
-//total 32 stages to store all levels, SR 30 stages and the remaining 2 stages for cyc11r + cyc12r
-reg     [1:0]   cyc13r_cyc37r_attenlevel_previous[0:24]; //25 stages
-reg     [1:0]   cyc6r_cyc10r_attenlevel_previous[0:4]; //5 stages
+//total 32 stages to store all levels, SR 28 stages and the remaining 4 stages from cyc9r to cyc12r
+reg     [9:0]   cyc13r_cyc40r_attenlevel_previous[0:27]; //28 stages
 
-//sr25 first stage
+//send feedback value to cycle 9
+assign  cyc40r_attenlevel_previous = cyc13r_cyc40r_attenlevel_previous[27];
+
+//sr28 first stage
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        cyc13r_cyc37r_attenlevel_previous[0] <= cyc12r_attnlevel_current;
+        cyc13r_cyc40r_attenlevel_previous[0] <= cyc12r_attenlevel_current;
     end
 end
 
-//sr25 the other stages
+//sr28 the other stages
 generate
-for(stage = 0; stage < 23; stage = stage + 1) begin : attenlevel_sr25
+for(stage = 0; stage < 27; stage = stage + 1) begin : attenlevel_sr28
     always @(posedge i_EMUCLK) begin
         if(!phi1ncen_n) begin
-            cyc13r_cyc37r_attenlevel_previous[stage + 1] <= cyc13r_cyc37r_attenlevel_previous[stage];
+            cyc13r_cyc40r_attenlevel_previous[stage + 1] <= cyc13r_cyc40r_attenlevel_previous[stage];
         end
     end
 end
 endgenerate
 
-//sr5
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc6r_cyc10r_attenlevel_previous[0] <= cyc13r_cyc37r_attenlevel_previous[24];
-        cyc6r_cyc10r_attenlevel_previous[1] <= cyc6r_cyc10r_attenlevel_previous[0];
-        cyc6r_cyc10r_attenlevel_previous[2] <= cyc6r_cyc10r_attenlevel_previous[1];
-        cyc6r_cyc10r_attenlevel_previous[3] <= cyc6r_cyc10r_attenlevel_previous[2];
-        cyc6r_cyc10r_attenlevel_previous[4] <= cyc6r_cyc10r_attenlevel_previous[5];
-    end
-end
-
-//make misc flags: first get attenuation level of cycle 9 register
-wire    [9:0]   cyc9r_attenlevel_previous = cyc6r_cyc10r_attenlevel_previous[3];
-
-//first decay end, compare cyc9r_attenlevel_previous[9:4] with {(cyc9r_d1l == 4'd15), cyc9r_d1l, 1'b0} <- idk why
-assign  cyc10c_first_decay_end =  cyc9r_attenlevel_previous[9:4] == {(cyc9r_d1l == 4'd15), cyc9r_d1l, 1'b0}; //==? {(cyc9r_d1l == 4'd15), cyc9r_d1l, 1'b0, 4'bXXXX};
-
-//attenuation level is min(loud)
-assign  cyc10c_prevatten_min = cyc9r_attenlevel_previous == 10'd0;
-
-//attenuation level is around max(quiet), get cyc9r_attenlevel_previous[9:4] only. [3:0] don't care
-assign  cyc10c_prevatten_max = cyc9r_attenlevel_previous >= 10'd1008; //==? 10'b11_1111_xxxx;
-
-//send feedback value
-assign  cyc10r_attnlevel_previous = cyc6r_cyc10r_attenlevel_previous[4];
-
-
-
-///////////////////////////////////////////////////////////
-//////  Attenuation level postprocessing Cycle 7: 
-//////  EG param/KS latch 
-////
 
 
 
 
 
 ///////////////////////////////////////////////////////////
-//////  Attenuation level postprocessing Cycle 8: 
+//////  Attenuation level postprocessing Cycle 40: 
 //////  shift LFA
 ////
 
+//
+//  register part
+//
+
+reg     [9:0]   cyc40r_lfa_shifted;
+reg             cyc40r_force_no_atten;
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        case(i_AMS)
+            2'd0: cyc40r_lfa_shifted <= {3'b000, i_LFA[7:1]};
+            2'd1: cyc40r_lfa_shifted <= {2'b00, i_LFA};
+            2'd2: cyc40r_lfa_shifted <= {1'b0, i_LFA, 1'b0};
+            2'd3: cyc40r_lfa_shifted <= {i_LFA, 2'b00};
+        endcase
+
+        cyc40r_force_no_atten <= i_TEST[5];
+    end
+end
+
+
 
 ///////////////////////////////////////////////////////////
-//////  Attenuation level postprocessing Cycle 9: 
+//////  Attenuation level postprocessing Cycle 41: 
 //////  apply LFA/underflow handling
 ////
 
+//
+//  combinational part
+//
+
+wire    [10:0]  cyc41c_attenlevel_mod_adder = cyc40r_attenlevel_previous + cyc40r_lfa_shifted;
+
+
+//
+//  register part
+//
+
+reg     [9:0]   cyc41r_attenlevel_mod;
+reg             cyc41r_force_no_atten;
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        cyc41r_attenlevel_mod <= cyc41c_attenlevel_mod_adder[10] ? 10'd1023 : cyc41c_attenlevel_mod_adder[9:0]; //attenlevel saturation
+
+        cyc41r_force_no_atten <= cyc40r_force_no_atten;
+    end
+end
 
 
 
 ///////////////////////////////////////////////////////////
-//////  Attenuation level postprocessing Cycle 10: 
+//////  Attenuation level postprocessing Cycle 42: 
 //////  apply TL/underflow handling
 ////
 
+//
+//  combinational part
+//
+
+wire    [10:0]  cyc42c_attenlevel_tl_adder = cyc41r_attenlevel_mod + {i_TL, 3'b000}; //multiply by 8
+
+
+//
+//  register part
+//
+
+reg     [9:0]   cyc42r_attenlevel_tl;
+reg             cyc42r_force_no_atten;
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        cyc42r_attenlevel_tl <= cyc42c_attenlevel_tl_adder[10] ? 10'd1023 : cyc42c_attenlevel_tl_adder[9:0]; //attenlevel saturation
+
+        cyc42r_force_no_atten <= cyc41r_force_no_atten;
+    end
+end
+
+
 
 ///////////////////////////////////////////////////////////
-//////  Attenuation level postprocessing Cycle 11: 
+//////  Attenuation level postprocessing Cycle 43:
 //////  apply test bit
 ////
 
+reg     [9:0]   cyc43r_attenlevel_final;
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        cyc43r_attenlevel_final <= cyc42r_force_no_atten ? 10'd0 : cyc42r_attenlevel_tl; //force attenlevel min(loud)
+    end
+end
+
+//final value
+assign  o_OP_ATTENLEVEL = cyc43r_attenlevel_final;
+
+
+
+///////////////////////////////////////////////////////////
+//////  Attenuation level serialization
+////
+
+reg     [9:0]   noise_attenlevel;
+assign  o_NOISE_ATTENLEVEL = noise_attenlevel[9];
+assign  o_REG_ATTENLEVEL_CH8_C2 = noise_attenlevel[9];
+
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        if(i_CYCLE_03) noise_attenlevel <= cyc43r_attenlevel_final;
+        else noise_attenlevel[9:1] <= noise_attenlevel[8:0];
+    end
+end
 
 endmodule
