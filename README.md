@@ -3,7 +3,7 @@ A cycle-accurate, die shot based YM2151 core for FPGA implementation. It was rev
 
 <p align=center><img alt="header image" src="./resources/fmsynth_header.jpg" height="auto" width="640"></p>
 
-Copyrighted image. Permitted to be used as a header. Painted by [SEONGSU](https://twitter.com/seongsu_twit).
+Copyrighted work. Permitted to be used as the header image. Painted by [SEONGSU](https://twitter.com/seongsu_twit).
 
 ## Initial Goals
 * Die-shot based, cycle-accurate BSD core. 
