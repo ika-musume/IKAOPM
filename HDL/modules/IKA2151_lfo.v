@@ -136,27 +136,26 @@ end
 
 //define hicntr register
 reg     [14:0]  hicntr;
-reg             hicntr_cnt;
 wire            hicntr_cout = (hicntr == 15'h7FFF) & hicntr_cnt;
 
 //hicntr cnt up signal
-reg             prescaler_cout_dlyd1;
+reg             prescaler_cout_z;
+wire            hicntr_cnt = prescaler_cout_z | i_TEST[3]; //de morgan
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        prescaler_cout_dlyd1 <= prescaler_cout;
-        hicntr_cnt <= prescaler_cout_dlyd1 | i_TEST[3]; //de morgan
+        prescaler_cout_z <= prescaler_cout;
     end
 end
 
 //hicntr preload signal
-reg             hicntr_cout_dlyd1, freq_update;
+reg             hicntr_cout_z, freq_update;
 reg             hicntr_ld;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        hicntr_cout_dlyd1 <= hicntr_cout;
+        hicntr_cout_z <= hicntr_cout;
         freq_update <= i_LFRQ_UPDATE;
 
-        hicntr_ld <= (hicntr_cout_dlyd1 | freq_update);
+        hicntr_ld <= (hicntr_cout_z | freq_update);
     end
 end
 
@@ -198,7 +197,7 @@ end
 
     reg ddl1, ddl2;
     always @(*) begin
-        if(ddl1_en) ddl1 <= ~hicntr_cout_dlyd1;
+        if(ddl1_en) ddl1 <= ~hicntr_cout_z;
         if(ddl2_en) ddl2 <= ~ddl1;
     end
 */
