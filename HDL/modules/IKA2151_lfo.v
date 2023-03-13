@@ -22,6 +22,9 @@ module IKA2151_lfo
     input   wire    [1:0]   i_W, //waveform select
     input   wire    [7:0]   i_TEST, //test register
 
+    //noise
+    input   wire            i_LFO_NOISE,
+
     //control signal
     input   wire            i_LFRQ_UPDATE,
 
@@ -66,27 +69,21 @@ end
 ////
 
 //counter
-reg     [3:0]   prescaler_cntr;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        if(!mrst_n) prescaler_cntr <= 4'd0; //counter reset
-        else begin
-            if(i_CYCLE_12_28) begin
-                if(prescaler_cntr == 4'd15) prescaler_cntr <= 4'd0; //wrap
-                else prescaler_cntr <= prescaler_cntr + 4'd1; //count up
-            end
-        end
-    end
-end
+wire    [3:0]   prescaler_value;
+wire            prescaler_cout;
+primitive_counter #(.WIDTH(4)) u_lfo_prescaler (
+    .i_EMUCLK(i_EMUCLK), .i_PCEN_n(phi1pcen_n), .i_NCEN_n(phi1ncen_n),
+    .i_CNT(i_CYCLE_12_28), .i_LD(0), .i_RST(~mrst_n),
+    .i_D(4'd0), .o_Q(prescaler_value), .o_CO(prescaler_cout)
+);
 
-//cycle 2
-reg             prescaler_cycle_2;
+//cycle 2 / cout_z
+reg             prescaler_cycle_2, prescaler_cout_z;
 always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) prescaler_cycle_2 <= prescaler_cntr[3:0] == 4'd2;
-end
+    if(!phi1ncen_n) prescaler_cycle_2 <= prescaler_value == 4'd2;
 
-//counter carry
-wire            prescaler_cout = (prescaler_cntr == 4'd15) & i_CYCLE_12_28;
+    if(!phi1ncen_n) prescaler_cout_z <= prescaler_cout;
+end
 
 
 
@@ -131,124 +128,81 @@ end
 
 
 ///////////////////////////////////////////////////////////
-//////  LFRQ hi bits counter
+//////  LFRQ counter low bits
 ////
 
-//define hicntr register
-reg     [14:0]  hicntr;
-wire            hicntr_cout = (hicntr == 15'h7FFF) & hicntr_cnt;
-
-//hicntr cnt up signal
-reg             prescaler_cout_z;
-wire            hicntr_cnt = prescaler_cout_z | i_TEST[3]; //de morgan
+//locntr cnt up signal
+reg             locntr_cnt;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        prescaler_cout_z <= prescaler_cout;
+        locntr_cnt <= prescaler_cout_z | i_TEST[3]; //de morgan
     end
 end
 
-//hicntr preload signal
-reg             hicntr_cout_z, freq_update;
-reg             hicntr_ld;
+//locntr preload signal
+wire            locntr_cout;
+reg             locntr_cout_z, freq_update;
+reg             locntr_ld;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        hicntr_cout_z <= hicntr_cout;
+        locntr_cout_z <= locntr_cout;
         freq_update <= i_LFRQ_UPDATE;
 
-        hicntr_ld <= (hicntr_cout_z | freq_update);
+        locntr_ld <= (locntr_cout_z | freq_update);
     end
 end
 
-//counter
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        if(!mrst_n) hicntr <= 15'hFFFF; //counter reset originally 0!!!!
-        else begin
-            if(hicntr_ld) hicntr <= lfolut_dout; //counter load
-            else begin
-                if(hicntr_cnt) begin
-                    if(hicntr == 15'h7FFF) hicntr <= 15'h0000; //wrap
-                    else hicntr <= hicntr + 15'h0001; //count up
-                end
-            end
-        end
-    end
-end
+//define locntr
+primitive_counter #(.WIDTH(15)) u_lfo_locntr (
+    .i_EMUCLK(i_EMUCLK), .i_PCEN_n(phi1pcen_n), .i_NCEN_n(phi1ncen_n),
+    .i_CNT(locntr_cnt), .i_LD(locntr_ld), .i_RST(~mrst_n),
+    .i_D(4'd0), .o_Q(), .o_CO(locntr_cout)
+);
 
 
 
 ///////////////////////////////////////////////////////////
-//////  LFRQ lo bits counter
+//////  LFRQ counter high bits
 ////
 
-//async code for test
-/*
-    reg cycle14_platch, cycle14_nlatch;
-    wire ddl1_en = ~(~cycle14_platch | cycle14_nlatch);
-    always @(posedge i_EMUCLK) begin
-        if(!phi1pcen_n) cycle14_platch <= cycle_14_30;
-        if(!phi1ncen_n) cycle14_nlatch <= ~cycle14_platch;
-    end
-
-    reg ddl2_en;
-    always @(posedge i_EMUCLK) begin
-        if(!phi1pcen_n) ddl2_en <= i_CYCLE_05_21;
-    end
-
-    reg ddl1, ddl2;
-    always @(*) begin
-        if(ddl1_en) ddl1 <= ~hicntr_cout_z;
-        if(ddl2_en) ddl2 <= ~ddl1;
-    end
-*/
-
 //hicntr cout delay
-reg             hicntr_cout_step1, hicntr_cout_step2;
+reg             locntr_cout_step1, locntr_cout_step2;
 always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        if(cycle_14_30) hicntr_cout_step1 <= hicntr_cout; //not dlyd1! async latch elimination
-    end
-    if(!phi1pcen_n) begin //use positive edge
-        if(i_CYCLE_05_21) hicntr_cout_step2 <= hicntr_cout_step1;
-    end
+    if(!phi1pcen_n) if(cycle_15_31) locntr_cout_step1 <= locntr_cout_z;
+
+    if(!phi1pcen_n) if(i_CYCLE_05_21) locntr_cout_step2 <= locntr_cout_step1; //use positive edge
 end
 
-//locntr cnt up and output decoder enable
-reg             locntr_cnt;
-wire            locntr_decode_en = (cycle_13_29 & hicntr_cout_step2); //de morgan
+//hicntr cnt up and output decoder enable
+reg             hicntr_cnt;
+wire            hicntr_decode_en = (cycle_13_29 & locntr_cout_step2); //de morgan
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        locntr_cnt <= locntr_decode_en;
+        hicntr_cnt <= hicntr_decode_en;
     end
 end
 
 //counter
-reg     [3:0]   locntr;
-always @(posedge i_EMUCLK) begin
-    if(!phi1pcen_n) begin //use positive edge
-        if(!mrst_n) locntr <= 4'h0; //counter reset
-        else begin
-            if(locntr_cnt) begin
-                if(locntr == 4'hF) locntr <= 4'h0; //wrap
-                else locntr <= locntr + 4'h1; //count up
-            end
-        end
-    end
-end
+wire    [14:0]  hicntr_value;
+primitive_counter #(.WIDTH(15)) u_lfo_hicntr (
+    .i_EMUCLK(i_EMUCLK), .i_PCEN_n(phi1pcen_n), .i_NCEN_n(phi1ncen_n),
+    .i_CNT(hicntr_cnt), .i_LD(0), .i_RST(~mrst_n),
+    .i_D(4'd0), .o_Q(hicntr_value), .o_CO()
+);
 
-//locntr complete flag
-reg             locntr_complete; //use positive edge
+//hicntr complete flag
+reg             hicntr_complete; //use positive edge
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        if(locntr_decode_en) begin //decode locntr value only when decode_en == 1
-            casez(locntr)
-                4'b???0: locntr_complete <= i_LFRQ[3];
-                4'b??01: locntr_complete <= i_LFRQ[2];
-                4'b?011: locntr_complete <= i_LFRQ[1];
-                4'b0111: locntr_complete <= i_LFRQ[0];
+        if(hicntr_decode_en) begin //decode locntr value only when decode_en == 1
+            casez(hicntr_value)
+                4'b???0: hicntr_complete <= i_LFRQ[3];
+                4'b??01: hicntr_complete <= i_LFRQ[2];
+                4'b?011: hicntr_complete <= i_LFRQ[1];
+                4'b0111: hicntr_complete <= i_LFRQ[0];
             endcase
         end
-        else locntr_complete <= 1'b0; //disable
+        else hicntr_complete <= 1'b0; //disable
     end
 end
 
@@ -261,7 +215,7 @@ end
 reg             lfo_clk;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        lfo_clk <= |{hicntr_cout, locntr_complete, i_TEST[2]};
+        lfo_clk <= |{locntr_cout, hicntr_complete, i_TEST[2]};
     end
 end
 
@@ -273,10 +227,10 @@ end
 
 //The original one used dynamic D-latch to latch lfo_clk
 //I reused the signal above to eliminate a latch.
-reg             lfo_clk_locntr_latched = 1'b0; //dynamic d latch
+reg             lfo_clk_latched = 1'b0; //dynamic d latch
 always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        if(cycle_14_30) lfo_clk_locntr_latched <= |{hicntr_cout, locntr_complete, i_TEST[2]};
+    if(!phi1pcen_n) begin
+        if(cycle_15_31) lfo_clk_latched <= |{locntr_cout, hicntr_complete, i_TEST[2]};
     end
 end
 
@@ -322,12 +276,12 @@ always @(posedge i_EMUCLK or negedge mrst_n) begin //async reset
     end
 end
 
-wire            phase_acc_fa_a = &{&{cycle_15_31, lfo_clk, ~wfsel_noise},
-                                    wfsel_tri};
-wire            phase_acc_fa_b = &{mrst_n,
-                                   phase_acc_lsb,
-                                   ~(lfo_clk_locntr_latched & wfsel_noise),
-                                   ~tst_bit1_latched};
+wire            phase_acc_fa_a   =  &{cycle_15_31, lfo_clk, ~wfsel_noise} &
+                                    wfsel_tri;
+wire            phase_acc_fa_b   =  mrst_n &
+                                   ~tst_bit1_latched &
+                                    phase_acc_lsb &
+                                   ~(lfo_clk_latched & wfsel_noise);
 wire            phase_acc_fa_cin = ~(|{cycle_15_31, ~phase_acc_fa_prev_carry, wfsel_noise} &
                                      ~&{cycle_15_31, lfo_clk, ~wfsel_noise});
 
@@ -335,11 +289,11 @@ assign  phase_acc_fa = phase_acc_fa_a + phase_acc_fa_b + phase_acc_fa_cin;
 
 
 //noise input
-reg             lfsr_lsb_latched, noise_stream;
+reg             noise_input_z, noise_stream;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        lfsr_lsb_latched <= 1'b0;
-        noise_stream <= lfsr_lsb_latched & noise_stream; //de morgan
+        noise_input_z <= i_LFO_NOISE;
+        noise_stream <= lfo_clk_latched & noise_input_z; //de morgan
     end
 end
 
@@ -368,41 +322,33 @@ end
 
 
 ///////////////////////////////////////////////////////////
-//////  Bit select counter for serial integration
+//////  Bit select counter for base value multiply
 ////
 
-//this counter select AMD/PMD bit
-wire            bitcntr_rst = prescaler_cycle_2 & i_CYCLE_12_28;
-reg     [3:0]   bitcntr; //counter
-reg     [2:0]   bitsel; //bit select counter value latch
-always @(posedge i_EMUCLK or negedge mrst_n) begin
-    if(!mrst_n) begin
-        bitcntr <= 4'h0;
-        bitsel <= 3'h0;
-    end
-    else begin
-        if(!phi1pcen_n) begin //count at positive edge
-            if(bitcntr_rst) bitcntr <= 4'h0; //reset
-            else begin
-                if(cycle_14_30) begin
-                    if(bitcntr == 4'hF) bitcntr <= 4'h0; //wrap
-                    else bitcntr <= bitcntr + 4'h1;
-                end
-            end
-        end
-    end
+//define counter
+wire    [3:0]   multiplier_bitselcntr_value;
+primitive_counter #(.WIDTH(4)) u_lfo_multiplier_bitselcntr (
+    .i_EMUCLK(i_EMUCLK), .i_PCEN_n(phi1pcen_n), .i_NCEN_n(phi1ncen_n),
+    .i_CNT(cycle_14_30), .i_LD(0), .i_RST(prescaler_cycle_2 & i_CYCLE_12_28),
+    .i_D(4'd0), .o_Q(multiplier_bitselcntr_value), .o_CO()
+);
 
-    if(!phi1ncen_n) bitsel <= bitcntr[2:0]; //store value at negative edge
+//this counter output value selects AMD/PMD bit
+reg     [2:0]   multiplier_bitsel;
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) multiplier_bitsel <= multiplier_bitselcntr_value[2:0]; //store value at negative edge
 end
 
 //timings/control
-wire            a_np_sel = ~bitcntr[3]; //AMD/PMD mux select
-wire            bitcntr_0_8 = (bitcntr[2:0] == 3'h0);
+wire            a_np_sel = ~multiplier_bitselcntr_value[3]; //AMD/PMD mux select
+wire            multiplier_bitselcntr_cycle_0_8 = multiplier_bitselcntr_value == 4'd0 | multiplier_bitselcntr_value == 4'd8;
+wire            multiplier_bitsel_0 = multiplier_bitsel == 3'd0;
+wire            multiplier_bitsel_7 = multiplier_bitsel == 3'd7;
 
 
 
 ///////////////////////////////////////////////////////////
-//////  Oscillator base value generator
+//////  Sigh bit latch
 ////
 
 //triangle/sawtooth sign bit latch
@@ -411,19 +357,27 @@ wire            bitcntr_0_8 = (bitcntr[2:0] == 3'h0);
             |----(14_30)----|----(15_31)----|----(0_16)----|
 
     d valid <--------------> <-------------> <------------->
+    0_8     ________|¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
     latchen ________________|¯¯¯¯¯¯¯|_______________________
-    dff                             ^ <-- sample here     
 
+    dff                             ^ <-- sample here     
 */
+
 reg             wf_tri_sign, wf_saw_sign;
 always @(posedge i_EMUCLK) begin //use posedge
     if(!phi1pcen_n) begin
-        if(cycle_15_31) begin
+        if(cycle_15_31 & multiplier_bitselcntr_cycle_0_8) begin
             wf_tri_sign <= phase_acc[8];
             wf_saw_sign <= phase_acc[7];
         end
     end
 end
+
+
+
+///////////////////////////////////////////////////////////
+//////  Oscillator base value generator
+////
 
 //amd/pmd select latch
 reg             a_np_sel_latched;
@@ -434,11 +388,11 @@ always @(posedge i_EMUCLK) begin
 end
 
 //base value stream, behavioral implementation
-//              waveform type                                     (             PM             )  (             AM              )
-wire            noise_value_stream = (a_np_sel_latched == 1'b0) ? (phase_acc_fa_b ^ wf_saw_sign) : phase_acc_fa_b ^ 1'b1        ;
-wire            tri_value_stream   = (a_np_sel_latched == 1'b0) ? (phase_acc_fa_b ^ wf_saw_sign) : phase_acc_fa_b ^ ~wf_tri_sign;
-wire            sq_value_stream    = (a_np_sel_latched == 1'b0) ?          cycle_06_22           :         ~wf_saw_sign         ;
-wire            saw_value_stream   = (a_np_sel_latched == 1'b0) ? (phase_acc_fa_b ^ wf_saw_sign) : phase_acc_fa_b ^ 1'b1        ;
+//              waveform type                           (             AM            ) : (             PM             )
+wire            noise_value_stream = a_np_sel_latched ? phase_acc_fa_b ^ 1'b1         : (phase_acc_fa_b ^ wf_saw_sign);
+wire            tri_value_stream   = a_np_sel_latched ? phase_acc_fa_b ^ ~wf_tri_sign : (phase_acc_fa_b ^ wf_saw_sign);
+wire            sq_value_stream    = a_np_sel_latched ?         ~wf_saw_sign          :          cycle_06_22          ;
+wire            saw_value_stream   = a_np_sel_latched ? phase_acc_fa_b ^ 1'b1         : (phase_acc_fa_b ^ wf_saw_sign);
 
 //input selector
 reg             base_value_input;
@@ -491,18 +445,18 @@ end
 
     Volume register(AMD/PMD)        1   0   0   1   1   0   0
 
-    1. pick volume_reg[6] and do AND with the base value[6:0], serially.
+    1. pick volume_reg[6] and do AND with the base value[6:0], add serially, from the LSB
     -> 0110101
 
-    2. pick volume reg[5] and do AND with the base value {1'b0, value[6:1]}, serially,
+    2. pick volume reg[5] and do AND with the base value {1'b0, value[6:1]}, add serially, from the LSB
     -> 0000000
 
-    3. pick volume reg[4] and do AND with the base value {2'b00, value[6:2]}, serially,
+    3. pick volume reg[4] and do AND with the base value {2'b00, value[6:2]}, add serially, from the LSB
     -> 0000000
 
     ...repeat for all bits of AMD/PMD
 
-    now sum the values below
+    now the process above can be expressed like below
         0110101
         0000000
         0000000
@@ -510,7 +464,7 @@ end
         0000011
         0000000
         0000000 +
-    =   0111110       ====> this's the final value calculated
+    =   0111110       ====> this is the final value calculated
 
     Volume format X.XXXXXX fixed point.
     AMD/PMD bit 6 is decimal part, and bit 5 to 0 is fractional part. Step width 0.015625.
@@ -519,13 +473,13 @@ end
 //AMD/PMD mux
 reg     [6:0]   ap_muxed;
 always @(i_EMUCLK) begin
-    ap_muxed <= (a_np_sel == 1'b1) ? i_AMD : i_PMD;
+    if(!phi1ncen_n) ap_muxed <= a_np_sel ? i_AMD : i_PMD;
 end
 
 //bit selector
 reg             multiplier_fa_b;
 always @(*) begin
-    case(bitsel)
+    case(multiplier_bitsel)
         3'b000: multiplier_fa_b <= base_value_sr[0] & ap_muxed[6];
         3'b001: multiplier_fa_b <= base_value_sr[1] & ap_muxed[5];
         3'b010: multiplier_fa_b <= base_value_sr[2] & ap_muxed[4];
@@ -534,11 +488,8 @@ always @(*) begin
         3'b101: multiplier_fa_b <= base_value_sr[5] & ap_muxed[1];
         3'b110: multiplier_fa_b <= base_value_sr[6] & ap_muxed[0];
         3'b111: multiplier_fa_b <= 1'b0;
-    endcase
+    endcase 
 end
-
-wire            bitsel_0 = (bitsel == 3'b000);
-wire            bitsel_7 = (bitsel == 3'b111);
 
 //multiplier
 wire    [1:0]   multiplier_fa;
@@ -562,7 +513,7 @@ always @(posedge i_EMUCLK or negedge mrst_n) begin
     end
 end
 
-wire            multiplier_fa_a = ~(~multiplier_sr[0] | bitsel_0);
+wire            multiplier_fa_a = ~(~multiplier_sr[0] | multiplier_bitsel_0);
 wire            multiplier_fa_cin = multiplier_prev_carry & ~cycle_15_31;
 
 assign  multiplier_fa = multiplier_fa_a + multiplier_fa_b + multiplier_fa_cin;
@@ -573,15 +524,9 @@ assign  multiplier_fa = multiplier_fa_a + multiplier_fa_b + multiplier_fa_cin;
 //////  LFA/LFP latch
 ////
 
-//latch enables
-reg             bitcntr_0_8_dlyd;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) bitcntr_0_8_dlyd <= bitcntr_0_8;
-end
-
 //LFA LFP register load
-wire            lfa_reg_ld = &{cycle_15_31, bitsel_7, a_np_sel};
-wire            lfp_reg_ld = &{cycle_15_31, bitsel_7, ~a_np_sel};
+wire            lfa_reg_ld = &{cycle_15_31, multiplier_bitsel_7, a_np_sel};
+wire            lfp_reg_ld = &{cycle_15_31, multiplier_bitsel_7, ~a_np_sel};
 
 //LFA LFP register
 reg     [7:0]   lfa_reg, lfp_reg;
@@ -589,8 +534,8 @@ assign  o_LFA = lfa_reg;
 assign  o_LFP = lfp_reg;
 
 //LFP sign/value control
-wire            pmd_zero = (i_PMD == 7'h00);
-wire            lfp_sign_ctrl = (wfsel_tri == 1'b1) ? wf_tri_sign : wf_saw_sign; //AOI
+wire            pmd_zero = i_PMD == 7'h00;
+wire            lfp_sign_ctrl = wfsel_tri ? wf_tri_sign : wf_saw_sign; //AOI
 
 //note that LFA is 8-bit unsigned, LFP is 8-bit sign(1 = negative) and magnitude output
 always @(posedge i_EMUCLK) begin

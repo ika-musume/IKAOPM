@@ -200,7 +200,7 @@ end
 
 
 ///////////////////////////////////////////////////////////
-//////  Envelope state machine
+//////  Cycle 6 to 37: Envelope state machine
 ////
 
 /*
@@ -336,8 +336,8 @@ end
 
 
 ///////////////////////////////////////////////////////////
-//////  Attenuation level preprocessing Cycle 8: 
-//////  EG param/KS latch 
+//////  Attenuation level preprocessing
+//////  Cycle 8: EG param/KS latch 
 ////
 
 
@@ -388,8 +388,8 @@ end
 
 
 ///////////////////////////////////////////////////////////
-//////  Attenuation level preprocessing Cycle 9: 
-//////  apply KS 
+//////  Attenuation level preprocessing
+//////  Cycle 9: apply KS 
 ////
 
 
@@ -434,8 +434,8 @@ end
 
 
 ///////////////////////////////////////////////////////////
-//////  Attenuation level preprocessing Cycle 10: 
-//////  make attenuation level delta weight
+//////  Attenuation level preprocessing
+//////  Cycle 10: make attenuation level delta weight
 ////
 
 
@@ -635,7 +635,7 @@ end
 
 
 ///////////////////////////////////////////////////////////
-//////  Attenuation level SR storage: Cycle 11 to 40
+//////  Cycle 11 to 40: Attenuation level SR storage
 ////
 
 /*
@@ -649,7 +649,7 @@ end
                                                |                               |
                                  +---------------------------------------------+
                                  V             |
-    c                          cyc9  -> cyc10 -+
+                               cyc9  -> cyc10 -+
                                <--(2 stages)-->
 
 */ 
@@ -742,8 +742,8 @@ endgenerate
 
 
 ///////////////////////////////////////////////////////////
-//////  Attenuation level postprocessing Cycle 40: 
-//////  shift LFA
+//////  Attenuation level postprocessing
+//////  Cycle 40: shift LFA
 ////
 
 //
@@ -768,8 +768,8 @@ end
 
 
 ///////////////////////////////////////////////////////////
-//////  Attenuation level postprocessing Cycle 41: 
-//////  apply LFA/underflow handling
+//////  Attenuation level postprocessing
+//////  Cycle 41: apply LFA/underflow handling
 ////
 
 //
@@ -796,8 +796,8 @@ end
 
 
 ///////////////////////////////////////////////////////////
-//////  Attenuation level postprocessing Cycle 42: 
-//////  apply TL/underflow handling
+//////  Attenuation level postprocessing
+//////  Cycle 42: apply TL/underflow handling
 ////
 
 //
@@ -824,8 +824,8 @@ end
 
 
 ///////////////////////////////////////////////////////////
-//////  Attenuation level postprocessing Cycle 43:
-//////  apply test bit
+//////  Attenuation level postprocessing
+//////  Cycle 43: apply test bit
 ////
 
 reg     [9:0]   cyc43r_attenlevel_final;

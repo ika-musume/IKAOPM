@@ -142,15 +142,15 @@ always @(posedge i_EMUCLK or negedge mrst_n) begin
 end
 
 //D latch
-submdl_dlatch #(.WIDTH(8)) BUS_INLATCH (
+primitive_dlatch #(.WIDTH(8)) BUS_INLATCH (
     .i_EN(|{i_CS_n, i_WR_n}), .i_D(i_D), .i_Q(bus_inlatch)
 );
 
 //SR latch
-submdl_srlatch DREG_RQ_INLATCH (
+primitive_srlatch DREG_RQ_INLATCH (
     .i_S(~(|{i_CS_n, i_WR_n, ~i_A0, ~mrst_n} | dreg_rq_synced1)), .i_R(dreg_rq_synced1), .o_Q(dreg_rq_inlatch)
 );
-submdl_srlatch AREG_RQ_INLATCH (
+primitive_srlatch AREG_RQ_INLATCH (
     .i_S(~(|{i_CS_n, i_WR_n,  i_A0, ~mrst_n} | areg_rq_synced1)), .i_R(areg_rq_synced1), .o_Q(areg_rq_inlatch)
 );
 
@@ -637,38 +637,5 @@ always @(posedge i_EMUCLK) begin
 end
 
 assign  o_REG_LD = loreg_addr_valid & i_DATA_LD;
-
-endmodule
-
-//submodule : SR latch
-module submdl_srlatch (
-    input   wire            i_S,
-    input   wire            i_R,
-    output  reg             o_Q
-);
-
-always @(*) begin
-    case({i_S, i_R})
-        2'b00: o_Q <= o_Q;
-        2'b01: o_Q <= 1'b0;
-        2'b10: o_Q <= 1'b1;
-        2'b11: o_Q <= 1'b0; //invalid
-    endcase
-end
-
-endmodule
-
-//submodule : D latch
-module submdl_dlatch #(parameter WIDTH = 8 ) (
-    //master clock
-    input   wire                    i_EN,
-    input   wire    [WIDTH-1:0]     i_D,
-    output  reg     [WIDTH-1:0]     o_Q
-);
-
-always @(*) begin
-    if(i_EN) o_Q <= i_D;
-    else o_Q <= o_Q;
-end
 
 endmodule
