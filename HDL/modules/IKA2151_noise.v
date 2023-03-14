@@ -19,7 +19,8 @@ module IKA2151_noise
     input   wire    [4:0]   i_NFRQ,
 
     //output data
-    output  wire    [13:0]  o_ACC_NOISE
+    output  wire    [13:0]  o_ACC_NOISE,
+    output  wire            o_LFO_NOISE
 );
 
 

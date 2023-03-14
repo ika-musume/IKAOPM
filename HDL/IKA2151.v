@@ -162,11 +162,14 @@ IKA2151_lfo LFO (
     .i_CYCLE_BYTE               (cycle_byte                 ),
     
     .i_LFRQ                     (lfrq                       ),
-    .i_PMD                      (pmd                        ),
-    .i_AMD                      (amd                        ),
+    .i_PMD                      (7'd127                     ),
+    .i_AMD                      (7'd127                     ),
     .i_W                        (w                          ),
-    .i_TEST                     (test                       ),
+    .i_TEST                     (8'h00                      ),
+
     .i_LFRQ_UPDATE              (lfrq_update                ),
+
+    .i_LFO_NOISE                (1'b0                       ),
 
     .o_LFA                      (lfa                        ),
     .o_LFP                      (lfp                        )
@@ -181,11 +184,14 @@ IKA2151_pg PG (
     .i_phi1_PCEN_n              (phi1pcen_n                 ),
     .i_phi1_NCEN_n              (phi1ncen_n                 ),
 
+    .i_CYCLE_05                 (                           ),
+
     .i_KC                       (                           ),
     .i_KF                       (                           ),
     .i_PMS                      (                           ),
     .i_DT2                      (                           ),
     .i_DT1                      (                           ),
+    .i_MUL                      (                           ),
     .i_TEST                     (                           ),
 
     .i_LFP                      (lfp                        ),
@@ -218,9 +224,11 @@ IKA2151_eg EG (
     .i_RR                       (                           ),
     .i_D1L                      (                           ),
     .i_TL                       (                           ),
+    .i_AMS                      (                           ),
+    .i_LFA                      (                           ),
     .i_TEST                     (                           ),
 
-    .i_LFA                      (                           ),
+    .i_EG_PDELTA_SHIFT_AMOUNT   (                           ),
 
     .o_OP_ATTENLEVEL            (                           ),
     .o_NOISE_ATTENLEVEL         (                           ),

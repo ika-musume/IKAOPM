@@ -143,15 +143,15 @@ end
 
 //D latch
 primitive_dlatch #(.WIDTH(8)) BUS_INLATCH (
-    .i_EN(|{i_CS_n, i_WR_n}), .i_D(i_D), .i_Q(bus_inlatch)
+    .i_EN(~|{i_CS_n, i_WR_n}), .i_D(i_D), .o_Q(bus_inlatch)
 );
 
 //SR latch
 primitive_srlatch DREG_RQ_INLATCH (
-    .i_S(~(|{i_CS_n, i_WR_n, ~i_A0, ~mrst_n} | dreg_rq_synced1)), .i_R(dreg_rq_synced1), .o_Q(dreg_rq_inlatch)
+    .i_S(~(|{i_CS_n, i_WR_n, ~i_A0, ~mrst_n} | dreg_rq_synced1)), .i_R(dreg_rq_synced1 | ~mrst_n), .o_Q(dreg_rq_inlatch)
 );
 primitive_srlatch AREG_RQ_INLATCH (
-    .i_S(~(|{i_CS_n, i_WR_n,  i_A0, ~mrst_n} | areg_rq_synced1)), .i_R(areg_rq_synced1), .o_Q(areg_rq_inlatch)
+    .i_S(~(|{i_CS_n, i_WR_n,  i_A0, ~mrst_n} | areg_rq_synced1)), .i_R(areg_rq_synced1 | ~mrst_n), .o_Q(areg_rq_inlatch)
 );
 
 
@@ -210,7 +210,7 @@ submdl_loreg_decoder #(.TARGET_ADDR(8'h18)) REG18 (
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg18_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h1b)) REG1b (
+submdl_loreg_decoder #(.TARGET_ADDR(8'h1B)) REG1b (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg1b_en)
 );

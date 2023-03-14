@@ -146,8 +146,8 @@ wire            sh2 = timinggen_cntr[4:3] == 2'b01; //01XXX
 //LFO
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        o_CYCLE_12_28 <= (timinggen_cntr == 5'd12) | (timinggen_cntr == 5'd28);
-        o_CYCLE_05_21 <= (timinggen_cntr == 5'd5) | (timinggen_cntr == 5'd21);
+        o_CYCLE_12_28 <= (timinggen_cntr == 5'd11) | (timinggen_cntr == 5'd27);
+        o_CYCLE_05_21 <= (timinggen_cntr == 5'd4) | (timinggen_cntr == 5'd20);
         o_CYCLE_BYTE  <= (timinggen_cntr[3:1] == 3'b111) |
                          (timinggen_cntr[3:1] == 3'b010) |
                          (timinggen_cntr[3:2] == 2'b00);
@@ -157,9 +157,9 @@ end
 //EG
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        o_CYCLE_03          <= timinggen_cntr == 5'd3;
-        o_CYCLE_31          <= timinggen_cntr == 5'd31;
-        o_CYCLE_00_16       <= (timinggen_cntr == 5'd0) | (timinggen_cntr == 5'd16);
+        o_CYCLE_03          <= timinggen_cntr == 5'd2;
+        o_CYCLE_31          <= timinggen_cntr == 5'd30;
+        o_CYCLE_00_16       <= (timinggen_cntr == 5'd31) | (timinggen_cntr == 5'd15);
         o_CYCLE_01_TO_16    <= ~timinggen_cntr[4];
     end
 end

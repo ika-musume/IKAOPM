@@ -22,11 +22,11 @@ module IKA2151_lfo
     input   wire    [1:0]   i_W, //waveform select
     input   wire    [7:0]   i_TEST, //test register
 
-    //noise
-    input   wire            i_LFO_NOISE,
-
     //control signal
     input   wire            i_LFRQ_UPDATE,
+
+    //noise
+    input   wire            i_LFO_NOISE,
 
     output  wire    [7:0]   o_LFP,
     output  wire    [7:0]   o_LFA
@@ -73,7 +73,7 @@ wire    [3:0]   prescaler_value;
 wire            prescaler_cout;
 primitive_counter #(.WIDTH(4)) u_lfo_prescaler (
     .i_EMUCLK(i_EMUCLK), .i_PCEN_n(phi1pcen_n), .i_NCEN_n(phi1ncen_n),
-    .i_CNT(i_CYCLE_12_28), .i_LD(0), .i_RST(~mrst_n),
+    .i_CNT(i_CYCLE_12_28), .i_LD(1'b0), .i_RST(~mrst_n),
     .i_D(4'd0), .o_Q(prescaler_value), .o_CO(prescaler_cout)
 );
 
@@ -156,7 +156,7 @@ end
 primitive_counter #(.WIDTH(15)) u_lfo_locntr (
     .i_EMUCLK(i_EMUCLK), .i_PCEN_n(phi1pcen_n), .i_NCEN_n(phi1ncen_n),
     .i_CNT(locntr_cnt), .i_LD(locntr_ld), .i_RST(~mrst_n),
-    .i_D(4'd0), .o_Q(), .o_CO(locntr_cout)
+    .i_D(lfolut_dout), .o_Q(), .o_CO(locntr_cout)
 );
 
 
@@ -183,10 +183,10 @@ always @(posedge i_EMUCLK) begin
 end
 
 //counter
-wire    [14:0]  hicntr_value;
-primitive_counter #(.WIDTH(15)) u_lfo_hicntr (
+wire    [3:0]  hicntr_value;
+primitive_counter #(.WIDTH(4)) u_lfo_hicntr (
     .i_EMUCLK(i_EMUCLK), .i_PCEN_n(phi1pcen_n), .i_NCEN_n(phi1ncen_n),
-    .i_CNT(hicntr_cnt), .i_LD(0), .i_RST(~mrst_n),
+    .i_CNT(hicntr_cnt), .i_LD(1'b0), .i_RST(~mrst_n),
     .i_D(4'd0), .o_Q(hicntr_value), .o_CO()
 );
 
@@ -229,8 +229,8 @@ end
 //I reused the signal above to eliminate a latch.
 reg             lfo_clk_latched = 1'b0; //dynamic d latch
 always @(posedge i_EMUCLK) begin
-    if(!phi1pcen_n) begin
-        if(cycle_15_31) lfo_clk_latched <= |{locntr_cout, hicntr_complete, i_TEST[2]};
+    if(!phi1ncen_n) begin
+        if(cycle_14_30) lfo_clk_latched <= |{locntr_cout, hicntr_complete, i_TEST[2]};
     end
 end
 
@@ -276,12 +276,17 @@ always @(posedge i_EMUCLK or negedge mrst_n) begin //async reset
     end
 end
 
+//tri = enable / square, saw, noise = disable
 wire            phase_acc_fa_a   =  &{cycle_15_31, lfo_clk, ~wfsel_noise} &
                                     wfsel_tri;
+
+//tri, square, saw = enable / noise = temporarily disable 
 wire            phase_acc_fa_b   =  mrst_n &
                                    ~tst_bit1_latched &
                                     phase_acc_lsb &
                                    ~(lfo_clk_latched & wfsel_noise);
+
+//tri, square, saw = enable / noise = disable
 wire            phase_acc_fa_cin = ~(|{cycle_15_31, ~phase_acc_fa_prev_carry, wfsel_noise} &
                                      ~&{cycle_15_31, lfo_clk, ~wfsel_noise});
 
@@ -329,7 +334,7 @@ end
 wire    [3:0]   multiplier_bitselcntr_value;
 primitive_counter #(.WIDTH(4)) u_lfo_multiplier_bitselcntr (
     .i_EMUCLK(i_EMUCLK), .i_PCEN_n(phi1pcen_n), .i_NCEN_n(phi1ncen_n),
-    .i_CNT(cycle_14_30), .i_LD(0), .i_RST(prescaler_cycle_2 & i_CYCLE_12_28),
+    .i_CNT(cycle_14_30), .i_LD(1'b0), .i_RST(prescaler_cycle_2 & i_CYCLE_12_28),
     .i_D(4'd0), .o_Q(multiplier_bitselcntr_value), .o_CO()
 );
 
@@ -543,15 +548,20 @@ always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) if(lfa_reg_ld) lfa_reg <= multiplier_sr[15:8];
 
     //positive edge
-    if(!phi1pcen_n) if(lfp_reg_ld) lfp_reg <= (pmd_zero == 1'b1) ? 8'h80 : {(multiplier_sr[15] ^ ~lfp_sign_ctrl), multiplier_sr[14:8]};
+    if(!phi1pcen_n) if(lfp_reg_ld) lfp_reg <= (pmd_zero == 1'b1) ? 8'h00 : {~(multiplier_sr[15] ^ ~lfp_sign_ctrl), multiplier_sr[14:8]};
 end
 
 //lfp debug(2's complement)
-reg     [7:0]   lfp_reg_debug;
+reg     [7:0]   lfp_reg_pitchmod_debug, lfa_reg_attenlevel_debug;
 always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) 
+        if(lfa_reg_ld) begin 
+            lfa_reg_attenlevel_debug <= multiplier_sr[15:8]; 
+        end
     if(!phi1pcen_n) begin
-        if(lfp_reg_ld) lfp_reg_debug <= (pmd_zero == 1'b1) ? 8'h00 : 
-                                        ((multiplier_sr[15] ^ ~lfp_sign_ctrl) == 1'b1) ? (~multiplier_sr[14:8] + 7'h1) : multiplier_sr[14:8];
+        if(lfp_reg_ld) 
+            lfp_reg_pitchmod_debug <= (pmd_zero == 1'b1) ? 8'h80 : 
+                                      (~(multiplier_sr[15] ^ ~lfp_sign_ctrl) == 1'b1) ? (~multiplier_sr[14:8] + 7'h1) : multiplier_sr[14:8];
     end
 end
 
