@@ -138,7 +138,7 @@ end
 endgenerate
 
 assign  o_Q_LAST = sr[LENGTH-1];
-assign  o_Q_TAP = sr[TAP-1];
+assign  o_Q_TAP = (TAP == 0) ? i_D : sr[TAP-1];
 
 endmodule
 

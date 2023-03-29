@@ -1,6 +1,8 @@
 `timescale 10ps/10ps
 module IKA2151_tb;
 
+
+//BUS IO wires
 reg             EMUCLK = 1'b1;
 reg             IC_n = 1'b1;
 reg             CS_n = 1'b1;
@@ -8,12 +10,9 @@ reg             WR_n = 1'b1;
 reg             A0 = 1'b0;
 reg     [7:0]   DIN = 8'h0;
 
-always #1 EMUCLK = ~EMUCLK;
 
-initial begin
-    #30 IC_n <= 1'b0;
-    #200 IC_n <= 1'b1;
-end
+//generate clock
+always #1 EMUCLK = ~EMUCLK;
 
 reg     [1:0]   clkdiv = 2'b00;
 reg             phiMref = 1'b0;
@@ -25,6 +24,15 @@ always @(posedge EMUCLK) begin
     if(clkdiv == 2'b01) phiMref <= 1'b0;
 end
 
+
+//async reset
+initial begin
+    #30 IC_n <= 1'b0;
+    #600 IC_n <= 1'b1;
+end
+
+
+//main chip
 IKA2151 main (
     .i_EMUCLK                   (EMUCLK                     ),
     .i_phiM_PCEN_n              (phiM_PCEN_n                ),
@@ -48,26 +56,29 @@ IKA2151 main (
 );
 
 
+
+task automatic IKA2151_write (
+    input       [7:0]   i_TARGET_ADDR,
+    input       [7:0]   i_WRITE_DATA,
+    ref logic           o_CS_n,
+    ref logic           o_WR_n,
+    ref logic           o_A0,
+    ref logic   [7:0]   o_DATA
+); begin
+    #0   o_CS_n = 1'b0; o_WR_n = 1'b1; o_A0 = 1'b0; o_DATA = i_TARGET_ADDR;
+    #30  o_CS_n = 1'b0; o_WR_n = 1'b0; o_A0 = 1'b0; o_DATA = i_TARGET_ADDR;
+    #40  o_CS_n = 1'b1; o_WR_n = 1'b1; o_A0 = 1'b0; o_DATA = i_TARGET_ADDR;
+    #30  o_CS_n = 1'b0; o_WR_n = 1'b1; o_A0 = 1'b1; o_DATA = i_WRITE_DATA;
+    #30  o_CS_n = 1'b0; o_WR_n = 1'b0; o_A0 = 1'b1; o_DATA = i_WRITE_DATA;
+    #40  o_CS_n = 1'b1; o_WR_n = 1'b1; o_A0 = 1'b1; o_DATA = i_WRITE_DATA;
+end endtask
+
 initial begin
-    //write 0xFF, 0x18(LFRQ)
-    #300 CS_n <= 1'b0; WR_n <= 1'b1; A0 <= 1'b0; DIN <= 8'h18;
-    #30  CS_n <= 1'b0; WR_n <= 1'b0; A0 <= 1'b0; DIN <= 8'h18;
-    #40  CS_n <= 1'b1; WR_n <= 1'b1; A0 <= 1'b0; DIN <= 8'h18;
-    #30  CS_n <= 1'b0; WR_n <= 1'b1; A0 <= 1'b1; DIN <= 8'hFF;
-    #30  CS_n <= 1'b0; WR_n <= 1'b0; A0 <= 1'b1; DIN <= 8'hFF;
-    #40  CS_n <= 1'b1; WR_n <= 1'b1; A0 <= 1'b1; DIN <= 8'hFF;
-
-    //write 0x02, 0x1B(CT/W)
-    #30  CS_n <= 1'b0; WR_n <= 1'b1; A0 <= 1'b0; DIN <= 8'h1B;
-    #30  CS_n <= 1'b0; WR_n <= 1'b0; A0 <= 1'b0; DIN <= 8'h1B;
-    #40  CS_n <= 1'b1; WR_n <= 1'b1; A0 <= 1'b0; DIN <= 8'h1B;
-    #30  CS_n <= 1'b0; WR_n <= 1'b1; A0 <= 1'b1; DIN <= 8'h02;
-    #30  CS_n <= 1'b0; WR_n <= 1'b0; A0 <= 1'b1; DIN <= 8'h02;
-    #40  CS_n <= 1'b1; WR_n <= 1'b1; A0 <= 1'b1; DIN <= 8'h02;
+    #650;
+    #0   IKA2151_write(8'h18, 8'hFF, CS_n, WR_n, A0, DIN); //write 0xFF, 0x18(LFRQ)
+    #100 IKA2151_write(8'h1B, 8'h02, CS_n, WR_n, A0, DIN); //write 0x02, 0x1B(CT/W)
+    #100 IKA2151_write(8'h28, 8'h7F, CS_n, WR_n, A0, DIN); //write 0x7F, 0x28(KC)
+    #100 IKA2151_write(8'h60, 8'h6F, CS_n, WR_n, A0, DIN); //write 0x6F, 0x60(TL)
 end
-
-
-
-
 
 endmodule

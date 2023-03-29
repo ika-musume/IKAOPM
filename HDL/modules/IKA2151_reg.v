@@ -276,7 +276,7 @@ end
 reg             hireg_data_valid;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        hireg_addr_valid <= hireg_addrreg_en | (hireg_addr_valid & ~addr_ld);
+        hireg_data_valid <= hireg_datareg_en | (hireg_data_valid & ~addr_ld);
     end
 end
 
@@ -460,53 +460,45 @@ wire            kon_data = kon_sr_24_31[5] | force_kon_z;
     Address 20_27 : RL[7:6]     FL[5:3]     CONNECT(algorithm)[2:0]
 */
 
-//define register
-reg     [2:0]   pms_reg[0:7]; //phase modulation sensitivity
-reg     [1:0]   ams_reg[0:7]; //amplitude modulation sensitivity
-reg     [5:0]   kf_reg[0:7];  //key fraction
-reg     [6:0]   kc_reg[0:7];  //key code
-reg     [2:0]   fl_reg[0:7];  //feedback level
-reg     [2:0]   alg_reg[0:7]; //algorithm type
-reg     [1:0]   rl_reg[0:7];  //right/left channel enable
+//define in/out port
+wire    [2:0]   pms_out;    //phase modulation sensitivity
+wire    [1:0]   ams_out;    //amplitude modulation sensitivity
+wire    [5:0]   kf_out;     //key fraction
+wire    [6:0]   kc_out;     //key code
+wire    [2:0]   fl_out;     //feedback level
+wire    [2:0]   alg_out;    //algorithm type
+wire    [1:0]   rl_out;     //right/left channel enable
 
-//define taps
-assign  o_PMS = !mrst_n ? 3'd0  : reg38_3f_en ? hireg_data[6:4] : pms_reg[7]; //input of stage 0
-assign  o_KF = kf_reg[0];
-assign  o_KC = kc_reg[0];
-assign  o_FL = fl_reg[6];
-assign  o_ALG = alg_reg[3];
-assign  o_RL = rl_reg[4];
+wire    [2:0]   pms_in  = !mrst_n ? 3'd0  : reg38_3f_en ? hireg_data[6:4] : pms_out;
+wire    [1:0]   ams_in  = !mrst_n ? 2'd0  : reg38_3f_en ? hireg_data[1:0] : ams_out;
+wire    [5:0]   kf_in   = !mrst_n ? 6'd0  : reg30_37_en ? hireg_data[7:2] : kf_out;
+wire    [6:0]   kc_in   = !mrst_n ? 7'd0  : reg28_2f_en ? hireg_data[6:0] : kc_out;
+wire    [2:0]   fl_in   = !mrst_n ? 3'd0  : reg20_27_en ? hireg_data[5:3] : fl_out;
+wire    [2:0]   alg_in  = !mrst_n ? 3'd0  : reg20_27_en ? hireg_data[2:0] : alg_out;
+wire    [1:0]   rl_in   = !mrst_n ? 2'b00 : reg20_27_en ? hireg_data[7:6] : rl_out;
 
-//first stage
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        pms_reg[0] <= !mrst_n ? 3'd0  : reg38_3f_en ? hireg_data[6:4] : pms_reg[7];
-        ams_reg[0] <= !mrst_n ? 2'd0  : reg38_3f_en ? hireg_data[1:0] : ams_reg[7];
-        kf_reg[0]  <= !mrst_n ? 6'd0  : reg30_37_en ? hireg_data[7:2] : kf_reg[7]; 
-        kc_reg[0]  <= !mrst_n ? 7'd0  : reg28_2f_en ? hireg_data[6:0] : kc_reg[7]; 
-        fl_reg[0]  <= !mrst_n ? 3'd0  : reg20_27_en ? hireg_data[5:3] : fl_reg[7]; 
-        alg_reg[0] <= !mrst_n ? 3'd0  : reg20_27_en ? hireg_data[2:0] : alg_reg[7];
-        rl_reg[0]  <= !mrst_n ? 2'b00 : reg20_27_en ? hireg_data[7:6] : rl_reg[7]; 
-    end
-end
+primitive_sr #(.WIDTH(3), .LENGTH(8), .TAP(0)) u_pms_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(pms_in), .o_Q_TAP(o_PMS), .o_Q_LAST(pms_out));
 
-//the other stages
-genvar stage;
-generate
-for(stage = 0; stage < 7; stage = stage + 1) begin : hireg_sr8
-    always @(posedge i_EMUCLK) begin
-        if(!phi1ncen_n) begin
-            pms_reg[stage + 1] <= pms_reg[stage];
-            ams_reg[stage + 1] <= ams_reg[stage];
-            kf_reg[stage + 1]  <= kf_reg[stage];
-            kc_reg[stage + 1]  <= kc_reg[stage];
-            fl_reg[stage + 1]  <= fl_reg[stage];
-            alg_reg[stage + 1] <= alg_reg[stage];
-            rl_reg[stage + 1]  <= rl_reg[stage];
-        end
-    end
-end
-endgenerate
+primitive_sr #(.WIDTH(2), .LENGTH(8), .TAP(8)) u_ams_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(ams_in), .o_Q_TAP(), .o_Q_LAST(ams_out));
+
+primitive_sr #(.WIDTH(6), .LENGTH(8), .TAP(1)) u_kf_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(kf_in), .o_Q_TAP(o_KF), .o_Q_LAST(kf_out));
+
+primitive_sr #(.WIDTH(7), .LENGTH(8), .TAP(1)) u_kc_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(kc_in), .o_Q_TAP(o_KC), .o_Q_LAST(kc_out));
+
+primitive_sr #(.WIDTH(3), .LENGTH(8), .TAP(7)) u_fl_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(fl_in), .o_Q_TAP(o_FL), .o_Q_LAST(fl_out));
+
+primitive_sr #(.WIDTH(3), .LENGTH(8), .TAP(4)) u_alg_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(alg_in), .o_Q_TAP(o_ALG), .o_Q_LAST(alg_out));
+
+primitive_sr #(.WIDTH(2), .LENGTH(8), .TAP(5)) u_rl_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(rl_in), .o_Q_TAP(o_RL), .o_Q_LAST(rl_out));
+
+
 
 
 //
@@ -524,70 +516,65 @@ endgenerate
     Address 40_5f : DT1[6:4]    MUL[3:0]
 */
 
-//define register
-reg     [1:0]   dt2_reg[0:31];  //detune2
-reg     [2:0]   dt1_reg[0:31];  //detune1
-reg     [3:0]   mul_reg[0:31];  //phase multuply
-reg     [4:0]   ar_reg[0:31];   //attack rate
-reg     [4:0]   d1r_reg[0:31];  //first decay rate
-reg     [4:0]   d2r_reg[0:31];  //second decay rate
-reg     [3:0]   rr_reg[0:31];   //release rate
-reg     [3:0]   d1l_reg[0:31];  //first decay level
-reg             amen_reg[0:31]; //amplitude modulation enable
-reg     [1:0]   ks_reg[0:31];   //key scale
-reg     [6:0]   tl_reg[0:31];   //total level
+//define in/out port
+wire    [1:0]   dt2_out;    //detune2
+wire    [2:0]   dt1_out;    //detune1
+wire    [3:0]   mul_out;    //phase multuply
+wire    [4:0]   ar_out;     //attack rate
+wire    [4:0]   d2r_out;    //second decay rate
+wire    [4:0]   d1r_out;    //first decay rate
+wire    [3:0]   rr_out;     //release rate
+wire    [3:0]   d1l_out;    //first decay level
+wire            amen_out;   //amplitude modulation enable
+wire    [1:0]   ks_out;     //key scale
+wire    [6:0]   tl_out;     //total level
 
-//define taps
-assign  o_DT2 = dt2_reg[26];
-assign  o_DT1 = dt1_reg[31];
-assign  o_MUL = mul_reg[31];
-assign  o_AR = ar_reg[31];
-assign  o_D1R = d1r_reg[31];
-assign  o_D2R = d2r_reg[31];
-assign  o_RR = rr_reg[31];
-assign  o_D1L = d1l_reg[31];
-assign  o_KS = ks_reg[31];
-assign  o_TL = tl_reg[31];
+wire    [1:0]   dt2_in  = !mrst_n ? 2'd0 : regc0_df_en ? hireg_data[7:6] : dt2_out;
+wire    [2:0]   dt1_in  = !mrst_n ? 3'd0 : reg40_5f_en ? hireg_data[6:4] : dt1_out;
+wire    [3:0]   mul_in  = !mrst_n ? 4'd0 : reg40_5f_en ? hireg_data[3:0] : mul_out;
+wire    [4:0]   ar_in   = !mrst_n ? 5'd0 : reg80_9f_en ? hireg_data[4:0] : ar_out;
+wire    [4:0]   d1r_in  = !mrst_n ? 5'd0 : rega0_bf_en ? hireg_data[4:0] : d1r_out;
+wire    [4:0]   d2r_in  = !mrst_n ? 5'd0 : regc0_df_en ? hireg_data[4:0] : d2r_out;
+wire    [3:0]   rr_in   = !mrst_n ? 4'd0 : rege0_ff_en ? hireg_data[3:0] : rr_out;
+wire    [3:0]   d1l_in  = !mrst_n ? 4'd0 : rege0_ff_en ? hireg_data[7:4] : d1l_out;
+wire            amen_in = !mrst_n ? 1'b0 : rega0_bf_en ? hireg_data[7]   : amen_out;
+wire    [1:0]   ks_in   = !mrst_n ? 2'd0 : reg80_9f_en ? hireg_data[7:6] : ks_out; 
+wire    [6:0]   tl_in   = !mrst_n ? 7'd0 : reg60_7f_en ? hireg_data[6:0] : tl_out; 
 
-assign  o_AMS = ams_reg[7] & {2{amen_reg[31]}};
+primitive_sr #(.WIDTH(2), .LENGTH(32), .TAP(27)) u_dt2_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(dt2_in), .o_Q_TAP(o_DT2), .o_Q_LAST(dt2_out));
 
-//first stage
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        dt2_reg[0]  <= !mrst_n ? 2'd0 : regc0_df_en ? hireg_data[7:6] : dt2_reg[0];
-        dt1_reg[0]  <= !mrst_n ? 3'd0 : reg40_5f_en ? hireg_data[6:4] : dt1_reg[0];
-        mul_reg[0]  <= !mrst_n ? 4'd0 : reg40_5f_en ? hireg_data[3:0] : mul_reg[0];
-        ar_reg[0]   <= !mrst_n ? 5'd0 : reg80_9f_en ? hireg_data[4:0] : ar_reg[0];
-        d1r_reg[0]  <= !mrst_n ? 5'd0 : rega0_bf_en ? hireg_data[4:0] : d1r_reg[0];
-        d2r_reg[0]  <= !mrst_n ? 5'd0 : regc0_df_en ? hireg_data[4:0] : d2r_reg[0];
-        rr_reg[0]   <= !mrst_n ? 4'd0 : rege0_ff_en ? hireg_data[3:0] : rr_reg[0];
-        d1l_reg[0]  <= !mrst_n ? 4'd0 : rege0_ff_en ? hireg_data[7:4] : d1l_reg[0];
-        amen_reg[0] <= !mrst_n ? 1'b0 : rega0_bf_en ? hireg_data[7]   : amen_reg[0];
-        ks_reg[0]   <= !mrst_n ? 2'd0 : reg80_9f_en ? hireg_data[7:6] : ks_reg[0] ;
-        tl_reg[0]   <= !mrst_n ? 7'd0 : reg60_7f_en ? hireg_data[6:0] : tl_reg[0] ;
-    end
-end
+primitive_sr #(.WIDTH(3), .LENGTH(32), .TAP(32)) u_dt1_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(dt1_in), .o_Q_TAP(o_DT1), .o_Q_LAST(dt1_out));
 
-//the other stages
-generate
-for(stage = 0; stage < 31; stage = stage + 1) begin : hireg_sr32
-    always @(posedge i_EMUCLK) begin
-        if(!phi1ncen_n) begin
-            dt2_reg[stage + 1]  <= dt2_reg[stage];
-            dt1_reg[stage + 1]  <= dt1_reg[stage];
-            mul_reg[stage + 1]  <= mul_reg[stage];
-            ar_reg[stage + 1]   <= ar_reg[stage];
-            d1r_reg[stage + 1]  <= d1r_reg[stage];
-            d2r_reg[stage + 1]  <= d2r_reg[stage];
-            rr_reg[stage + 1]   <= rr_reg[stage];
-            d1l_reg[stage + 1]  <= d1l_reg[stage];
-            amen_reg[stage + 1] <= amen_reg[stage];
-            ks_reg[stage + 1]   <= ks_reg[stage];
-            tl_reg[stage + 1]   <= tl_reg[stage];
-        end
-    end
-end
-endgenerate
+primitive_sr #(.WIDTH(4), .LENGTH(32), .TAP(32)) u_mul_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(mul_in), .o_Q_TAP(o_MUL), .o_Q_LAST(mul_out));
+
+primitive_sr #(.WIDTH(5), .LENGTH(32), .TAP(32)) u_ar_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(ar_in), .o_Q_TAP(o_AR), .o_Q_LAST(ar_out));
+
+primitive_sr #(.WIDTH(5), .LENGTH(32), .TAP(32)) u_d1r_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(d1r_in), .o_Q_TAP(o_D1R), .o_Q_LAST(d1r_out));
+
+primitive_sr #(.WIDTH(5), .LENGTH(32), .TAP(32)) u_d2r_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(d2r_in), .o_Q_TAP(o_D2R), .o_Q_LAST(d2r_out));
+
+primitive_sr #(.WIDTH(4), .LENGTH(32), .TAP(32)) u_rr_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(rr_in), .o_Q_TAP(o_RR), .o_Q_LAST(rr_out));
+
+primitive_sr #(.WIDTH(4), .LENGTH(32), .TAP(32)) u_d1l_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(d1l_in), .o_Q_TAP(o_D1L), .o_Q_LAST(d1l_out));
+
+primitive_sr #(.WIDTH(1), .LENGTH(32), .TAP(32)) u_amen_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(amen_in), .o_Q_TAP(), .o_Q_LAST(amen_out));
+
+primitive_sr #(.WIDTH(2), .LENGTH(32), .TAP(32)) u_ks_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(ks_in), .o_Q_TAP(o_KS), .o_Q_LAST(ks_out));
+
+primitive_sr #(.WIDTH(7), .LENGTH(32), .TAP(32)) u_tl_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(tl_in), .o_Q_TAP(o_TL), .o_Q_LAST(tl_out));
+
+assign  o_AMS = ams_out & {2{amen_out}};
 
 
 

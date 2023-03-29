@@ -45,6 +45,7 @@ wire            mrst_n;
 //timings
 wire            cycle_12_28, cycle_05_21, cycle_byte; //to LFO
 wire            cycle_03, cycle_31, cycle_00_16, cycle_01_to_16; //to EG
+wire            cycle_12, cycle_15_31; //to NOISE
 
 //global
 wire    [7:0]   test;
@@ -83,11 +84,13 @@ IKA2151_timinggen TIMINGGEN (
     .o_CYCLE_03                 (cycle_03                   ),
     .o_CYCLE_31                 (cycle_31                   ),
     .o_CYCLE_00_16              (cycle_00_16                ),
-    .o_CYCLE_01_TO_16           (cycle_01_to_16             )
+    .o_CYCLE_01_TO_16           (cycle_01_to_16             ),
+
+    .o_CYCLE_12                 (cycle_12                   ),
+    .o_CYCLE_15_31              (cycle_15_31                )
 );
 
 IKA2151_reg #(
-    .USE_BRAM_FOR_SR8           (0                          ),
     .USE_BRAM_FOR_SR32          (0                          )
 ) REG (
     .i_EMUCLK                   (i_EMUCLK                   ),
@@ -147,6 +150,29 @@ IKA2151_reg #(
     .o_RL                       (                           ),
     .i_REG_LFO_CLK              (                           )
 );
+
+
+
+IKA2151_noise NOISE (
+    .i_EMUCLK                   (i_EMUCLK                   ),
+
+    .i_MRST_n                   (mrst_n                     ),
+    
+    .i_phi1_PCEN_n              (phi1pcen_n                 ),
+    .i_phi1_NCEN_n              (phi1ncen_n                 ),
+
+    .i_CYCLE_12                 (cycle_12                   ),
+    .i_CYCLE_15_31              (cycle_15_31                ),
+
+    .i_NFRQ                     (5'd21                      ),
+
+    .i_NOISE_ATTENLEVEL         (1'b0                       ),
+
+    .o_ACC_NOISE                (                           ),
+    .o_LFO_NOISE                (                           )
+);
+
+
 
 
 IKA2151_lfo LFO (
@@ -234,5 +260,6 @@ IKA2151_eg EG (
     .o_NOISE_ATTENLEVEL         (                           ),
     .o_REG_ATTENLEVEL_CH8_C2    (                           )
 );
+
 
 endmodule
