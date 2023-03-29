@@ -1,7 +1,4 @@
-module IKA2151_reg #(
-    parameter USE_BRAM_FOR_SR8 = 0,  
-    parameter USE_BRAM_FOR_SR32 = 0
-    ) (
+module IKA2151_reg #(parameter USE_BRAM_FOR_SR32 = 0) (
     //master clock
     input   wire            i_EMUCLK, //emulator master clock
 
@@ -142,15 +139,15 @@ always @(posedge i_EMUCLK or negedge mrst_n) begin
 end
 
 //D latch
-primitive_dlatch #(.WIDTH(8)) BUS_INLATCH (
+primitive_dlatch #(.WIDTH(8)) u_bus_inlatch (
     .i_EN(~|{i_CS_n, i_WR_n}), .i_D(i_D), .o_Q(bus_inlatch)
 );
 
 //SR latch
-primitive_srlatch DREG_RQ_INLATCH (
+primitive_srlatch u_dreg_req_inlatch (
     .i_S(~(|{i_CS_n, i_WR_n, ~i_A0, ~mrst_n} | dreg_rq_synced1)), .i_R(dreg_rq_synced1 | ~mrst_n), .o_Q(dreg_rq_inlatch)
 );
-primitive_srlatch AREG_RQ_INLATCH (
+primitive_srlatch u_areg_req_inlatch (
     .i_S(~(|{i_CS_n, i_WR_n,  i_A0, ~mrst_n} | areg_rq_synced1)), .i_R(areg_rq_synced1 | ~mrst_n), .o_Q(areg_rq_inlatch)
 );
 
@@ -170,52 +167,52 @@ wire            reg08_en; //KON register
 
 assign  o_LFRQ_UPDATE = reg18_en; //LFO frequency update flag;
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h10)) REG10 (
+submdl_loreg_decoder #(.TARGET_ADDR(8'h10)) u_reg10 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg10_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h11)) REG11 (
+submdl_loreg_decoder #(.TARGET_ADDR(8'h11)) u_reg11 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg11_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h12)) REG12 (
+submdl_loreg_decoder #(.TARGET_ADDR(8'h12)) u_reg12 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg12_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h14)) REG14 (
+submdl_loreg_decoder #(.TARGET_ADDR(8'h14)) u_reg14 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg14_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h01)) REG01 (
+submdl_loreg_decoder #(.TARGET_ADDR(8'h01)) u_reg01 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg01_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h0f)) REG0f (
+submdl_loreg_decoder #(.TARGET_ADDR(8'h0f)) u_reg0f (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg0f_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h19)) REG19 (
+submdl_loreg_decoder #(.TARGET_ADDR(8'h19)) u_reg19 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg19_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h18)) REG18 (
+submdl_loreg_decoder #(.TARGET_ADDR(8'h18)) u_reg18 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg18_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h1B)) REG1b (
+submdl_loreg_decoder #(.TARGET_ADDR(8'h1B)) u_reg1b (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg1b_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h08)) REG08 (
+submdl_loreg_decoder #(.TARGET_ADDR(8'h08)) u_reg08 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg08_en)
 );
@@ -288,13 +285,13 @@ end
 //  HIREG ADDRESS COUNTER
 //
 
-reg     [4:0]   hireg_addrcntr;
-always @(posedge i_EMUCLK) begin
-    if(!phi1pcen_n) begin
-        if(i_CYCLE_31) hireg_addrcntr <= 5'd0;
-        else hireg_addrcntr <= (hireg_addrcntr == 5'd31) ? 5'd0 : hireg_addrcntr + 5'd1;
-    end
-end
+wire    [4:0]   hireg_addrcntr;
+primitive_counter #(.WIDTH(5)) u_hireg_addrcntr (
+    .i_EMUCLK(i_EMUCLK), .i_PCEN_n(phi1pcen_n), .i_NCEN_n(phi1ncen_n),
+    .i_CNT(1'b1), .i_LD(1'b0), .i_RST(i_CYCLE_31),
+    .i_D(5'd0), .o_Q(hireg_addrcntr), .o_CO()
+);
+
 
 
 //
@@ -597,18 +594,6 @@ endgenerate
 ///////////////////////////////////////////////////////////
 //////  Read-only register multiplexer
 ////
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 endmodule
