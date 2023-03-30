@@ -11,7 +11,7 @@ module IKA2151_reg #(parameter USE_BRAM_FOR_SR32 = 0) (
 
     //timings
     input   wire            i_CYCLE_31,
-
+    
     //control/address
     input   wire            i_CS_n,
     input   wire            i_RD_n,
@@ -263,7 +263,7 @@ wire            hireg_datareg_en = data_ld & hireg_addr_valid;
 reg     [7:0]   hireg_data;
 always @(posedge i_EMUCLK or negedge mrst_n) begin
     if(!mrst_n) begin
-        hireg_addr <= 8'hFF;
+        hireg_data <= 8'hFF;
     end
     else begin
         if(!phi1pcen_n) begin

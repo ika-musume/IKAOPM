@@ -477,7 +477,7 @@ end
 
 //AMD/PMD mux
 reg     [6:0]   ap_muxed;
-always @(i_EMUCLK) begin
+always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) ap_muxed <= a_np_sel ? i_AMD : i_PMD;
 end
 

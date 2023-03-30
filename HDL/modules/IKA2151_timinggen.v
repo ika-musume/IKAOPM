@@ -195,8 +195,8 @@ always @(posedge i_EMUCLK) begin
         sh2_sr[4:1] <= sh2_sr[3:0];
 
         //sh1/2 output
-        o_SH1 <= sh1_sr[4] | mrst_n;
-        o_SH2 <= sh2_sr[4] | mrst_n;
+        o_SH1 <= sh1_sr[4] & mrst_n;
+        o_SH2 <= sh2_sr[4] & mrst_n;
     end
 end
 

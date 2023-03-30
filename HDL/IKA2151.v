@@ -164,7 +164,7 @@ IKA2151_noise NOISE (
     .i_CYCLE_12                 (cycle_12                   ),
     .i_CYCLE_15_31              (cycle_15_31                ),
 
-    .i_NFRQ                     (5'd21                      ),
+    .i_NFRQ                     (5'd29                      ),
 
     .i_NOISE_ATTENLEVEL         (1'b0                       ),
 

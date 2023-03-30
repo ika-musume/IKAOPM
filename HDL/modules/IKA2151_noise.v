@@ -63,16 +63,16 @@ primitive_counter #(.WIDTH(5)) u_noise_freqgen (
 ////
 
 reg     [15:0]  noise_lfsr;
-reg             xor_value;
-wire            lfsr_fdbk = (xor_value ^ noise_lfsr[2]) | (noise_lfsr == 16'h0000 && xor_value == 1'b0);
+reg             xor_flag;
+wire            xor_fdbk = (xor_flag ^ noise_lfsr[2]) | (noise_lfsr == 16'h0000 && xor_flag == 1'b0);
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         noise_lfsr[15] <= !mrst_n ? 1'b0 : 
-                          noise_update_z ? lfsr_fdbk : noise_lfsr[0];
+                          noise_update_z ? xor_fdbk : noise_lfsr[0];
         noise_lfsr[14:0] <= noise_lfsr[15:1];
 
-        xor_value  <= !mrst_n ? noise_lfsr[0] :
-                                noise_update_z ? noise_lfsr[0] : xor_value;
+        xor_flag  <= !mrst_n ? noise_lfsr[0] :
+                                noise_update_z ? noise_lfsr[0] : xor_flag;
     end
 end
 

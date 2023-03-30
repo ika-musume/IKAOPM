@@ -517,7 +517,7 @@ end
 //intensity shifts the base value
 reg     [4:0]   cyc9c_dt1_intensity;
 always @(*) begin
-    case(cyc8r_dt1)
+    case(cyc8r_dt1[1:0])
         2'd0: cyc9c_dt1_intensity <= {1'b0, cyc8r_pdelta_shift_amount[4:2]} + 4'd0  + 1'd1;
         2'd1: cyc9c_dt1_intensity <= {1'b0, cyc8r_pdelta_shift_amount[4:2]} + 4'd8  + 1'd1;
         2'd2: cyc9c_dt1_intensity <= {1'b0, cyc8r_pdelta_shift_amount[4:2]} + 4'd10 + 1'd1;
@@ -548,6 +548,7 @@ end
 //  register part
 //
 
+wire    [19:0]  cyc40r_phase_sr_out; //get previous phase from the cycle 40, SR last step(21)
 reg     [19:0]  cyc9r_previous_phase;
 reg     [16:0]  cyc9r_shifted_pdelta;
 reg     [16:0]  cyc9r_pdelta_detuning_value;
@@ -579,7 +580,7 @@ always @(posedge i_EMUCLK) begin
         end
 
         cyc9r_mul <= cyc8r_mul;
-        cyc9r_previous_phase <= o_OP_ORIGINAL_PHASE; //get previous phase from the cycle 40, SR last step(21)
+        cyc9r_previous_phase <= cyc40r_phase_sr_out;
     end
 end
 
@@ -790,30 +791,13 @@ end
 //  register part
 //
 
-reg     [19:0]  cyc19r_cyc40r_phase_sr[0:21]; //22 stages shift register
 
-//first stage
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc19r_cyc40r_phase_sr[0] <= cyc18r_current_phase;
-    end
-end
+primitive_sr #(.WIDTH(20), .LENGTH(22), .TAP(22)) u_cyc19r_cyc40r_phase_sr
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(cyc18r_current_phase), .o_Q_TAP(), .o_Q_LAST(cyc40r_phase_sr_out));
 
-//the other stages
-genvar stage;
-generate
-for(stage = 0; stage < 21; stage = stage + 1) begin : phase_sr
-    always @(posedge i_EMUCLK) begin
-        if(!phi1ncen_n) begin
-            cyc19r_cyc40r_phase_sr[stage + 1] <= cyc19r_cyc40r_phase_sr[stage];
-        end
-    end
-end
-endgenerate
 
 //last stage
-assign  o_OP_ORIGINAL_PHASE = cyc19r_cyc40r_phase_sr[21];
-
+assign  o_OP_ORIGINAL_PHASE = cyc40r_phase_sr_out[19:10];
 
 
 endmodule
