@@ -18,10 +18,16 @@ module IKA2151_timinggen
     output  reg             o_SH1,
     output  reg             o_SH2,
 
+    `ifdef IKA2151_SIM_STATIC_STORAGE
+    output  reg             o_SIM_CYCLE_10,
+    `endif
+
     //timings
     output  reg             o_CYCLE_12_28,
     output  reg             o_CYCLE_05_21,
     output  reg             o_CYCLE_BYTE,
+
+    output  reg             o_CYCLE_05,
 
     output  reg             o_CYCLE_03,
     output  reg             o_CYCLE_31,
@@ -31,7 +37,6 @@ module IKA2151_timinggen
     output  reg             o_CYCLE_12,
     output  reg             o_CYCLE_15_31
 );
-
 
 ///////////////////////////////////////////////////////////
 //////  Clock and reset
@@ -157,6 +162,13 @@ always @(posedge i_EMUCLK) begin
     end
 end
 
+//PG
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        o_CYCLE_05          <= timinggen_cntr == 5'd4;
+    end
+end
+
 //EG
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
@@ -175,8 +187,14 @@ always @(posedge i_EMUCLK) begin
     end
 end
 
-
-
+//simulation timings
+`ifdef IKA2151_SIM_STATIC_STORAGE
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        o_SIM_CYCLE_10      <= timinggen_cntr == 5'd9;
+    end
+end
+`endif
 
 
 

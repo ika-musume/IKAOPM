@@ -44,11 +44,20 @@ wire            mrst_n;
 
 //timings
 wire            cycle_12_28, cycle_05_21, cycle_byte; //to LFO
+wire            cycle_05; //to PG
 wire            cycle_03, cycle_31, cycle_00_16, cycle_01_to_16; //to EG
 wire            cycle_12, cycle_15_31; //to NOISE
 
+`ifdef IKA2151_SIM_STATIC_STORAGE
+wire            sim_cycle_10;
+`endif
+
 //global
 wire    [7:0]   test;
+
+//NOISE
+wire    [4:0]   nfrq;
+wire            acc_noise, lfo_noise; //same signal
 
 //LFO
 wire    [7:0]   lfrq;
@@ -56,9 +65,15 @@ wire    [6:0]   pmd;
 wire    [6:0]   amd;
 wire    [1:0]   w;
 wire            lfrq_update;
-
-
 wire    [7:0]   lfa, lfp;
+
+//PG
+wire    [6:0]   kc;
+wire    [5:0]   kf;
+wire    [2:0]   pms;
+wire    [1:0]   dt2;
+wire    [1:0]   dt1;
+wire    [3:0]   mul;
 
 
 
@@ -77,9 +92,15 @@ IKA2151_timinggen TIMINGGEN (
     .o_SH1                      (o_SH1                      ),
     .o_SH2                      (o_SH2                      ),
 
+    `ifdef IKA2151_SIM_STATIC_STORAGE
+    .o_SIM_CYCLE_10             (sim_cycle_10               ),
+    `endif
+
     .o_CYCLE_12_28              (cycle_12_28                ),
     .o_CYCLE_05_21              (cycle_05_21                ),
     .o_CYCLE_BYTE               (cycle_byte                 ),
+
+    .o_CYCLE_05                 (cycle_05                   ),
 
     .o_CYCLE_03                 (cycle_03                   ),
     .o_CYCLE_31                 (cycle_31                   ),
@@ -115,10 +136,10 @@ IKA2151_reg #(
     .i_TIMERB_FLAG              (                           ),
     .i_TIMERA_OVFL              (                           ),
 
-    .o_TEST                     (                           ),
+    .o_TEST                     (test                       ),
     .o_CT                       (                           ),
     .o_NE                       (                           ),
-    .o_NFRQ                     (                           ),
+    .o_NFRQ                     (nfrq                       ),
     .o_CLKA1                    (                           ),
     .o_CLKA2                    (                           ),
     .o_CLKB                     (                           ),
@@ -130,12 +151,12 @@ IKA2151_reg #(
     .o_W                        (w                          ),
     .o_LFRQ_UPDATE              (lfrq_update                ),
 
-    .o_KC                       (                           ),
-    .o_KF                       (                           ),
-    .o_PMS                      (                           ),
-    .o_DT2                      (                           ),
-    .o_DT1                      (                           ),
-    .o_MUL                      (                           ),
+    .o_KC                       (kc                         ),
+    .o_KF                       (kf                         ),
+    .o_PMS                      (pms                        ),
+    .o_DT2                      (dt2                        ),
+    .o_DT1                      (dt1                        ),
+    .o_MUL                      (mul                        ),
 
     .o_KON                      (                           ),
     .o_KS                       (                           ),
@@ -164,12 +185,12 @@ IKA2151_noise NOISE (
     .i_CYCLE_12                 (cycle_12                   ),
     .i_CYCLE_15_31              (cycle_15_31                ),
 
-    .i_NFRQ                     (5'd29                      ),
+    .i_NFRQ                     (nfrq                       ),
 
     .i_NOISE_ATTENLEVEL         (1'b0                       ),
 
     .o_ACC_NOISE                (                           ),
-    .o_LFO_NOISE                (                           )
+    .o_LFO_NOISE                (lfo_noise                  )
 );
 
 
@@ -191,11 +212,11 @@ IKA2151_lfo LFO (
     .i_PMD                      (7'd127                     ),
     .i_AMD                      (7'd127                     ),
     .i_W                        (w                          ),
-    .i_TEST                     (8'h00                      ),
+    .i_TEST                     (test                       ),
 
     .i_LFRQ_UPDATE              (lfrq_update                ),
 
-    .i_LFO_NOISE                (1'b0                       ),
+    .i_LFO_NOISE                (lfo_noise                  ),
 
     .o_LFA                      (lfa                        ),
     .o_LFP                      (lfp                        )
@@ -210,19 +231,23 @@ IKA2151_pg PG (
     .i_phi1_PCEN_n              (phi1pcen_n                 ),
     .i_phi1_NCEN_n              (phi1ncen_n                 ),
 
-    .i_CYCLE_05                 (                           ),
+    `ifdef IKA2151_SIM_STATIC_STORAGE
+    .i_SIM_CYCLE_10             (sim_cycle_10               ),
+    `endif
 
-    .i_KC                       (                           ),
-    .i_KF                       (                           ),
-    .i_PMS                      (                           ),
-    .i_DT2                      (                           ),
-    .i_DT1                      (                           ),
-    .i_MUL                      (                           ),
-    .i_TEST                     (                           ),
+    .i_CYCLE_05                 (cycle_05                   ),
+
+    .i_KC                       (kc                         ),
+    .i_KF                       (kf                         ),
+    .i_PMS                      (pms                        ),
+    .i_DT2                      (dt2                        ),
+    .i_DT1                      (dt1                        ),
+    .i_MUL                      (mul                        ),
+    .i_TEST                     (test                       ),
 
     .i_LFP                      (lfp                        ),
 
-    .i_PG_PHASE_RST             (                           ),
+    .i_PG_PHASE_RST             (1'b0 | ~mrst_n             ),
     .o_EG_PDELTA_SHIFT_AMOUNT   (                           ),
     .o_OP_ORIGINAL_PHASE        (                           ),
     .o_REG_PHASE_CH6_C2         (                           )

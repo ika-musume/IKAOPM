@@ -545,10 +545,20 @@ wire            lfp_sign_ctrl = wfsel_tri ? wf_tri_sign : wf_saw_sign; //AOI
 //note that LFA is 8-bit unsigned, LFP is 8-bit sign(1 = negative) and magnitude output
 always @(posedge i_EMUCLK) begin
     //negative edge
-    if(!phi1ncen_n) if(lfa_reg_ld) lfa_reg <= multiplier_sr[15:8];
+    if(!phi1ncen_n) begin
+        if(!mrst_n) lfa_reg <= 8'd0; 
+        else begin
+            if(lfa_reg_ld) lfa_reg <= multiplier_sr[15:8];
+        end
+    end
 
     //positive edge
-    if(!phi1pcen_n) if(lfp_reg_ld) lfp_reg <= (pmd_zero == 1'b1) ? 8'h00 : {~(multiplier_sr[15] ^ ~lfp_sign_ctrl), multiplier_sr[14:8]};
+    if(!phi1pcen_n) begin
+        if(!mrst_n) lfp_reg <= 8'd0;
+        else begin
+            if(lfp_reg_ld) lfp_reg <= (pmd_zero == 1'b1) ? 8'h00 : {~(multiplier_sr[15] ^ ~lfp_sign_ctrl), multiplier_sr[14:8]};
+        end
+    end
 end
 
 //lfp debug(2's complement)

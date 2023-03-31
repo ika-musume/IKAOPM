@@ -1,7 +1,6 @@
 `timescale 10ps/10ps
 module IKA2151_tb;
 
-
 //BUS IO wires
 reg             EMUCLK = 1'b1;
 reg             IC_n = 1'b1;
@@ -28,7 +27,7 @@ end
 //async reset
 initial begin
     #30 IC_n <= 1'b0;
-    #600 IC_n <= 1'b1;
+    #800 IC_n <= 1'b1;
 end
 
 
@@ -74,11 +73,11 @@ task automatic IKA2151_write (
 end endtask
 
 initial begin
-    #650;
+    #900;
     #0   IKA2151_write(8'h18, 8'hFF, CS_n, WR_n, A0, DIN); //write 0xFF, 0x18(LFRQ)
     #100 IKA2151_write(8'h1B, 8'h02, CS_n, WR_n, A0, DIN); //write 0x02, 0x1B(CT/W)
-    #100 IKA2151_write(8'h28, 8'h7F, CS_n, WR_n, A0, DIN); //write 0x7F, 0x28(KC)
-    #100 IKA2151_write(8'h60, 8'h6F, CS_n, WR_n, A0, DIN); //write 0x6F, 0x60(TL)
+    #100 IKA2151_write(8'h28, 8'h4A, CS_n, WR_n, A0, DIN); //write 0x7F, 0x28(KC)
+    #100 IKA2151_write(8'h38, 8'h70, CS_n, WR_n, A0, DIN); //write 0x10, 0x38(PMS) pms = 3'b111
 end
 
 endmodule
