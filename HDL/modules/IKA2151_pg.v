@@ -1,5 +1,4 @@
-module IKA2151_pg
-(
+module IKA2151_pg #(parameter USE_BRAM_FOR_PHASEREG = 0) (
     //master clock
     input   wire            i_EMUCLK, //emulator master clock
 
@@ -11,11 +10,8 @@ module IKA2151_pg
     input   wire            i_phi1_NCEN_n, //engative edge clock enable for emulation
 
     //timings
-    `ifdef IKA2151_SIM_STATIC_STORAGE
-    input   reg             i_SIM_CYCLE_10,
-    `endif
-
     input   wire            i_CYCLE_05, //ch6 c2 phase piso sr parallel load
+    input   wire            i_CYCLE_10,
 
     //register data
     input   wire    [6:0]   i_KC, //Key Code
@@ -105,7 +101,7 @@ end
 //
 
 reg     [12:0]  cyc1c_lfp_deviance;
-wire    [13:0]  cyc1c_lfp_deviance_debug = (cyc0r_ex_lfp_sign == 1'b1) ? (~cyc1c_lfp_deviance + 7'h1) : cyc1c_lfp_deviance;
+wire    [13:0]  debug_cyc1c_lfp_deviance = (cyc0r_ex_lfp_sign == 1'b1) ? (~cyc1c_lfp_deviance + 7'h1) : cyc1c_lfp_deviance;
 always @(*) begin
     case(cyc0r_pms_level)
         3'd0: cyc1c_lfp_deviance <= 13'b0;
@@ -827,10 +823,16 @@ end
 //  register part
 //
 
-
-primitive_sr #(.WIDTH(20), .LENGTH(22), .TAP(22)) u_cyc19r_cyc40r_phase_sr
-(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(cyc18r_current_phase), .o_Q_TAP(), .o_Q_LAST(cyc40r_phase_sr_out));
-
+generate
+if(USE_BRAM_FOR_PHASEREG == 0) begin: phasesr_mode_sr
+    primitive_sr #(.WIDTH(20), .LENGTH(22), .TAP(22)) u_cyc19r_cyc40r_phase_sr
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(cyc18r_current_phase), .o_Q_TAP(), .o_Q_LAST(cyc40r_phase_sr_out));
+end
+else begin: phasesr_mode_bram
+    primitive_sr_bram #(.WIDTH(20), .LENGTH(32), .TAP(22)) u_cyc19r_cyc40r_phase_sr
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(i_CYCLE_10 | ~mrst_n), .i_WR(1'b1), .i_D(cyc18r_current_phase), .o_Q_TAP(cyc40r_phase_sr_out));
+end
+endgenerate
 
 //last stage
 assign  o_OP_ORIGINAL_PHASE = cyc40r_phase_sr_out[19:10];
@@ -843,18 +845,18 @@ assign  o_OP_ORIGINAL_PHASE = cyc40r_phase_sr_out[19:10];
 
 `ifdef IKA2151_SIM_STATIC_STORAGE
 
-reg     [4:0]   pg_static_storage_addr_cntr = 5'd0;
+reg     [4:0]   sim_pg_static_storage_addr_cntr = 5'd0;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        if(i_SIM_CYCLE_10) pg_static_storage_addr_cntr <= 5'd0;
-        else pg_static_storage_addr_cntr <= pg_static_storage_addr_cntr == 5'd31 ? 5'd0 : pg_static_storage_addr_cntr + 5'd1;
+        if(i_CYCLE_10) sim_pg_static_storage_addr_cntr <= 5'd0;
+        else sim_pg_static_storage_addr_cntr <= sim_pg_static_storage_addr_cntr == 5'd31 ? 5'd0 : sim_pg_static_storage_addr_cntr + 5'd1;
     end
 end
 
-reg     [19:0]  pg_static_storage[0:31];
+reg     [19:0]  sim_pg_static_storage[0:31];
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        pg_static_storage[pg_static_storage_addr_cntr] <= mrst_n ? cyc18r_current_phase : 20'd0;
+        sim_pg_static_storage[sim_pg_static_storage_addr_cntr] <= mrst_n ? cyc18r_current_phase : 20'd0;
     end
 end
 

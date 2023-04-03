@@ -1,4 +1,4 @@
-module IKA2151_reg #(parameter USE_BRAM_FOR_SR32 = 0) (
+module IKA2151_reg #(parameter USE_BRAM_FOR_D32REG = 0) (
     //master clock
     input   wire            i_EMUCLK, //emulator master clock
 
@@ -10,6 +10,7 @@ module IKA2151_reg #(parameter USE_BRAM_FOR_SR32 = 0) (
     input   wire            i_phi1_NCEN_n, //engative edge clock enable for emulation
 
     //timings
+    input   wire            i_CYCLE_01,
     input   wire            i_CYCLE_31,
     
     //control/address
@@ -402,7 +403,7 @@ always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         ch_equal <= hireg_addrcntr == {2'b00, kon_temp_reg[2:0]}; //channel number
 
-        force_kon <= i_TIMERA_OVFL & csm_reg;
+        if(i_CYCLE_01) force_kon <= i_TIMERA_OVFL & csm_reg;
         force_kon_z <= force_kon;
     end
 end
@@ -529,52 +530,104 @@ wire            amen_out;   //amplitude modulation enable
 wire    [1:0]   ks_out;     //key scale
 wire    [6:0]   tl_out;     //total level
 
-wire    [1:0]   dt2_in  = !mrst_n ? 2'd0 : regc0_df_en ? hireg_data[7:6] : dt2_out;
-wire    [2:0]   dt1_in  = !mrst_n ? 3'd0 : reg40_5f_en ? hireg_data[6:4] : dt1_out;
-wire    [3:0]   mul_in  = !mrst_n ? 4'd0 : reg40_5f_en ? hireg_data[3:0] : mul_out;
-wire    [4:0]   ar_in   = !mrst_n ? 5'd0 : reg80_9f_en ? hireg_data[4:0] : ar_out;
-wire    [4:0]   d1r_in  = !mrst_n ? 5'd0 : rega0_bf_en ? hireg_data[4:0] : d1r_out;
-wire    [4:0]   d2r_in  = !mrst_n ? 5'd0 : regc0_df_en ? hireg_data[4:0] : d2r_out;
-wire    [3:0]   rr_in   = !mrst_n ? 4'd0 : rege0_ff_en ? hireg_data[3:0] : rr_out;
-wire    [3:0]   d1l_in  = !mrst_n ? 4'd0 : rege0_ff_en ? hireg_data[7:4] : d1l_out;
-wire            amen_in = !mrst_n ? 1'b0 : rega0_bf_en ? hireg_data[7]   : amen_out;
-wire    [1:0]   ks_in   = !mrst_n ? 2'd0 : reg80_9f_en ? hireg_data[7:6] : ks_out; 
-wire    [6:0]   tl_in   = !mrst_n ? 7'd0 : reg60_7f_en ? hireg_data[6:0] : tl_out; 
+generate
+if(USE_BRAM_FOR_D32REG == 0) begin: d32reg_mode_sr
+    wire    [1:0]   dt2_in  = !mrst_n ? 2'd0 : regc0_df_en ? hireg_data[7:6] : dt2_out;
+    wire    [2:0]   dt1_in  = !mrst_n ? 3'd0 : reg40_5f_en ? hireg_data[6:4] : dt1_out;
+    wire    [3:0]   mul_in  = !mrst_n ? 4'd0 : reg40_5f_en ? hireg_data[3:0] : mul_out;
+    wire    [4:0]   ar_in   = !mrst_n ? 5'd0 : reg80_9f_en ? hireg_data[4:0] : ar_out;
+    wire    [4:0]   d1r_in  = !mrst_n ? 5'd0 : rega0_bf_en ? hireg_data[4:0] : d1r_out;
+    wire    [4:0]   d2r_in  = !mrst_n ? 5'd0 : regc0_df_en ? hireg_data[4:0] : d2r_out;
+    wire    [3:0]   rr_in   = !mrst_n ? 4'd0 : rege0_ff_en ? hireg_data[3:0] : rr_out;
+    wire    [3:0]   d1l_in  = !mrst_n ? 4'd0 : rege0_ff_en ? hireg_data[7:4] : d1l_out;
+    wire            amen_in = !mrst_n ? 1'b0 : rega0_bf_en ? hireg_data[7]   : amen_out;
+    wire    [1:0]   ks_in   = !mrst_n ? 2'd0 : reg80_9f_en ? hireg_data[7:6] : ks_out; 
+    wire    [6:0]   tl_in   = !mrst_n ? 7'd0 : reg60_7f_en ? hireg_data[6:0] : tl_out; 
 
-primitive_sr #(.WIDTH(2), .LENGTH(32), .TAP(27)) u_dt2_reg 
-(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(dt2_in), .o_Q_TAP(o_DT2), .o_Q_LAST(dt2_out));
+    primitive_sr #(.WIDTH(2), .LENGTH(32), .TAP(27)) u_dt2_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(dt2_in), .o_Q_TAP(o_DT2), .o_Q_LAST(dt2_out));
 
-primitive_sr #(.WIDTH(3), .LENGTH(32), .TAP(32)) u_dt1_reg 
-(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(dt1_in), .o_Q_TAP(o_DT1), .o_Q_LAST(dt1_out));
+    primitive_sr #(.WIDTH(3), .LENGTH(32), .TAP(32)) u_dt1_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(dt1_in), .o_Q_TAP(o_DT1), .o_Q_LAST(dt1_out));
 
-primitive_sr #(.WIDTH(4), .LENGTH(32), .TAP(32)) u_mul_reg 
-(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(mul_in), .o_Q_TAP(o_MUL), .o_Q_LAST(mul_out));
+    primitive_sr #(.WIDTH(4), .LENGTH(32), .TAP(32)) u_mul_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(mul_in), .o_Q_TAP(o_MUL), .o_Q_LAST(mul_out));
 
-primitive_sr #(.WIDTH(5), .LENGTH(32), .TAP(32)) u_ar_reg 
-(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(ar_in), .o_Q_TAP(o_AR), .o_Q_LAST(ar_out));
+    primitive_sr #(.WIDTH(5), .LENGTH(32), .TAP(32)) u_ar_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(ar_in), .o_Q_TAP(o_AR), .o_Q_LAST(ar_out));
 
-primitive_sr #(.WIDTH(5), .LENGTH(32), .TAP(32)) u_d1r_reg 
-(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(d1r_in), .o_Q_TAP(o_D1R), .o_Q_LAST(d1r_out));
+    primitive_sr #(.WIDTH(5), .LENGTH(32), .TAP(32)) u_d1r_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(d1r_in), .o_Q_TAP(o_D1R), .o_Q_LAST(d1r_out));
 
-primitive_sr #(.WIDTH(5), .LENGTH(32), .TAP(32)) u_d2r_reg 
-(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(d2r_in), .o_Q_TAP(o_D2R), .o_Q_LAST(d2r_out));
+    primitive_sr #(.WIDTH(5), .LENGTH(32), .TAP(32)) u_d2r_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(d2r_in), .o_Q_TAP(o_D2R), .o_Q_LAST(d2r_out));
 
-primitive_sr #(.WIDTH(4), .LENGTH(32), .TAP(32)) u_rr_reg 
-(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(rr_in), .o_Q_TAP(o_RR), .o_Q_LAST(rr_out));
+    primitive_sr #(.WIDTH(4), .LENGTH(32), .TAP(32)) u_rr_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(rr_in), .o_Q_TAP(o_RR), .o_Q_LAST(rr_out));
 
-primitive_sr #(.WIDTH(4), .LENGTH(32), .TAP(32)) u_d1l_reg 
-(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(d1l_in), .o_Q_TAP(o_D1L), .o_Q_LAST(d1l_out));
+    primitive_sr #(.WIDTH(4), .LENGTH(32), .TAP(32)) u_d1l_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(d1l_in), .o_Q_TAP(o_D1L), .o_Q_LAST(d1l_out));
 
-primitive_sr #(.WIDTH(1), .LENGTH(32), .TAP(32)) u_amen_reg 
-(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(amen_in), .o_Q_TAP(), .o_Q_LAST(amen_out));
+    primitive_sr #(.WIDTH(1), .LENGTH(32), .TAP(32)) u_amen_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(amen_in), .o_Q_TAP(), .o_Q_LAST(amen_out));
 
-primitive_sr #(.WIDTH(2), .LENGTH(32), .TAP(32)) u_ks_reg 
-(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(ks_in), .o_Q_TAP(o_KS), .o_Q_LAST(ks_out));
+    primitive_sr #(.WIDTH(2), .LENGTH(32), .TAP(32)) u_ks_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(ks_in), .o_Q_TAP(o_KS), .o_Q_LAST(ks_out));
 
-primitive_sr #(.WIDTH(7), .LENGTH(32), .TAP(32)) u_tl_reg 
-(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(tl_in), .o_Q_TAP(o_TL), .o_Q_LAST(tl_out));
+    primitive_sr #(.WIDTH(7), .LENGTH(32), .TAP(32)) u_tl_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(tl_in), .o_Q_TAP(o_TL), .o_Q_LAST(tl_out));
 
-assign  o_AMS = ams_out & {2{amen_out}};
+    assign  o_AMS = ams_out & {2{amen_out}};
+end
+else begin: d32reg_mode_bram
+    wire    [1:0]   dt2_in  = !mrst_n ? 2'd0 : regc0_df_en ? hireg_data[7:6] : dt2_out;
+    wire    [2:0]   dt1_in  = !mrst_n ? 3'd0 : hireg_data[6:4];
+    wire    [3:0]   mul_in  = !mrst_n ? 4'd0 : hireg_data[3:0];
+    wire    [4:0]   ar_in   = !mrst_n ? 5'd0 : hireg_data[4:0];
+    wire    [4:0]   d1r_in  = !mrst_n ? 5'd0 : hireg_data[4:0];
+    wire    [4:0]   d2r_in  = !mrst_n ? 5'd0 : hireg_data[4:0];
+    wire    [3:0]   rr_in   = !mrst_n ? 4'd0 : hireg_data[3:0];
+    wire    [3:0]   d1l_in  = !mrst_n ? 4'd0 : hireg_data[7:4];
+    wire            amen_in = !mrst_n ? 1'b0 : hireg_data[7]  ;
+    wire    [1:0]   ks_in   = !mrst_n ? 2'd0 : hireg_data[7:6];
+    wire    [6:0]   tl_in   = !mrst_n ? 7'd0 : hireg_data[6:0];
+
+    wire            d32reg_cntr_rst = i_CYCLE_31 | ~mrst_n;
+
+    primitive_sr #(.WIDTH(2), .LENGTH(32), .TAP(27)) u_dt2_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(dt2_in), .o_Q_TAP(o_DT2), .o_Q_LAST(dt2_out));
+
+    primitive_sr_bram #(.WIDTH(3), .LENGTH(32), .TAP(32)) u_dt1_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(reg40_5f_en), .i_D(dt1_in), .o_Q_TAP(o_DT1));
+
+    primitive_sr_bram #(.WIDTH(4), .LENGTH(32), .TAP(32)) u_mul_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(reg40_5f_en), .i_D(mul_in), .o_Q_TAP(o_MUL));
+
+    primitive_sr_bram #(.WIDTH(5), .LENGTH(32), .TAP(32)) u_ar_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(reg80_9f_en), .i_D(ar_in), .o_Q_TAP(o_AR));
+
+    primitive_sr_bram #(.WIDTH(5), .LENGTH(32), .TAP(32)) u_d1r_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(rega0_bf_en), .i_D(d1r_in), .o_Q_TAP(o_D1R));
+
+    primitive_sr_bram #(.WIDTH(5), .LENGTH(32), .TAP(32)) u_d2r_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(regc0_df_en), .i_D(d2r_in), .o_Q_TAP(o_D2R));
+
+    primitive_sr_bram #(.WIDTH(4), .LENGTH(32), .TAP(32)) u_rr_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(rege0_ff_en), .i_D(rr_in), .o_Q_TAP(o_RR));
+
+    primitive_sr_bram #(.WIDTH(4), .LENGTH(32), .TAP(32)) u_d1l_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(rege0_ff_en), .i_D(d1l_in), .o_Q_TAP(o_D1L));
+
+    primitive_sr_bram #(.WIDTH(1), .LENGTH(32), .TAP(32)) u_amen_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(rega0_bf_en), .i_D(amen_in), .o_Q_TAP());
+
+    primitive_sr_bram #(.WIDTH(2), .LENGTH(32), .TAP(32)) u_ks_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(reg80_9f_en), .i_D(ks_in), .o_Q_TAP(o_KS));
+
+    primitive_sr_bram #(.WIDTH(7), .LENGTH(32), .TAP(32)) u_tl_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(reg60_7f_en), .i_D(tl_in), .o_Q_TAP(o_TL));
+end
+endgenerate
 
 
 

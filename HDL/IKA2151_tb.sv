@@ -75,8 +75,8 @@ end endtask
 initial begin
     #900;
     #0   IKA2151_write(8'h18, 8'hFF, CS_n, WR_n, A0, DIN); //write 0xFF, 0x18(LFRQ)
-    #100 IKA2151_write(8'h1B, 8'h02, CS_n, WR_n, A0, DIN); //write 0x02, 0x1B(CT/W)
-    #100 IKA2151_write(8'h28, 8'h4A, CS_n, WR_n, A0, DIN); //write 0x7F, 0x28(KC)
+    #100 IKA2151_write(8'h1B, 8'h01, CS_n, WR_n, A0, DIN); //write 0x02, 0x1B(CT/W)
+    #100 IKA2151_write(8'h28, 8'h3A, CS_n, WR_n, A0, DIN); //write 0x7F, 0x28(KC)
     #100 IKA2151_write(8'h38, 8'h70, CS_n, WR_n, A0, DIN); //write 0x10, 0x38(PMS) pms = 3'b111
 end
 

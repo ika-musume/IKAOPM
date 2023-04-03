@@ -43,14 +43,11 @@ wire            mrst_n;
 ////
 
 //timings
+wire            cycle_31, cycle_01; //to REG
 wire            cycle_12_28, cycle_05_21, cycle_byte; //to LFO
-wire            cycle_05; //to PG
-wire            cycle_03, cycle_31, cycle_00_16, cycle_01_to_16; //to EG
+wire            cycle_05, cycle_10; //to PG
+wire            cycle_03, cycle_00_16, cycle_01_to_16; //to EG
 wire            cycle_12, cycle_15_31; //to NOISE
-
-`ifdef IKA2151_SIM_STATIC_STORAGE
-wire            sim_cycle_10;
-`endif
 
 //global
 wire    [7:0]   test;
@@ -92,18 +89,17 @@ IKA2151_timinggen TIMINGGEN (
     .o_SH1                      (o_SH1                      ),
     .o_SH2                      (o_SH2                      ),
 
-    `ifdef IKA2151_SIM_STATIC_STORAGE
-    .o_SIM_CYCLE_10             (sim_cycle_10               ),
-    `endif
+    .o_CYCLE_01                 (cycle_01                   ),
+    .o_CYCLE_31                 (cycle_31                   ),
 
     .o_CYCLE_12_28              (cycle_12_28                ),
     .o_CYCLE_05_21              (cycle_05_21                ),
     .o_CYCLE_BYTE               (cycle_byte                 ),
 
     .o_CYCLE_05                 (cycle_05                   ),
+    .o_CYCLE_10                 (cycle_10                   ),
 
     .o_CYCLE_03                 (cycle_03                   ),
-    .o_CYCLE_31                 (cycle_31                   ),
     .o_CYCLE_00_16              (cycle_00_16                ),
     .o_CYCLE_01_TO_16           (cycle_01_to_16             ),
 
@@ -112,7 +108,7 @@ IKA2151_timinggen TIMINGGEN (
 );
 
 IKA2151_reg #(
-    .USE_BRAM_FOR_SR32          (0                          )
+    .USE_BRAM_FOR_D32REG        (0                          )
 ) REG (
     .i_EMUCLK                   (i_EMUCLK                   ),
     .i_MRST_n                   (mrst_n                     ),
@@ -120,6 +116,7 @@ IKA2151_reg #(
     .i_phi1_PCEN_n              (phi1pcen_n                 ),
     .i_phi1_NCEN_n              (phi1ncen_n                 ),
 
+    .i_CYCLE_01                 (cycle_01                   ),
     .i_CYCLE_31                 (cycle_31                   ),
 
     .i_CS_n                     (i_CS_n                     ),
@@ -223,7 +220,9 @@ IKA2151_lfo LFO (
 );
 
 
-IKA2151_pg PG (
+IKA2151_pg #(
+    .USE_BRAM_FOR_PHASEREG      (1                          )
+) PG (
     .i_EMUCLK                   (i_EMUCLK                   ),
 
     .i_MRST_n                   (mrst_n                     ),
@@ -231,11 +230,8 @@ IKA2151_pg PG (
     .i_phi1_PCEN_n              (phi1pcen_n                 ),
     .i_phi1_NCEN_n              (phi1ncen_n                 ),
 
-    `ifdef IKA2151_SIM_STATIC_STORAGE
-    .i_SIM_CYCLE_10             (sim_cycle_10               ),
-    `endif
-
     .i_CYCLE_05                 (cycle_05                   ),
+    .i_CYCLE_10                 (cycle_10                   ),
 
     .i_KC                       (kc                         ),
     .i_KF                       (kf                         ),

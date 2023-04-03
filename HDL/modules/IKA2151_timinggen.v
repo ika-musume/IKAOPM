@@ -18,19 +18,18 @@ module IKA2151_timinggen
     output  reg             o_SH1,
     output  reg             o_SH2,
 
-    `ifdef IKA2151_SIM_STATIC_STORAGE
-    output  reg             o_SIM_CYCLE_10,
-    `endif
-
     //timings
+    output  reg             o_CYCLE_01,
+    output  reg             o_CYCLE_31,
+
     output  reg             o_CYCLE_12_28,
     output  reg             o_CYCLE_05_21,
     output  reg             o_CYCLE_BYTE,
 
     output  reg             o_CYCLE_05,
+    output  reg             o_CYCLE_10,
 
     output  reg             o_CYCLE_03,
-    output  reg             o_CYCLE_31,
     output  reg             o_CYCLE_00_16,
     output  reg             o_CYCLE_01_TO_16,
 
@@ -151,6 +150,14 @@ end
 wire            sh1 = timinggen_cntr[4:3] == 2'b11; //11XXX
 wire            sh2 = timinggen_cntr[4:3] == 2'b01; //01XXX
 
+//REG
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        o_CYCLE_01          <= timinggen_cntr == 5'd0;
+        o_CYCLE_31          <= timinggen_cntr == 5'd30;
+    end
+end
+
 //LFO
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
@@ -166,6 +173,7 @@ end
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         o_CYCLE_05          <= timinggen_cntr == 5'd4;
+        o_CYCLE_10          <= timinggen_cntr == 5'd9;
     end
 end
 
@@ -173,7 +181,6 @@ end
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         o_CYCLE_03          <= timinggen_cntr == 5'd2;
-        o_CYCLE_31          <= timinggen_cntr == 5'd30;
         o_CYCLE_00_16       <= (timinggen_cntr == 5'd31) | (timinggen_cntr == 5'd15);
         o_CYCLE_01_TO_16    <= ~timinggen_cntr[4];
     end
@@ -186,15 +193,6 @@ always @(posedge i_EMUCLK) begin
         o_CYCLE_15_31       <= (timinggen_cntr == 5'd14) | (timinggen_cntr == 5'd30);
     end
 end
-
-//simulation timings
-`ifdef IKA2151_SIM_STATIC_STORAGE
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        o_SIM_CYCLE_10      <= timinggen_cntr == 5'd9;
-    end
-end
-`endif
 
 
 

@@ -155,7 +155,7 @@ module primitive_sr_bram #(parameter WIDTH = 1, parameter LENGTH = 32, parameter
 );
 
 //calculate counter bits
-function integer length_bin (input length); 
+function integer length_bin (input integer length); 
     integer iter;
 begin
     iter = 0;
@@ -181,14 +181,19 @@ always @(posedge i_EMUCLK) begin
             rdcntr <= RDCNTR_INIT[LENGTH_BIN-1:0];
         end
         else begin
-            wrcntr <= (wrcntr < LENGTH - 1) ? wrcntr + {{(LENGTH_BIN - 1){1'b0}}, 1'b1} : WRCNTR_INIT; // +1 or reset
-            rdcntr <= (rdcntr < LENGTH - 1) ? rdcntr + {{(LENGTH_BIN - 1){1'b0}}, 1'b1} : RDCNTR_INIT;
+            wrcntr <= (wrcntr < LENGTH - 1) ? wrcntr + {{(LENGTH_BIN - 1){1'b0}}, 1'b1} : {LENGTH_BIN{1'b0}}; // +1 or reset
+            rdcntr <= (rdcntr < LENGTH - 1) ? rdcntr + {{(LENGTH_BIN - 1){1'b0}}, 1'b1} : {LENGTH_BIN{1'b0}};
         end
     end
 end
 
 //declare inferred bram
 reg     [WIDTH-1:0]     sr_bram[0:LENGTH-1];
+
+integer i;
+initial begin
+    for(i=0; i<LENGTH; i=i+1) sr_bram[i] = {WIDTH{1'b0}};
+end
 
 //BRAM write
 always @(posedge i_EMUCLK) begin
