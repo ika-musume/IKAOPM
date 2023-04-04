@@ -72,6 +72,7 @@ wire    [1:0]   dt2;
 wire    [2:0]   dt1;
 wire    [3:0]   mul;
 wire    [4:0]   pdelta_shamt;
+wire            phase_rst;
 
 //EG
 wire            kon;
@@ -237,7 +238,7 @@ IKA2151_lfo LFO (
 
 
 IKA2151_pg #(
-    .USE_BRAM_FOR_PHASEREG      (1                          )
+    .USE_BRAM_FOR_PHASEREG      (0                          )
 ) PG (
     .i_EMUCLK                   (i_EMUCLK                   ),
 
@@ -259,7 +260,7 @@ IKA2151_pg #(
 
     .i_LFP                      (lfp                        ),
 
-    .i_PG_PHASE_RST             (1'b0 | ~mrst_n             ),
+    .i_PG_PHASE_RST             (phase_rst                  ),
     .o_EG_PDELTA_SHIFT_AMOUNT   (pdelta_shamt               ),
     .o_OP_ORIGINAL_PHASE        (                           ),
     .o_REG_PHASE_CH6_C2         (                           )
@@ -288,11 +289,12 @@ IKA2151_eg EG (
     .i_D1L                      (d1l                        ),
     .i_TL                       (tl                         ),
     .i_AMS                      (ams                        ),
-    .i_LFA                      (8'd0                        ),
+    .i_LFA                      (lfa                        ),
     .i_TEST                     (test                       ),
 
     .i_EG_PDELTA_SHIFT_AMOUNT   (pdelta_shamt               ),
 
+    .o_PG_PHASE_RST             (phase_rst                  ),
     .o_OP_ATTENLEVEL            (                           ),
     .o_NOISE_ATTENLEVEL         (                           ),
     .o_REG_ATTENLEVEL_CH8_C2    (                           )

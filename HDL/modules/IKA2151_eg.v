@@ -33,6 +33,7 @@ module IKA2151_eg
     input   wire    [4:0]   i_EG_PDELTA_SHIFT_AMOUNT,
 
     //output data
+    output  wire            o_PG_PHASE_RST,
     output  wire    [9:0]   o_OP_ATTENLEVEL, //envelope level
     output  wire            o_NOISE_ATTENLEVEL, //envelope level(for noise module)
     output  wire            o_REG_ATTENLEVEL_CH8_C2 //noise envelope level
@@ -187,6 +188,7 @@ reg     [3:0]   cyc6r_cyc9r_kon_previous; //delayed concurrently with the curren
 
 wire            cyc9r_kon_current = cyc6r_cyc9r_kon_current_dlyline[3]; //current kon value
 wire            cyc9r_kon_detected = ~cyc6r_cyc9r_kon_previous[3] & cyc9r_kon_current; //prev=0, curr=1, new kon detected
+assign  o_PG_PHASE_RST = cyc9r_kon_detected;
 
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
@@ -730,16 +732,18 @@ primitive_sr #(.WIDTH(10), .LENGTH(28), .TAP(28)) u_cyc13r_cyc40r_phase_sr
 
 reg     [9:0]   cyc40r_lfa_shifted;
 reg             cyc40r_force_no_atten;
+reg     [6:0]   cyc40r_tl;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         case(i_AMS)
-            2'd0: cyc40r_lfa_shifted <= {3'b000, i_LFA[7:1]};
+            2'd0: cyc40r_lfa_shifted <= {10'd0};
             2'd1: cyc40r_lfa_shifted <= {2'b00, i_LFA};
             2'd2: cyc40r_lfa_shifted <= {1'b0, i_LFA, 1'b0};
             2'd3: cyc40r_lfa_shifted <= {i_LFA, 2'b00};
         endcase
 
         cyc40r_force_no_atten <= i_TEST[5];
+        cyc40r_tl <= i_TL;
     end
 end
 
@@ -763,11 +767,13 @@ wire    [10:0]  cyc41c_attenlevel_mod_adder = cyc40r_attenlevel_previous + cyc40
 
 reg     [9:0]   cyc41r_attenlevel_mod;
 reg             cyc41r_force_no_atten;
+reg     [6:0]   cyc41r_tl;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         cyc41r_attenlevel_mod <= cyc41c_attenlevel_mod_adder[10] ? 10'd1023 : cyc41c_attenlevel_mod_adder[9:0]; //attenlevel saturation
 
         cyc41r_force_no_atten <= cyc40r_force_no_atten;
+        cyc41r_tl <= cyc40r_tl;
     end
 end
 
@@ -782,7 +788,7 @@ end
 //  combinational part
 //
 
-wire    [10:0]  cyc42c_attenlevel_tl_adder = cyc41r_attenlevel_mod + {i_TL, 3'b000}; //multiply by 8
+wire    [10:0]  cyc42c_attenlevel_tl_adder = cyc41r_attenlevel_mod + {cyc41r_tl, 3'b000}; //multiply by 8
 
 
 //

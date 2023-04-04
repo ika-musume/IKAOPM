@@ -632,11 +632,13 @@ end
 reg     [19:0]  cyc10r_previous_phase;
 reg     [16:0]  cyc10r_detuned_pdelta; //ignore carry
 reg     [3:0]   cyc10r_mul;
+reg             cyc10r_phase_rst;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         cyc10r_detuned_pdelta <= cyc9r_shifted_pdelta + cyc9r_pdelta_detuning_value;
         cyc10r_mul <= cyc9r_mul;
         cyc10r_previous_phase <= cyc9r_previous_phase;
+        cyc10r_phase_rst <= i_PG_PHASE_RST;
     end
 end
 
@@ -658,11 +660,13 @@ end
 reg     [19:0]  cyc11r_previous_phase;
 reg     [16:0]  cyc11r_detuned_pdelta;
 reg     [3:0]   cyc11r_mul;
+reg             cyc11r_phase_rst;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         cyc11r_detuned_pdelta <= cyc10r_detuned_pdelta;
         cyc11r_mul <= cyc10r_mul;
         cyc11r_previous_phase <= cyc10r_previous_phase;
+        cyc11r_phase_rst <= cyc10r_phase_rst;
     end
 end
 
@@ -678,6 +682,7 @@ end
 
 reg     [19:0]  cyc12r_previous_phase;
 reg     [20:0]  cyc12r_multiplied_pdelta; //131071*15 = 1_1101_1111_1111_1111_0001, max 21 bits
+reg             cyc12r_phase_rst;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         if(cyc11r_mul == 4'b0) cyc12r_multiplied_pdelta <= cyc11r_detuned_pdelta / 4'd2;
@@ -686,6 +691,7 @@ always @(posedge i_EMUCLK) begin
         end
 
         cyc12r_previous_phase <= cyc11r_previous_phase;
+        cyc12r_phase_rst <= cyc11r_phase_rst;
     end
 end
 
@@ -701,10 +707,12 @@ end
 
 reg     [19:0]  cyc13r_previous_phase;
 reg     [19:0]  cyc13r_multiplied_pdelta; //ignore carry
+reg             cyc13r_phase_rst;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         cyc13r_multiplied_pdelta <= cyc12r_multiplied_pdelta[19:0];
         cyc13r_previous_phase <= cyc12r_previous_phase;
+        cyc13r_phase_rst <= cyc12r_phase_rst;
     end
 end
 
@@ -719,13 +727,13 @@ end
 //
 
 reg     [19:0]  cyc14r_previous_phase;
-reg             cyc14r_phase_rst;
 reg     [19:0]  cyc14r_final_pdelta; 
+reg             cyc14r_phase_rst;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        cyc14r_phase_rst <= i_PG_PHASE_RST;
-        cyc14r_final_pdelta <= (i_PG_PHASE_RST) ? 20'd0 : cyc13r_multiplied_pdelta;
+        cyc14r_final_pdelta <= (cyc13r_phase_rst) ? 20'd0 : cyc13r_multiplied_pdelta;
         cyc14r_previous_phase <= cyc13r_previous_phase;
+        cyc14r_phase_rst <= cyc13r_phase_rst;
     end
 end
 
@@ -740,13 +748,13 @@ end
 //
 
 reg     [19:0]  cyc15r_previous_phase;
-reg             cyc15r_phase_rst;
 reg     [19:0]  cyc15r_final_pdelta; 
+reg             cyc15r_phase_rst;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        cyc15r_phase_rst <= cyc14r_phase_rst;
         cyc15r_final_pdelta <= cyc14r_final_pdelta;
         cyc15r_previous_phase <= cyc14r_previous_phase;
+        cyc15r_phase_rst <= cyc14r_phase_rst;
     end
 end
 
