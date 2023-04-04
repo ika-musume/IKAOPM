@@ -24,7 +24,7 @@ module IKA2151_eg
     input   wire    [4:0]   i_D2R, //second decay rate
     input   wire    [3:0]   i_RR,  //release rate
     input   wire    [3:0]   i_D1L, //first decay level
-    input   wire    [3:0]   i_TL,  //total level
+    input   wire    [6:0]   i_TL,  //total level
     input   wire    [1:0]   i_AMS, //amplitude modulation sensitivity
     input   wire    [7:0]   i_LFA, //amplitude modulation from LFO
     input   wire    [7:0]   i_TEST, //test register
@@ -109,6 +109,7 @@ end
 reg             mrst_z;
 reg     [1:0]   timecntr_adder;
 reg     [14:0]  timecntr_sr; //this sr can hold 15-bit integer
+reg     [15:0]  debug_timecntr;
 
 reg             onebit_det, mrst_dlyd;
 reg     [3:0]   conseczerobitcntr;
@@ -142,6 +143,9 @@ always @(posedge i_EMUCLK) begin
                 end
             end
         end
+
+        //timecounter parallel output
+        if(cycle_01_17) debug_timecntr <= {timecntr_adder[0], timecntr_sr};
     end
 end
 
@@ -237,15 +241,16 @@ wire            cyc10c_prevatten_max;
 //total 32 stages to store states of all operators
 reg     [1:0]   cyc6r_cyc9r_envstate_previous[0:3]; //4 stages
 reg     [1:0]   cyc10r_envstate_current; //1 stage
-reg     [1:0]   cyc11r_cyc37r_envstate_previous[0:26]; //27 stages
+wire    [1:0]   cyc37r_envstate_previous; //27 stages
 
-wire    [1:0]   cyc10c_envstate_previous = cyc6r_cyc9r_envstate_previous[3];
+wire    [1:0]   cyc9r_envstate_previous = cyc6r_cyc9r_envstate_previous[3];
+
 
 //sr4
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         //if kon detected, make previous envstate ATTACK
-        cyc6r_cyc9r_envstate_previous[0] <= (~cyc10r_cyc37r_kon_previous[26] & i_KON) ? ATTACK : cyc11r_cyc37r_envstate_previous[26];
+        cyc6r_cyc9r_envstate_previous[0] <= (~cyc10r_cyc37r_kon_previous[27] & i_KON) ? ATTACK : cyc37r_envstate_previous;
         cyc6r_cyc9r_envstate_previous[1] <= cyc6r_cyc9r_envstate_previous[0];
         cyc6r_cyc9r_envstate_previous[2] <= cyc6r_cyc9r_envstate_previous[1];
         cyc6r_cyc9r_envstate_previous[3] <= cyc6r_cyc9r_envstate_previous[2];
@@ -253,23 +258,10 @@ always @(posedge i_EMUCLK) begin
 end
 
 //sr27 first stage
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc11r_cyc37r_envstate_previous[0] <= cyc10r_envstate_current;
-    end
-end
+primitive_sr #(.WIDTH(2), .LENGTH(27), .TAP(27)) u_cyc11r_cyc37r_envstate_sr
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(cyc10r_envstate_current), .o_Q_TAP(), .o_Q_LAST(cyc37r_envstate_previous));
 
-//sr27 the other stages
-genvar stage;
-generate
-for(stage = 0; stage < 26; stage = stage + 1) begin : envstate_sr27
-    always @(posedge i_EMUCLK) begin
-        if(!phi1ncen_n) begin
-            cyc11r_cyc37r_envstate_previous[stage + 1] <= cyc11r_cyc37r_envstate_previous[stage];
-        end
-    end
-end
-endgenerate
+
 
 //state machine
 always @(posedge i_EMUCLK) begin
@@ -283,7 +275,7 @@ always @(posedge i_EMUCLK) begin
             end
             else begin
                 if(cyc9r_kon_current) begin
-                    case(cyc10c_envstate_previous)
+                    case(cyc9r_envstate_previous)
                         //current state 0: attack
                         2'd0: begin
                             if(cyc10c_prevatten_min) begin
@@ -604,20 +596,26 @@ reg             cyc10r_fix_prevatten_max; //force previous attenuation level max
 reg             cyc10r_enable_prevatten; //previous attenuation level enable(disable = 0)
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        cyc10r_atten_inc     <= ( cyc10c_envstate_previous == FIRST_DECAY &
-                                 ~cyc9r_kon_detected &
-                                 ~cyc10c_first_decay_end &
-                                 ~cyc10c_prevatten_max ) |
-                                ((cyc10c_envstate_previous == SECOND_DECAY | cyc10c_envstate_previous == RELEASE) &
-                                 ~cyc9r_kon_detected &
-                                 ~cyc10c_prevatten_max );
+        if(!mrst_n) begin
+            cyc10r_atten_inc <= 1'b0;
+            cyc10r_atten_dec <= 1'b0;
+        end
+        else begin
+            cyc10r_atten_inc     <= ( cyc9r_envstate_previous == FIRST_DECAY &
+                                    ~cyc9r_kon_detected &
+                                    ~cyc10c_first_decay_end &
+                                    ~cyc10c_prevatten_max ) |
+                                    ((cyc9r_envstate_previous == SECOND_DECAY | cyc9r_envstate_previous == RELEASE) &
+                                    ~cyc9r_kon_detected &
+                                    ~cyc10c_prevatten_max );
 
-        cyc10r_atten_dec      <= ( cyc10c_envstate_previous == ATTACK &
-                                   cyc9r_kon_current &
-                                  ~cyc10c_prevatten_min &
-                                  ~cyc9r_egparam_scaled_fullrate );
+            cyc10r_atten_dec      <= ( cyc9r_envstate_previous == ATTACK &
+                                    cyc9r_kon_current &
+                                    ~cyc10c_prevatten_min &
+                                    ~cyc9r_egparam_scaled_fullrate );
+        end
 
-        cyc10r_fix_prevatten_max <= ( cyc10c_envstate_previous != ATTACK ) & ~cyc9r_kon_detected & cyc10c_prevatten_max;
+        cyc10r_fix_prevatten_max <= ( cyc9r_envstate_previous != ATTACK ) & ~cyc9r_kon_detected & cyc10c_prevatten_max;
 
         cyc10r_enable_prevatten  <= (~cyc9r_kon_detected &
                                       cyc9r_egparam_scaled_fullrate) |
@@ -713,29 +711,9 @@ end
 //
 
 //total 32 stages to store all levels, SR 28 stages and the remaining 4 stages from cyc9r to cyc12r
-reg     [9:0]   cyc13r_cyc40r_attenlevel_previous[0:27]; //28 stages
 
-//send feedback value to cycle 9
-assign  cyc40r_attenlevel_previous = cyc13r_cyc40r_attenlevel_previous[27];
-
-//sr28 first stage
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc13r_cyc40r_attenlevel_previous[0] <= cyc12r_attenlevel_current;
-    end
-end
-
-//sr28 the other stages
-generate
-for(stage = 0; stage < 27; stage = stage + 1) begin : attenlevel_sr28
-    always @(posedge i_EMUCLK) begin
-        if(!phi1ncen_n) begin
-            cyc13r_cyc40r_attenlevel_previous[stage + 1] <= cyc13r_cyc40r_attenlevel_previous[stage];
-        end
-    end
-end
-endgenerate
-
+primitive_sr #(.WIDTH(10), .LENGTH(28), .TAP(28)) u_cyc13r_cyc40r_phase_sr
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(cyc12r_attenlevel_current), .o_Q_TAP(), .o_Q_LAST(cyc40r_attenlevel_previous));
 
 
 
@@ -854,5 +832,36 @@ always @(posedge i_EMUCLK) begin
         else noise_attenlevel[9:1] <= noise_attenlevel[8:0];
     end
 end
+
+
+
+///////////////////////////////////////////////////////////
+//////  STATIC STORAGE FOR DEBUG
+////
+
+`ifdef IKA2151_SIM_STATIC_STORAGE
+
+reg     [4:0]   sim_attenlevel_static_storage_addr_cntr = 5'd0;
+reg     [4:0]   sim_envstate_static_storage_addr_cntr = 5'd0;
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        if(i_CYCLE_03) sim_attenlevel_static_storage_addr_cntr <= 5'd0;
+        else sim_attenlevel_static_storage_addr_cntr <= sim_attenlevel_static_storage_addr_cntr == 5'd31 ? 5'd0 : sim_attenlevel_static_storage_addr_cntr + 5'd1;
+
+        if(i_CYCLE_03) sim_envstate_static_storage_addr_cntr <= 5'd1;
+        else sim_envstate_static_storage_addr_cntr <= sim_envstate_static_storage_addr_cntr == 5'd31 ? 5'd0 : sim_envstate_static_storage_addr_cntr + 5'd1;
+    end
+end
+
+reg     [9:0]  sim_attenlevel_static_storage[0:31];
+reg     [1:0]  sim_envstate_static_storage[0:31];
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        sim_attenlevel_static_storage[sim_attenlevel_static_storage_addr_cntr] <= mrst_n ? ~cyc43r_attenlevel_final : 10'd0;
+        sim_envstate_static_storage[sim_envstate_static_storage_addr_cntr] <= mrst_n ? cyc10r_envstate_current : 2'd3;
+    end
+end
+
+`endif
 
 endmodule

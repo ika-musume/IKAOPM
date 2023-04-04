@@ -69,8 +69,20 @@ wire    [6:0]   kc;
 wire    [5:0]   kf;
 wire    [2:0]   pms;
 wire    [1:0]   dt2;
-wire    [1:0]   dt1;
+wire    [2:0]   dt1;
 wire    [3:0]   mul;
+wire    [4:0]   pdelta_shamt;
+
+//EG
+wire            kon;
+wire    [1:0]   ks;
+wire    [4:0]   ar;
+wire    [4:0]   d1r;
+wire    [4:0]   d2r;
+wire    [3:0]   rr;
+wire    [3:0]   d1l;
+wire    [6:0]   tl;
+wire    [1:0]   ams;
 
 
 
@@ -155,17 +167,21 @@ IKA2151_reg #(
     .o_DT1                      (dt1                        ),
     .o_MUL                      (mul                        ),
 
-    .o_KON                      (                           ),
-    .o_KS                       (                           ),
-    .o_AR                       (                           ),
-    .o_D1R                      (                           ),
-    .o_D2R                      (                           ),
-    .o_RR                       (                           ),
-    .o_D1L                      (                           ),
-    .o_TL                       (                           ),
-    .o_AMS                      (                           ),
+    .o_KON                      (kon                        ),
+    .o_KS                       (ks                         ),
+    .o_AR                       (ar                         ),
+    .o_D1R                      (d1r                        ),
+    .o_D2R                      (d2r                        ),
+    .o_RR                       (rr                         ),
+    .o_D1L                      (d1l                        ),
+    .o_TL                       (tl                         ),
+    .o_AMS                      (ams                        ),
+
     .o_ALG                      (                           ),
+    .o_FL                       (                           ),
+
     .o_RL                       (                           ),
+
     .i_REG_LFO_CLK              (                           )
 );
 
@@ -244,7 +260,7 @@ IKA2151_pg #(
     .i_LFP                      (lfp                        ),
 
     .i_PG_PHASE_RST             (1'b0 | ~mrst_n             ),
-    .o_EG_PDELTA_SHIFT_AMOUNT   (                           ),
+    .o_EG_PDELTA_SHIFT_AMOUNT   (pdelta_shamt               ),
     .o_OP_ORIGINAL_PHASE        (                           ),
     .o_REG_PHASE_CH6_C2         (                           )
 );
@@ -263,19 +279,19 @@ IKA2151_eg EG (
     .i_CYCLE_00_16              (cycle_00_16                ),
     .i_CYCLE_01_TO_16           (cycle_01_to_16             ),
 
-    .i_KON                      (                           ),
-    .i_KS                       (                           ),
-    .i_AR                       (                           ),
-    .i_D1R                      (                           ),
-    .i_D2R                      (                           ),
-    .i_RR                       (                           ),
-    .i_D1L                      (                           ),
-    .i_TL                       (                           ),
-    .i_AMS                      (                           ),
-    .i_LFA                      (                           ),
-    .i_TEST                     (                           ),
+    .i_KON                      (kon                        ),
+    .i_KS                       (ks                         ),
+    .i_AR                       (ar                         ),
+    .i_D1R                      (d1r                        ),
+    .i_D2R                      (d2r                        ),
+    .i_RR                       (rr                         ),
+    .i_D1L                      (d1l                        ),
+    .i_TL                       (tl                         ),
+    .i_AMS                      (ams                        ),
+    .i_LFA                      (8'd0                        ),
+    .i_TEST                     (test                       ),
 
-    .i_EG_PDELTA_SHIFT_AMOUNT   (                           ),
+    .i_EG_PDELTA_SHIFT_AMOUNT   (pdelta_shamt               ),
 
     .o_OP_ATTENLEVEL            (                           ),
     .o_NOISE_ATTENLEVEL         (                           ),

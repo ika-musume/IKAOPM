@@ -66,11 +66,12 @@ module IKA2151_reg #(parameter USE_BRAM_FOR_D32REG = 0) (
     output  wire    [4:0]   o_D2R,
     output  wire    [3:0]   o_RR,
     output  wire    [3:0]   o_D1L,
-    output  wire    [3:0]   o_TL,
+    output  wire    [6:0]   o_TL,
     output  wire    [1:0]   o_AMS,
 
     //OP
     output  wire    [2:0]   o_ALG,
+    output  wire    [2:0]   o_FL,
 
     //ACC
     output  wire    [1:0]   o_RL,
@@ -289,7 +290,7 @@ end
 wire    [4:0]   hireg_addrcntr;
 primitive_counter #(.WIDTH(5)) u_hireg_addrcntr (
     .i_EMUCLK(i_EMUCLK), .i_PCEN_n(phi1pcen_n), .i_NCEN_n(phi1ncen_n),
-    .i_CNT(1'b1), .i_LD(1'b0), .i_RST(i_CYCLE_31),
+    .i_CNT(1'b1), .i_LD(1'b0), .i_RST(i_CYCLE_31 | ~mrst_n),
     .i_D(5'd0), .o_Q(hireg_addrcntr), .o_CO()
 );
 
@@ -403,7 +404,8 @@ always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         ch_equal <= hireg_addrcntr == {2'b00, kon_temp_reg[2:0]}; //channel number
 
-        if(i_CYCLE_01) force_kon <= i_TIMERA_OVFL & csm_reg;
+        if(!mrst_n) force_kon <= 1'b0;
+        else begin if(i_CYCLE_01) force_kon <= i_TIMERA_OVFL & csm_reg; end
         force_kon_z <= force_kon;
     end
 end
@@ -440,7 +442,7 @@ always @(posedge i_EMUCLK) begin
     end
 end
 
-wire            kon_data = kon_sr_24_31[5] | force_kon_z;
+assign  o_KON = kon_sr_24_31[5] | force_kon_z;
 
 
 

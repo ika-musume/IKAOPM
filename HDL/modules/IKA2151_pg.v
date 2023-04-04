@@ -18,7 +18,7 @@ module IKA2151_pg #(parameter USE_BRAM_FOR_PHASEREG = 0) (
     input   wire    [5:0]   i_KF, //Key Fraction
     input   wire    [2:0]   i_PMS, //Pulse Modulation Sensitivity
     input   wire    [1:0]   i_DT2, //Detune 2
-    input   wire    [1:0]   i_DT1, //Detune 1
+    input   wire    [2:0]   i_DT1, //Detune 1
     input   wire    [3:0]   i_MUL,
     input   wire    [7:0]   i_TEST, //test register
 
