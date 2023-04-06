@@ -813,7 +813,7 @@ end
 reg     [19:0]  cyc18r_current_phase;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        cyc18r_current_phase <= cyc17r_current_phase;
+        cyc18r_current_phase <= mrst_n ? cyc17r_current_phase : 20'd0; //force reset added
     end
 end
 

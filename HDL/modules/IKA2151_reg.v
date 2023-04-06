@@ -169,52 +169,52 @@ wire            reg08_en; //KON register
 
 assign  o_LFRQ_UPDATE = reg18_en; //LFO frequency update flag;
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h10)) u_reg10 (
+reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h10)) u_reg10 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg10_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h11)) u_reg11 (
+reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h11)) u_reg11 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg11_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h12)) u_reg12 (
+reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h12)) u_reg12 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg12_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h14)) u_reg14 (
+reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h14)) u_reg14 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg14_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h01)) u_reg01 (
+reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h01)) u_reg01 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg01_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h0f)) u_reg0f (
+reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h0f)) u_reg0f (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg0f_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h19)) u_reg19 (
+reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h19)) u_reg19 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg19_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h18)) u_reg18 (
+reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h18)) u_reg18 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg18_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h1B)) u_reg1b (
+reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h1B)) u_reg1b (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg1b_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h08)) u_reg08 (
+reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h08)) u_reg08 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg08_en)
 );
@@ -640,7 +640,7 @@ endgenerate
 
 endmodule
 
-module submdl_loreg_decoder #(parameter TARGET_ADDR = 8'h00 ) (
+module reg_submdl_loreg_decoder #(parameter TARGET_ADDR = 8'h00 ) (
     //master clock
     input   wire            i_EMUCLK, //emulator master clock
 

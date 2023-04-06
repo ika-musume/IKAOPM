@@ -55,6 +55,7 @@ wire    [7:0]   test;
 //NOISE
 wire    [4:0]   nfrq;
 wire            acc_noise, lfo_noise; //same signal
+wire            noise_attenlevel;
 
 //LFO
 wire    [7:0]   lfrq;
@@ -84,6 +85,9 @@ wire    [3:0]   rr;
 wire    [3:0]   d1l;
 wire    [6:0]   tl;
 wire    [1:0]   ams;
+
+//OP
+wire    [9:0]   op_attenlevel, original_phase;
 
 
 
@@ -201,7 +205,7 @@ IKA2151_noise NOISE (
 
     .i_NFRQ                     (nfrq                       ),
 
-    .i_NOISE_ATTENLEVEL         (1'b0                       ),
+    .i_NOISE_ATTENLEVEL         (noise_attenlevel           ),
 
     .o_ACC_NOISE                (                           ),
     .o_LFO_NOISE                (lfo_noise                  )
@@ -262,7 +266,7 @@ IKA2151_pg #(
 
     .i_PG_PHASE_RST             (phase_rst                  ),
     .o_EG_PDELTA_SHIFT_AMOUNT   (pdelta_shamt               ),
-    .o_OP_ORIGINAL_PHASE        (                           ),
+    .o_OP_ORIGINAL_PHASE        (original_phase             ),
     .o_REG_PHASE_CH6_C2         (                           )
 );
 
@@ -295,10 +299,24 @@ IKA2151_eg EG (
     .i_EG_PDELTA_SHIFT_AMOUNT   (pdelta_shamt               ),
 
     .o_PG_PHASE_RST             (phase_rst                  ),
-    .o_OP_ATTENLEVEL            (                           ),
-    .o_NOISE_ATTENLEVEL         (                           ),
+    .o_OP_ATTENLEVEL            (op_attenlevel              ),
+    .o_NOISE_ATTENLEVEL         (noise_attenlevel           ),
     .o_REG_ATTENLEVEL_CH8_C2    (                           )
 );
 
+
+IKA2151_op OP (
+    .i_EMUCLK                   (i_EMUCLK                   ),
+
+    .i_MRST_n                   (mrst_n                     ),
+    
+    .i_phi1_PCEN_n              (phi1pcen_n                 ),
+    .i_phi1_NCEN_n              (phi1ncen_n                 ),
+
+    .i_CYCLE_03                 (cycle_03                   ),
+
+    .i_OP_ORIGINAL_PHASE        (original_phase             ),
+    .i_OP_ATTENLEVEL            (op_attenlevel              )
+);
 
 endmodule

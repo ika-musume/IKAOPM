@@ -87,13 +87,13 @@ initial begin
 
     //EG
     #400 IKA2151_write(8'h80, {2'b00, 1'b0, 5'b10111}, CS_n, WR_n, A0, DIN); //write 0x1F, 0x80(KS/AR) AR = 5'b11000
-    #400 IKA2151_write(8'hA0, {1'b1, 2'b00, 5'b11000}, CS_n, WR_n, A0, DIN); //write 0x1F, 0xD0(AMEN/D1R) D1R = 5'b11000
+    #400 IKA2151_write(8'hA0, {1'b1, 2'b00, 5'b00000}, CS_n, WR_n, A0, DIN); //write 0x1F, 0xD0(AMEN/D1R) D1R = 5'b11000
     #400 IKA2151_write(8'hE0, {4'b0111, 4'b1100}, CS_n, WR_n, A0, DIN); //write 0xEF, 0xE0(D1L/RR)
-    #400 IKA2151_write(8'h60, 8'h0F, CS_n, WR_n, A0, DIN); //write 0x7F, 0x60(TL)
+    #400 IKA2151_write(8'h60, 8'h00, CS_n, WR_n, A0, DIN); //write 0x7F, 0x60(TL)
 
     //KON
     #60000 IKA2151_write(8'h08, {1'b0, 4'b0001, 3'd0}, CS_n, WR_n, A0, DIN); //write 0x7F, 0x08(KON)
-    #570000 IKA2151_write(8'h08, {1'b0, 4'b0000, 3'd0}, CS_n, WR_n, A0, DIN); //write 0x7F, 0x08(KON)
+    #520000 IKA2151_write(8'h08, {1'b0, 4'b0000, 3'd0}, CS_n, WR_n, A0, DIN); //write 0x7F, 0x08(KON)
 end
 
 endmodule
