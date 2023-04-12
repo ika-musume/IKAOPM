@@ -12,7 +12,14 @@ module IKA2151_op
 
     //timings
     input   wire            i_CYCLE_03,
+    input   wire            i_CYCLE_12,
+    input   wire            i_CYCLE_03_11_19_27,
 
+    input   wire    [2:0]   i_ALG,
+    input   wire    [2:0]   i_FL,
+
+    output  wire    [13:0]  o_ACC_OPOUT,
+    output  wire            o_ACC_OPADD,
     input   wire    [9:0]   i_OP_ORIGINAL_PHASE,
     input   wire    [9:0]   i_OP_ATTENLEVEL
 );
@@ -29,6 +36,18 @@ wire            mrst_n = i_MRST_n;
 
 
 
+///////////////////////////////////////////////////////////
+//////  Algorithm state counter
+////
+
+wire    [1:0]   algst_cntr;
+primitive_counter #(.WIDTH(2)) u_op_algst_cntr (
+    .i_EMUCLK(i_EMUCLK), .i_PCEN_n(phi1pcen_n), .i_NCEN_n(phi1ncen_n),
+    .i_CNT(i_CYCLE_03_11_19_27), .i_LD(1'b0), .i_RST(i_CYCLE_12),
+    .i_D(2'd0), .o_Q(algst_cntr), .o_CO()
+);
+
+
 
 ///////////////////////////////////////////////////////////
 //////  Cycle 41: Phase modulation
@@ -38,7 +57,7 @@ wire            mrst_n = i_MRST_n;
 //  combinational part
 //
 
-wire    [9:0]   cyc56r_phasemod_value; //get value from the end of the pipeline
+reg     [9:0]   cyc56r_phasemod_value; //get value from the end of the pipeline
 wire    [10:0]  cyc41c_modded_phase_adder = {1'b0, i_OP_ORIGINAL_PHASE}; //+ cyc56r_phasemod_value;
 
 
@@ -49,13 +68,11 @@ wire    [10:0]  cyc41c_modded_phase_adder = {1'b0, i_OP_ORIGINAL_PHASE}; //+ cyc
 reg     [7:0]   cyc41r_logsinrom_phase;
 reg             cyc41r_level_fp_sign;
 
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc41r_logsinrom_phase <= cyc41c_modded_phase_adder[8] ?  cyc41c_modded_phase_adder[7:0] : 
-                                                              ~cyc41c_modded_phase_adder[7:0];
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc41r_logsinrom_phase <= cyc41c_modded_phase_adder[8] ?  cyc41c_modded_phase_adder[7:0] : 
+                                                            ~cyc41c_modded_phase_adder[7:0];
 
-        cyc41r_level_fp_sign <= cyc41c_modded_phase_adder[9]; //discard carry
-    end
+    cyc41r_level_fp_sign <= cyc41c_modded_phase_adder[9]; //discard carry
 end
 
 
@@ -76,12 +93,10 @@ op_submdl_logsinrom u_cyc42r_logsinrom (
 reg             cyc42r_logsinrom_phase_odd;
 reg     [1:0]   cyc42r_logsinrom_bitsel;
 reg             cyc42r_level_fp_sign;
-always @(posedge i_EMUCLK) begin
-if(!phi1ncen_n) begin
-        cyc42r_logsinrom_phase_odd <= cyc41r_logsinrom_phase[0];
-        cyc42r_logsinrom_bitsel <= cyc41r_logsinrom_phase[7:6];
-        cyc42r_level_fp_sign <= cyc41r_level_fp_sign;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc42r_logsinrom_phase_odd <= cyc41r_logsinrom_phase[0];
+    cyc42r_logsinrom_bitsel <= cyc41r_logsinrom_phase[7:6];
+    cyc42r_level_fp_sign <= cyc41r_level_fp_sign;
 end
 
 
@@ -104,15 +119,15 @@ always @(*) begin
         2'd0: cyc43c_logsinrom_addend0 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0, ls[29], ls[25], ls[18], ls[14],  ls[3]};
         2'd1: cyc43c_logsinrom_addend0 <= {  1'b0,   1'b0,   1'b0,   1'b0, ls[37], ls[34], ls[28], ls[24], ls[17], ls[13],  ls[2]};
         2'd2: cyc43c_logsinrom_addend0 <= {  1'b0,   1'b0, ls[43], ls[41], ls[36], ls[33], ls[27], ls[23], ls[16], ls[12],  ls[1]};
-        2'd3: cyc43c_logsinrom_addend0 <= {  1'b0,   1'b0, ls[42], ls[40], ls[35], ls[32], ls[26], ls[22], ls[15], ls[11],  ls[0]};
+        2'd3: cyc43c_logsinrom_addend0 <= {ls[45], ls[44], ls[42], ls[40], ls[35], ls[32], ls[26], ls[22], ls[15], ls[11],  ls[0]};
     endcase
 
     case(cyc42r_logsinrom_bitsel)
         /*                                    D10      D9      D8      D7      D6      D5      D4      D3      D2      D1      D0  */
-        2'd0: cyc43c_logsinrom_addend1 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,  ls[7]} & {2'b11, {9{odd}}};
-        2'd1: cyc43c_logsinrom_addend1 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0, ls[10],  ls[6]} & {2'b11, {9{odd}}};
-        2'd2: cyc43c_logsinrom_addend1 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0, ls[20],  ls[9],  ls[5]} & {2'b11, {9{odd}}};
-        2'd3: cyc43c_logsinrom_addend1 <= {ls[45], ls[44], ls[39], ls[39], ls[38], ls[31], ls[30], ls[21], ls[19],  ls[8],  ls[4]} & {2'b11, {9{odd}}};
+        2'd0: cyc43c_logsinrom_addend1 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,  ls[7]} & {2'b00, {9{odd}}};
+        2'd1: cyc43c_logsinrom_addend1 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0, ls[10],  ls[6]} & {2'b00, {9{odd}}};
+        2'd2: cyc43c_logsinrom_addend1 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0, ls[20],  ls[9],  ls[5]} & {2'b00, {9{odd}}};
+        2'd3: cyc43c_logsinrom_addend1 <= {  1'b0,   1'b0, ls[39], ls[39], ls[38], ls[31], ls[30], ls[21], ls[19],  ls[8],  ls[4]} & {2'b00, {9{odd}}};
     endcase 
 end
 
@@ -123,11 +138,9 @@ end
 
 reg     [11:0]  cyc43r_logsin_raw;
 reg             cyc43r_level_fp_sign;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc43r_logsin_raw <= cyc43c_logsinrom_addend0 + cyc43c_logsinrom_addend1;
-        cyc43r_level_fp_sign <= cyc42r_level_fp_sign;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc43r_logsin_raw <= cyc43c_logsinrom_addend0 + cyc43c_logsinrom_addend1;
+    cyc43r_level_fp_sign <= cyc42r_level_fp_sign;
 end
 
 
@@ -142,11 +155,9 @@ end
 
 reg     [12:0]  cyc44r_logsin_attenuated;
 reg             cyc44r_level_fp_sign;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc44r_logsin_attenuated <= cyc43r_logsin_raw + {i_OP_ATTENLEVEL, 2'b00};
-        cyc44r_level_fp_sign <= cyc43r_level_fp_sign;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc44r_logsin_attenuated <= cyc43r_logsin_raw + {i_OP_ATTENLEVEL, 2'b00};
+    cyc44r_level_fp_sign <= cyc43r_level_fp_sign;
 end
 
 
@@ -161,11 +172,9 @@ end
 
 reg     [11:0]  cyc45r_logsin_saturated;
 reg             cyc45r_level_fp_sign;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc45r_logsin_saturated <= cyc44r_logsin_attenuated[12] ? 12'd4095 : cyc44r_logsin_attenuated;
-        cyc45r_level_fp_sign <= cyc44r_level_fp_sign;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc45r_logsin_saturated <= cyc44r_logsin_attenuated[12] ? 12'd4095 : cyc44r_logsin_attenuated;
+    cyc45r_level_fp_sign <= cyc44r_level_fp_sign;
 end
 
 
@@ -187,13 +196,11 @@ reg             cyc46r_logsin_even;
 reg     [1:0]   cyc46r_exprom_bitsel;
 reg     [3:0]   cyc46r_level_fp_exp;
 reg             cyc46r_level_fp_sign;
-always @(posedge i_EMUCLK) begin
-if(!phi1ncen_n) begin
-        cyc46r_logsin_even <= ~cyc45r_logsin_saturated[0]; //inverted!! EVEN flag!!
-        cyc46r_exprom_bitsel <= cyc45r_logsin_saturated[7:6];
-        cyc46r_level_fp_exp <= ~cyc45r_logsin_saturated[11:8]; //invert
-        cyc46r_level_fp_sign <= cyc45r_level_fp_sign;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc46r_logsin_even <= ~cyc45r_logsin_saturated[0]; //inverted!! EVEN flag!!
+    cyc46r_exprom_bitsel <= cyc45r_logsin_saturated[7:6];
+    cyc46r_level_fp_exp <= ~cyc45r_logsin_saturated[11:8]; //invert
+    cyc46r_level_fp_sign <= cyc45r_level_fp_sign;
 end
 
 
@@ -221,10 +228,10 @@ always @(*) begin
 
     case(cyc46r_exprom_bitsel)
         /*                                  D9      D8      D7      D6      D5      D4      D3      D2      D1      D0  */
-        2'd0: cyc47c_exprom_addend1 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b1,  e[10],   e[7]} & {7'b1111111, {3{even}}};
-        2'd1: cyc47c_exprom_addend1 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b1,   1'b0,   e[6]} & {7'b1111111, {3{even}}};
-        2'd2: cyc47c_exprom_addend1 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,  e[19],   e[9],   e[5]} & {7'b1111111, {3{even}}};
-        2'd3: cyc47c_exprom_addend1 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,  e[20],   e[8],   e[4]} & {7'b1111111, {3{even}}};
+        2'd0: cyc47c_exprom_addend1 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b1,  e[10],   e[7]} & {7'b0000000, {3{even}}};
+        2'd1: cyc47c_exprom_addend1 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b1,   1'b0,   e[6]} & {7'b0000000, {3{even}}};
+        2'd2: cyc47c_exprom_addend1 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,  e[19],   e[9],   e[5]} & {7'b0000000, {3{even}}};
+        2'd3: cyc47c_exprom_addend1 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,  e[20],   e[8],   e[4]} & {7'b0000000, {3{even}}};
     endcase 
 end
 
@@ -237,13 +244,11 @@ reg     [9:0]   cyc47r_level_fp_mant;
 reg     [3:0]   cyc47r_level_fp_exp;
 reg             cyc47r_level_fp_sign;
 reg             cyc47r_level_negate;
-always @(posedge i_EMUCLK) begin
-if(!phi1ncen_n) begin
-        cyc47r_level_fp_mant <= cyc47c_exprom_addend0 + cyc47c_exprom_addend1; //discard carrycyc48r_int_
-        cyc47r_level_fp_exp <= cyc46r_level_fp_exp;
-        cyc47r_level_fp_sign <= cyc46r_level_fp_sign;
-        cyc47r_level_negate <= 1'b0;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc47r_level_fp_mant <= cyc47c_exprom_addend0 + cyc47c_exprom_addend1; //discard carry
+    cyc47r_level_fp_exp <= cyc46r_level_fp_exp;
+    cyc47r_level_fp_sign <= cyc46r_level_fp_sign;
+    cyc47r_level_negate <= 1'b0;
 end
 
 
@@ -280,12 +285,10 @@ end
 reg             cyc48r_level_negate;
 reg             cyc48r_level_sign;
 reg     [12:0]  cyc48r_level_magnitude;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc48r_level_negate <= cyc47r_level_negate;
-        cyc48r_level_sign <= cyc47r_level_fp_sign;
-        cyc48r_level_magnitude <= cyc48c_shifter1;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc48r_level_negate <= cyc47r_level_negate;
+    cyc48r_level_sign <= cyc47r_level_fp_sign;
+    cyc48r_level_magnitude <= cyc48c_shifter1;
 end
 
 
@@ -294,17 +297,251 @@ end
 //////  Cycle 49: sign-magnitude to signed integer
 ////
 
+//
+//  register part
+//
+
 reg     [13:0]  cyc49r_level_signed;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc49r_level_signed <= cyc48r_level_sign ? (~{cyc48r_level_negate, cyc48r_level_magnitude} + 14'd1) : 
-                                                     {cyc48r_level_negate, cyc48r_level_magnitude};
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc49r_level_signed <= cyc48r_level_sign ? (~{cyc48r_level_negate, cyc48r_level_magnitude} + 14'd1) : 
+                                                    {cyc48r_level_negate, cyc48r_level_magnitude};
 end
 
 
 
+///////////////////////////////////////////////////////////
+//////  Cycle 50: delay
+////
 
+//
+//  register part
+//
+
+reg     [13:0]  cyc50r_level_signed;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc50r_level_signed <= cyc49r_level_signed;
+end
+
+
+
+///////////////////////////////////////////////////////////
+//////  Cycle 51: delay
+////
+
+//
+//  register part
+//
+
+reg     [13:0]  cyc51r_level_signed;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc51r_level_signed <= cyc50r_level_signed;
+end
+
+
+
+///////////////////////////////////////////////////////////
+//////  Cycle 52: delay / latch algorithm type and state
+////
+
+//
+//  register part
+//
+
+reg     [1:0]   cyc52r_algst;
+reg     [2:0]   cyc52r_algtype;
+reg     [13:0]  cyc52r_level_signed;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc52r_algst <= algst_cntr; //algorithm state counter
+    cyc52r_algtype <= i_ALG; //algorithm type
+
+    cyc52r_level_signed <= cyc51r_level_signed;
+end
+
+
+
+///////////////////////////////////////////////////////////
+//////  Cycle 53: delay / Z reg / algorithm decoder
+////
+
+//
+//  register part
+//
+
+//signed sound level
+reg     [1:0]   cyc53r_algst;
+reg     [2:0]   cyc53r_algtype;
+reg     [13:0]  cyc53r_OP_current;
+assign  o_ACC_OPOUT = cyc53r_OP_current; //OP data output
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc53r_algst <= cyc52r_algst;
+    cyc53r_algtype <=cyc52r_algtype;
+
+    cyc53r_OP_current <= cyc52r_level_signed;
+end
+
+
+//Z registers that hold previous values
+reg             cyc53r_M1_z_ld, cyc53r_M1_zz_ld; //store THIS M1 value, store PREVIOUS M1 value again
+reg             cyc53r_C1_z_ld; //store THIS C1 value
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc53r_M1_z_ld <= cyc52r_algst == 2'd0;
+    cyc53r_M1_zz_ld <= cyc52r_algst == 2'd0;
+    cyc53r_C1_z_ld <= cyc52r_algst == 2'd2;
+end
+
+wire    [13:0]  cyc53r_M1_z_reg_out, cyc53r_M1_zz_reg_out, cyc53r_C1_z_reg_out;
+wire    [13:0]  cyc46c_M1_z_reg_in  = !mrst_n ? 14'd0 : 
+                                                cyc53r_M1_z_ld ? cyc53r_OP_current: cyc53r_M1_z_reg_out;
+wire    [13:0]  cyc46c_M1_zz_reg_in = !mrst_n ? 14'd0 : 
+                                                cyc53r_M1_zz_ld ? cyc53r_M1_z_reg_out : cyc53r_M1_zz_reg_out;
+wire    [13:0]  cyc46c_C1_z_reg_in  = !mrst_n ? 14'd0 : 
+                                                cyc53r_C1_z_ld ? cyc53r_OP_current : cyc53r_C1_z_reg_out;
+
+//stores THIS M1
+primitive_sr #(.WIDTH(14), .LENGTH(8), .TAP(8)) u_cyc46r_cyc53r_M1_z
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(cyc46c_M1_z_reg_in), .o_Q_TAP(), .o_Q_LAST(cyc53r_M1_z_reg_out));
+
+//stores PREVIOUS M1 again, this will be used for M1 self feedback calculation
+primitive_sr #(.WIDTH(14), .LENGTH(8), .TAP(8)) u_cyc46r_cyc53r_M1_zz
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(cyc46c_M1_zz_reg_in), .o_Q_TAP(), .o_Q_LAST(cyc53r_M1_zz_reg_out));
+
+//stores THIS C1
+primitive_sr #(.WIDTH(14), .LENGTH(8), .TAP(8)) u_cyc46r_cyc53r_C1_z
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(cyc46c_C1_z_reg_in), .o_Q_TAP(), .o_Q_LAST(cyc53r_C1_z_reg_out));
+
+
+//misc control bits
+reg             cyc53r_self_fdbk_en, cyc53r_accumulation_en;
+assign  o_ACC_OPADD = cyc53r_accumulation_en;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc53r_self_fdbk_en <= cyc52r_algst == 2'd2;
+    
+    case(cyc52r_algst)
+        2'd0: cyc53r_accumulation_en <= cyc52r_algtype == 3'd7; //Add M1?
+        2'd1: cyc53r_accumulation_en <= cyc52r_algtype == 3'd7 || cyc52r_algtype == 3'd6 || cyc52r_algtype == 3'd5; //Add M2?
+        2'd2: cyc53r_accumulation_en <= cyc52r_algtype == 3'd7 || cyc52r_algtype == 3'd6 || cyc52r_algtype == 3'd5 || cyc52r_algtype == 3'd4; //Add C1?
+        2'd3: cyc53r_accumulation_en <= 1'b1; //Add C2?
+    endcase
+end
+
+
+
+///////////////////////////////////////////////////////////
+//////  Cycle 54: select addend 0 and 1
+////
+
+//
+//  register part
+//
+
+//make alias signals
+wire    [13:0]  M1    = cyc53r_OP_current;
+wire    [13:0]  M2    = cyc53r_OP_current;
+wire    [13:0]  M1_z  = cyc53r_M1_z_reg_out;
+wire    [13:0]  M1_zz = cyc53r_M1_zz_reg_out;
+wire    [13:0]  C1_z  = cyc53r_C1_z_reg_out;
+
+//selector
+reg     [13:0]  cyc54r_op_addend0, cyc54r_op_addend1;
+reg             cyc54r_self_fdbk_en;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    case({cyc53r_algtype, cyc53r_algst})
+        //Algorithm 0
+        5'b000_10: begin cyc54r_op_addend0 <= M1_z ; cyc54r_op_addend1 <= M1_zz; end //state 2
+        5'b000_11: begin cyc54r_op_addend0 <= 14'd0; cyc54r_op_addend1 <= C1_z ; end //state 3
+        5'b000_00: begin cyc54r_op_addend0 <= M1   ; cyc54r_op_addend1 <= 14'd0; end //state 0
+        5'b000_01: begin cyc54r_op_addend0 <= M2   ; cyc54r_op_addend1 <= 14'd0; end //state 1
+        
+        //Algorithm 1
+        5'b001_10: begin cyc54r_op_addend0 <= M1_z ; cyc54r_op_addend1 <= M1_zz; end //state 2
+        5'b001_11: begin cyc54r_op_addend0 <= M1_z ; cyc54r_op_addend1 <= C1_z ; end //state 3
+        5'b001_00: begin cyc54r_op_addend0 <= 14'd0; cyc54r_op_addend1 <= 14'd0; end //state 0
+        5'b001_01: begin cyc54r_op_addend0 <= M2   ; cyc54r_op_addend1 <= 14'd0; end //state 1
+        
+        //Algorithm 2
+        5'b010_10: begin cyc54r_op_addend0 <= M1_z ; cyc54r_op_addend1 <= M1_zz; end //state 2
+        5'b010_11: begin cyc54r_op_addend0 <= 14'd0; cyc54r_op_addend1 <= C1_z ; end //state 3
+        5'b010_00: begin cyc54r_op_addend0 <= 14'd0; cyc54r_op_addend1 <= 14'd0; end //state 0
+        5'b010_01: begin cyc54r_op_addend0 <= M1_z ; cyc54r_op_addend1 <= M2   ; end //state 1
+        
+        //Algorithm 3
+        5'b011_10: begin cyc54r_op_addend0 <= M1_z ; cyc54r_op_addend1 <= M1_zz; end //state 2
+        5'b011_11: begin cyc54r_op_addend0 <= 14'd0; cyc54r_op_addend1 <= 14'd0; end //state 3
+        5'b011_00: begin cyc54r_op_addend0 <= M1   ; cyc54r_op_addend1 <= 14'd0; end //state 0
+        5'b011_01: begin cyc54r_op_addend0 <= M2   ; cyc54r_op_addend1 <= C1_z ; end //state 1
+        
+        //Algorithm 4
+        5'b100_10: begin cyc54r_op_addend0 <= M1_z ; cyc54r_op_addend1 <= M1_zz; end //state 2
+        5'b100_11: begin cyc54r_op_addend0 <= 14'd0; cyc54r_op_addend1 <= 14'd0; end //state 3
+        5'b100_00: begin cyc54r_op_addend0 <= M1   ; cyc54r_op_addend1 <= 14'd0; end //state 0
+        5'b100_01: begin cyc54r_op_addend0 <= M2   ; cyc54r_op_addend1 <= 14'd0; end //state 1
+        
+        //Algorithm 5
+        5'b101_10: begin cyc54r_op_addend0 <= M1_z ; cyc54r_op_addend1 <= M1_zz; end //state 2
+        5'b101_11: begin cyc54r_op_addend0 <= M1_z ; cyc54r_op_addend1 <= 14'd0; end //state 3
+        5'b101_00: begin cyc54r_op_addend0 <= M1   ; cyc54r_op_addend1 <= 14'd0; end //state 0
+        5'b101_01: begin cyc54r_op_addend0 <= M1_z ; cyc54r_op_addend1 <= 14'd0; end //state 1
+        
+        //Algorithm 6
+        5'b110_10: begin cyc54r_op_addend0 <= M1_z ; cyc54r_op_addend1 <= M1_zz; end //state 2
+        5'b110_11: begin cyc54r_op_addend0 <= 14'd0; cyc54r_op_addend1 <= 14'd0; end //state 3
+        5'b110_00: begin cyc54r_op_addend0 <= M1   ; cyc54r_op_addend1 <= 14'd0; end //state 0
+        5'b110_01: begin cyc54r_op_addend0 <= 14'd0; cyc54r_op_addend1 <= 14'd0; end //state 1
+        
+        //Algorithm 7
+        5'b111_10: begin cyc54r_op_addend0 <= M1_z ; cyc54r_op_addend1 <= M1_zz; end //state 2
+        5'b111_11: begin cyc54r_op_addend0 <= 14'd0; cyc54r_op_addend1 <= 14'd0; end //state 3
+        5'b111_00: begin cyc54r_op_addend0 <= 14'd0; cyc54r_op_addend1 <= 14'd0; end //state 0
+        5'b111_01: begin cyc54r_op_addend0 <= 14'd0; cyc54r_op_addend1 <= 14'd0; end //state 1
+    endcase
+
+    cyc54r_self_fdbk_en <= cyc53r_self_fdbk_en;
+end
+
+
+
+///////////////////////////////////////////////////////////
+//////  Cycle 55: sum two operator outputs
+////
+
+//
+//  register part
+//
+
+reg             cyc55r_self_fdbk_en;
+reg     [2:0]   cyc55r_fl;
+reg     [15:0]  cyc55r_op_sum;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc55r_self_fdbk_en <= cyc54r_self_fdbk_en;
+    cyc55r_fl <= cyc54r_self_fdbk_en ? i_FL : 3'd0;
+    cyc55r_op_sum <= {cyc54r_op_addend0[13], cyc54r_op_addend0} + {cyc54r_op_addend1[13], cyc54r_op_addend1}; //add with sign extension
+end
+
+
+
+///////////////////////////////////////////////////////////
+//////  Cycle 56: phase modulation value
+////
+
+//
+//  register part
+//
+
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    if(cyc55r_self_fdbk_en) begin
+        case(cyc55r_fl)
+            3'd0: cyc56r_phasemod_value <= 10'd0;
+            3'd1: cyc56r_phasemod_value <= {{4{cyc55r_op_sum[14]}}, cyc55r_op_sum[14:9]};
+            3'd2: cyc56r_phasemod_value <= {{3{cyc55r_op_sum[14]}}, cyc55r_op_sum[14:8]};
+            3'd3: cyc56r_phasemod_value <= {{2{cyc55r_op_sum[14]}}, cyc55r_op_sum[14:7]};
+            3'd4: cyc56r_phasemod_value <= {{1{cyc55r_op_sum[14]}}, cyc55r_op_sum[14:6]};
+            3'd5: cyc56r_phasemod_value <= cyc55r_op_sum[14:5];
+            3'd6: cyc56r_phasemod_value <= cyc55r_op_sum[14:4];
+            3'd7: cyc56r_phasemod_value <= cyc55r_op_sum[14:3];
+        endcase
+    end
+    else cyc56r_phasemod_value <= cyc55r_op_sum[10:1];
+end
 
 
 

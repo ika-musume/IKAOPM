@@ -47,6 +47,7 @@ wire            cycle_31, cycle_01; //to REG
 wire            cycle_12_28, cycle_05_21, cycle_byte; //to LFO
 wire            cycle_05, cycle_10; //to PG
 wire            cycle_03, cycle_00_16, cycle_01_to_16; //to EG
+wire            cycle_03_11_19_27; //to OP(algstcnt)
 wire            cycle_12, cycle_15_31; //to NOISE
 
 //global
@@ -119,6 +120,8 @@ IKA2151_timinggen TIMINGGEN (
     .o_CYCLE_03                 (cycle_03                   ),
     .o_CYCLE_00_16              (cycle_00_16                ),
     .o_CYCLE_01_TO_16           (cycle_01_to_16             ),
+
+    .o_CYCLE_03_11_19_27        (cycle_03_11_19_27          ),
 
     .o_CYCLE_12                 (cycle_12                   ),
     .o_CYCLE_15_31              (cycle_15_31                )
@@ -314,6 +317,8 @@ IKA2151_op OP (
     .i_phi1_NCEN_n              (phi1ncen_n                 ),
 
     .i_CYCLE_03                 (cycle_03                   ),
+    .i_CYCLE_12                 (cycle_12                   ),
+    .i_CYCLE_03_11_19_27        (cycle_03_11_19_27          ),
 
     .i_OP_ORIGINAL_PHASE        (original_phase             ),
     .i_OP_ATTENLEVEL            (op_attenlevel              )
