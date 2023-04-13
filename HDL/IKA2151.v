@@ -22,6 +22,9 @@ module IKA2151 (
     //output driver enable
     output  wire            o_CTRL_OE_n,
 
+    //ct
+    output  wire    [1:0]   o_CT,
+
     //sh
     output  wire            o_SH1,
     output  wire            o_SH2
@@ -42,12 +45,12 @@ wire            mrst_n;
 ////
 
 //timings
-wire            cycle_31, cycle_01; //to REG
-wire            cycle_12_28, cycle_05_21, cycle_byte; //to LFO
-wire            cycle_05, cycle_10; //to PG
-wire            cycle_03, cycle_00_16, cycle_01_to_16; //to EG
-wire            cycle_03_11_19_27; //to OP(algstcnt)
-wire            cycle_12, cycle_15_31; //to NOISE
+wire            cycle_31, cycle_01;                     //to REG
+wire            cycle_12_28, cycle_05_21, cycle_byte;   //to LFO
+wire            cycle_05, cycle_10;                     //to PG
+wire            cycle_03, cycle_00_16, cycle_01_to_16;  //to EG
+wire            cycle_04_12_20_28;                      //to OP(algorithm state counter)
+wire            cycle_12, cycle_15_31;                  //to NOISE
 
 //global
 wire    [7:0]   test;
@@ -59,8 +62,7 @@ wire            noise_attenlevel;
 
 //LFO
 wire    [7:0]   lfrq;
-wire    [6:0]   pmd;
-wire    [6:0]   amd;
+wire    [6:0]   pmd, amd;
 wire    [1:0]   w;
 wire            lfrq_update;
 wire    [7:0]   lfa, lfp;
@@ -88,6 +90,13 @@ wire    [1:0]   ams;
 
 //OP
 wire    [9:0]   op_attenlevel, original_phase;
+wire    [2:0]   alg, fl;
+
+//TIMER
+wire    [7:0]   clka1, clkb;
+wire    [1:0]   clka2;
+wire    [5:0]   timerctrl;
+wire            timera_flag, timerb_flag, timera_ovfl;
 
 
 
@@ -120,7 +129,7 @@ IKA2151_timinggen TIMINGGEN (
     .o_CYCLE_00_16              (cycle_00_16                ),
     .o_CYCLE_01_TO_16           (cycle_01_to_16             ),
 
-    .o_CYCLE_03_11_19_27        (cycle_03_11_19_27          ),
+    .o_CYCLE_04_12_20_28        (cycle_04_12_20_28          ),
 
     .o_CYCLE_12                 (cycle_12                   ),
     .o_CYCLE_15_31              (cycle_15_31                )
@@ -148,18 +157,26 @@ IKA2151_reg #(
 
     .o_CTRL_OE_n                (o_CTRL_OE_n                ),
 
-    .i_TIMERA_FLAG              (                           ),
-    .i_TIMERB_FLAG              (                           ),
-    .i_TIMERA_OVFL              (                           ),
+    .i_TIMERA_FLAG              (timera_flag                ),
+    .i_TIMERB_FLAG              (timerb_flag                ),
+    .i_TIMERA_OVFL              (timera_ovfl                ),
 
     .o_TEST                     (test                       ),
-    .o_CT                       (                           ),
+
+    .o_CT                       (o_CT                       ),
+
     .o_NE                       (                           ),
     .o_NFRQ                     (nfrq                       ),
-    .o_CLKA1                    (                           ),
-    .o_CLKA2                    (                           ),
-    .o_CLKB                     (                           ),
-    .o_TIMERCTRL                (                           ),
+
+    .o_CLKA1                    (clka1                      ),
+    .o_CLKA2                    (clka2                      ),
+    .o_CLKB                     (clkb                       ),       
+    .o_TIMERA_RUN               (timerctrl[0]               ),
+    .o_TIMERB_RUN               (timerctrl[1]               ),
+    .o_TIMERA_IRQ_EN            (timerctrl[2]               ),
+    .o_TIMERB_IRQ_EN            (timerctrl[3]               ),
+    .o_TIMERA_FRST              (timerctrl[4]               ),
+    .o_TIMERB_FRST              (timerctrl[5]               ),
 
     .o_LFRQ                     (lfrq                       ),
     .o_PMD                      (pmd                        ),
@@ -184,8 +201,8 @@ IKA2151_reg #(
     .o_TL                       (tl                         ),
     .o_AMS                      (ams                        ),
 
-    .o_ALG                      (                           ),
-    .o_FL                       (                           ),
+    .o_ALG                      (alg                        ),
+    .o_FL                       (fl                         ),
 
     .o_RL                       (                           ),
 
@@ -317,10 +334,10 @@ IKA2151_op OP (
 
     .i_CYCLE_03                 (cycle_03                   ),
     .i_CYCLE_12                 (cycle_12                   ),
-    .i_CYCLE_03_11_19_27        (cycle_03_11_19_27          ),
+    .i_CYCLE_04_12_20_28        (cycle_04_12_20_28          ),
 
-    .i_ALG                      (                           ),
-    .i_FL                       (                           ),
+    .i_ALG                      (alg                        ),
+    .i_FL                       (3'b100                     ),
 
     .o_ACC_OPOUT                (                           ),
     .o_ACC_OPADD                (                           ),

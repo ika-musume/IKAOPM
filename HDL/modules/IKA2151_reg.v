@@ -39,10 +39,15 @@ module IKA2151_reg #(parameter USE_BRAM_FOR_D32REG = 0) (
     output  reg             o_NE,       //0x0F[7]   Noise Enable
     output  reg     [4:0]   o_NFRQ,     //0x0F[4:0] Noise Frequency
 
-    output  reg     [7:0]   o_CLKA1,    //0x10      Timer A D[9:2]
-    output  reg     [1:0]   o_CLKA2,    //0x11      Timer A D[1:0]
-    output  reg     [7:0]   o_CLKB,     //0x12      Timer B
-    output  reg     [5:0]   o_TIMERCTRL,//0x14      Timer Control
+    output  reg     [7:0]   o_CLKA1,        //0x10      Timer A D[9:2]
+    output  reg     [1:0]   o_CLKA2,        //0x11      Timer A D[1:0]
+    output  reg     [7:0]   o_CLKB,         //0x12      Timer B
+    output  wire            o_TIMERA_FRST,  //0x14      Timer Control
+    output  wire            o_TIMERB_FRST,  //          |
+    output  reg             o_TIMERA_RUN,   //          |
+    output  reg             o_TIMERB_RUN,   //          |
+    output  reg             o_TIMERA_IRQ_EN,//          |
+    output  reg             o_TIMERB_IRQ_EN,//          |
 
     output  reg     [7:0]   o_LFRQ,     //0x18      LFO frequency
     output  reg     [6:0]   o_PMD,      //0x19[6:0] D[7] == 1
@@ -338,12 +343,18 @@ end
 //  GENERAL STATIC REGISTERS
 //
 
+//CT reg output
 reg     [1:0]   ct_reg;
 assign  o_CT[0] = ct_reg[0];
 assign  o_CT[1] = o_TEST[3] ? i_REG_LFO_CLK : ct_reg[1]; //LSI test purpose
 
+//reg for KON
 reg             csm_reg;
 reg     [6:0]   kon_temp_reg;
+
+//timer flag reset
+assign  o_TIMERA_FRST = (reg14_en & bus_inlatch[4]) | ~mrst_n;
+assign  o_TIMERB_FRST = (reg14_en & bus_inlatch[5]) | ~mrst_n;
 
 always @(posedge i_EMUCLK) begin
     if(!phi1pcen_n) begin //positive edge!!
@@ -358,7 +369,10 @@ always @(posedge i_EMUCLK) begin
             o_CLKA1         <= 8'h0;
             o_CLKA2         <= 2'h0;
             o_CLKB          <= 8'h0;
-            o_TIMERCTRL     <= 6'b00_00_00;
+            o_TIMERA_RUN    <= 1'b0;
+            o_TIMERB_RUN    <= 1'b0;
+            o_TIMERA_IRQ_EN <= 1'b0;
+            o_TIMERB_IRQ_EN <= 1'b0;
 
             o_LFRQ          <= 8'h00;
             o_PMD           <= 7'h00;
@@ -379,7 +393,10 @@ always @(posedge i_EMUCLK) begin
             o_CLKA1         <= reg10_en ? bus_inlatch      : o_CLKA1;
             o_CLKA2         <= reg11_en ? bus_inlatch[1:0] : o_CLKA2;
             o_CLKB          <= reg12_en ? bus_inlatch      : o_CLKB;
-            o_TIMERCTRL     <= reg14_en ? bus_inlatch[5:0] : o_TIMERCTRL;
+            o_TIMERA_RUN    <= reg14_en ? bus_inlatch[0]   : o_TIMERA_RUN;
+            o_TIMERB_RUN    <= reg14_en ? bus_inlatch[1]   : o_TIMERB_RUN;
+            o_TIMERA_IRQ_EN <= reg14_en ? bus_inlatch[2]   : o_TIMERA_IRQ_EN;
+            o_TIMERB_IRQ_EN <= reg14_en ? bus_inlatch[3]   : o_TIMERB_IRQ_EN;
 
             o_LFRQ          <= reg18_en ? bus_inlatch      : o_LFRQ;
             o_PMD           <= reg19_en ? (bus_inlatch[7] == 1'b1) ? bus_inlatch[6:0] : o_PMD :

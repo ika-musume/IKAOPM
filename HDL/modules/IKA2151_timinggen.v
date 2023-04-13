@@ -32,7 +32,7 @@ module IKA2151_timinggen (
     output  reg             o_CYCLE_00_16,
     output  reg             o_CYCLE_01_TO_16,
 
-    output  reg             o_CYCLE_03_11_19_27,
+    output  reg             o_CYCLE_04_12_20_28,
 
     output  reg             o_CYCLE_12,
     output  reg             o_CYCLE_15_31
@@ -190,7 +190,7 @@ end
 //OP
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        o_CYCLE_03_11_19_27 <= (timinggen_cntr == 5'd2) | (timinggen_cntr == 5'd10) | (timinggen_cntr == 5'd19) | (timinggen_cntr == 5'd27);
+        o_CYCLE_04_12_20_28 <= (timinggen_cntr == 5'd3) | (timinggen_cntr == 5'd11) | (timinggen_cntr == 5'd19) | (timinggen_cntr == 5'd27);
     end
 end
 

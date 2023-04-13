@@ -12,7 +12,7 @@ module IKA2151_op (
     //timings
     input   wire            i_CYCLE_03,
     input   wire            i_CYCLE_12,
-    input   wire            i_CYCLE_03_11_19_27,
+    input   wire            i_CYCLE_04_12_20_28,
 
     input   wire    [2:0]   i_ALG,
     input   wire    [2:0]   i_FL,
@@ -42,7 +42,7 @@ wire            mrst_n = i_MRST_n;
 wire    [1:0]   algst_cntr;
 primitive_counter #(.WIDTH(2)) u_op_algst_cntr (
     .i_EMUCLK(i_EMUCLK), .i_PCEN_n(phi1pcen_n), .i_NCEN_n(phi1ncen_n),
-    .i_CNT(i_CYCLE_03_11_19_27), .i_LD(1'b0), .i_RST(i_CYCLE_12),
+    .i_CNT(i_CYCLE_04_12_20_28), .i_LD(1'b0), .i_RST(i_CYCLE_12 | ~mrst_n),
     .i_D(2'd0), .o_Q(algst_cntr), .o_CO()
 );
 
@@ -57,7 +57,7 @@ primitive_counter #(.WIDTH(2)) u_op_algst_cntr (
 //
 
 reg     [9:0]   cyc56r_phasemod_value; //get value from the end of the pipeline
-wire    [10:0]  cyc41c_modded_phase_adder = {1'b0, i_OP_ORIGINAL_PHASE}; //+ cyc56r_phasemod_value;
+wire    [10:0]  cyc41c_modded_phase_adder = !mrst_n ? 10'd0 : i_OP_ORIGINAL_PHASE + cyc56r_phasemod_value;
 
 
 //
@@ -513,7 +513,7 @@ reg     [15:0]  cyc55r_op_sum;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     cyc55r_self_fdbk_en <= cyc54r_self_fdbk_en;
     cyc55r_fl <= cyc54r_self_fdbk_en ? i_FL : 3'd0;
-    cyc55r_op_sum <= {cyc54r_op_addend0[13], cyc54r_op_addend0} + {cyc54r_op_addend1[13], cyc54r_op_addend1}; //add with sign extension
+    cyc55r_op_sum <= {cyc54r_op_addend0[13], cyc54r_op_addend0} + {cyc54r_op_addend1[13], cyc54r_op_addend1}; //add with sign extension, carry discarded
 end
 
 

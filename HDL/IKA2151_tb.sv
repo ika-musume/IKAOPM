@@ -27,7 +27,7 @@ end
 //async reset
 initial begin
     #30 IC_n <= 1'b0;
-    #800 IC_n <= 1'b1;
+    #900 IC_n <= 1'b1;
 end
 
 
@@ -73,7 +73,7 @@ task automatic IKA2151_write (
 end endtask
 
 initial begin
-    #900;
+    #1100;
     #0   IKA2151_write(8'h18, 8'hFF, CS_n, WR_n, A0, DIN); //write 0xFF, 0x18(LFRQ)
     #500 IKA2151_write(8'h1B, 8'h01, CS_n, WR_n, A0, DIN); //write 0x02, 0x1B(CT/W)
     #500 IKA2151_write(8'h28, 8'h4E, CS_n, WR_n, A0, DIN); //write 0x3A, 0x28(KC)
