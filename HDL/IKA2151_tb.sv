@@ -75,25 +75,34 @@ end endtask
 initial begin
     #900;
     #0   IKA2151_write(8'h18, 8'hFF, CS_n, WR_n, A0, DIN); //write 0xFF, 0x18(LFRQ)
-    #400 IKA2151_write(8'h1B, 8'h01, CS_n, WR_n, A0, DIN); //write 0x02, 0x1B(CT/W)
-    #400 IKA2151_write(8'h28, 8'h4E, CS_n, WR_n, A0, DIN); //write 0x3A, 0x28(KC)
+    #500 IKA2151_write(8'h1B, 8'h01, CS_n, WR_n, A0, DIN); //write 0x02, 0x1B(CT/W)
+    #500 IKA2151_write(8'h28, 8'h4E, CS_n, WR_n, A0, DIN); //write 0x3A, 0x28(KC)
 
     //PG
-    #400 IKA2151_write(8'h38, {1'b0, 3'b000, 2'b00, 2'b00}, CS_n, WR_n, A0, DIN); //write 0x10, 0x38(PMS/AMS) pms = 3'b111
-    #400 IKA2151_write(8'hC0, {2'b00, 1'b0, 5'b11100}, CS_n, WR_n, A0, DIN); //write 0x00, 0xC0(DT2/D2R) dt2 = 2'b00
-    #400 IKA2151_write(8'hC8, {2'b01, 1'b0, 5'b00000}, CS_n, WR_n, A0, DIN); //write 0x40, 0xC8(DT2/D2R) dt2 = 2'b01
-    #400 IKA2151_write(8'hD0, {2'b10, 1'b0, 5'b00000}, CS_n, WR_n, A0, DIN); //write 0x80, 0xD0(DT2/D2R) dt2 = 2'b10
-    #400 IKA2151_write(8'hD8, {2'b11, 1'b0, 5'b00000}, CS_n, WR_n, A0, DIN); //write 0xC0, 0xD8(DT2/D2R) dt2 = 2'b11
+    #500 IKA2151_write(8'h38, {1'b0, 3'b000, 2'b00, 2'b00}, CS_n, WR_n, A0, DIN); //write 0x10, 0x38(PMS/AMS) pms = 3'b111
+    #500 IKA2151_write(8'hC0, {2'b00, 1'b0, 5'b11100}, CS_n, WR_n, A0, DIN); //write 0x00, 0xC0(DT2/D2R) dt2 = 2'b00
+    #500 IKA2151_write(8'hC8, {2'b01, 1'b0, 5'b00000}, CS_n, WR_n, A0, DIN); //write 0x40, 0xC8(DT2/D2R) dt2 = 2'b01
+    #500 IKA2151_write(8'hD0, {2'b10, 1'b0, 5'b00000}, CS_n, WR_n, A0, DIN); //write 0x80, 0xD0(DT2/D2R) dt2 = 2'b10
+    #500 IKA2151_write(8'hD8, {2'b11, 1'b0, 5'b00000}, CS_n, WR_n, A0, DIN); //write 0xC0, 0xD8(DT2/D2R) dt2 = 2'b11
+    #500 IKA2151_write(8'hDF, {2'b00, 1'b0, 5'b11110}, CS_n, WR_n, A0, DIN); //write 0x00, 0xC0(DT2/D2R) dt2 = 2'b00
 
     //EG
-    #400 IKA2151_write(8'h80, {2'b00, 1'b0, 5'b10111}, CS_n, WR_n, A0, DIN); //write 0x1F, 0x80(KS/AR) AR = 5'b11000
-    #400 IKA2151_write(8'hA0, {1'b1, 2'b00, 5'b00000}, CS_n, WR_n, A0, DIN); //write 0x1F, 0xD0(AMEN/D1R) D1R = 5'b11000
-    #400 IKA2151_write(8'hE0, {4'b0111, 4'b1100}, CS_n, WR_n, A0, DIN); //write 0xEF, 0xE0(D1L/RR)
-    #400 IKA2151_write(8'h60, 8'h00, CS_n, WR_n, A0, DIN); //write 0x7F, 0x60(TL)
+    #500 IKA2151_write(8'h80, {2'b00, 1'b0, 5'b10111}, CS_n, WR_n, A0, DIN); //write 0x1F, 0x80(KS/AR) AR = 5'b11000
+    #500 IKA2151_write(8'hA0, {1'b1, 2'b00, 5'b00000}, CS_n, WR_n, A0, DIN); //write 0x1F, 0xD0(AMEN/D1R) D1R = 5'b11000
+    #500 IKA2151_write(8'hE0, {4'b0111, 4'b1100}, CS_n, WR_n, A0, DIN); //write 0xEF, 0xE0(D1L/RR)
+    #500 IKA2151_write(8'h60, 8'h04, CS_n, WR_n, A0, DIN); //write 0x7F, 0x60(TL)
+
+    //EG(noise)
+    #500 IKA2151_write(8'h9F, {2'b00, 1'b0, 5'b10111}, CS_n, WR_n, A0, DIN); //write 0x1F, 0x80(KS/AR) AR = 5'b11000
+    #500 IKA2151_write(8'hBF, {1'b1, 2'b00, 5'b11000}, CS_n, WR_n, A0, DIN); //write 0x1F, 0xD0(AMEN/D1R) D1R = 5'b11000
+    #500 IKA2151_write(8'hFF, {4'b1011, 4'b1110}, CS_n, WR_n, A0, DIN); //write 0xEF, 0xE0(D1L/RR)
+    #500 IKA2151_write(8'h7F, 8'h00, CS_n, WR_n, A0, DIN); //write 0x7F, 0x60(TL)
 
     //KON
     #60000 IKA2151_write(8'h08, {1'b0, 4'b0001, 3'd0}, CS_n, WR_n, A0, DIN); //write 0x7F, 0x08(KON)
+    #500   IKA2151_write(8'h08, {1'b0, 4'b1000, 3'd7}, CS_n, WR_n, A0, DIN); //write 0x7F, 0x08(KON)
     #520000 IKA2151_write(8'h08, {1'b0, 4'b0000, 3'd0}, CS_n, WR_n, A0, DIN); //write 0x7F, 0x08(KON)
+    #220000  IKA2151_write(8'h08, {1'b0, 4'b0000, 3'd7}, CS_n, WR_n, A0, DIN); //write 0x7F, 0x08(KON)
 end
 
 endmodule

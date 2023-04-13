@@ -1,5 +1,4 @@
-module IKA2151
-(
+module IKA2151 (
     //chip clock
     input   wire            i_EMUCLK, //emulator master clock
     input   wire            i_phiM_PCEN_n, //phiM clock enable
@@ -320,6 +319,11 @@ IKA2151_op OP (
     .i_CYCLE_12                 (cycle_12                   ),
     .i_CYCLE_03_11_19_27        (cycle_03_11_19_27          ),
 
+    .i_ALG                      (                           ),
+    .i_FL                       (                           ),
+
+    .o_ACC_OPOUT                (                           ),
+    .o_ACC_OPADD                (                           ),
     .i_OP_ORIGINAL_PHASE        (original_phase             ),
     .i_OP_ATTENLEVEL            (op_attenlevel              )
 );

@@ -99,7 +99,7 @@ end
 ////
 
 reg             noise_sign_z, noise_sign_zz;
-reg     [9:0]   noise_sipo_sr;
+reg     [8:0]   noise_sipo_sr;
 
 //flags
 reg             noise_mute;
@@ -112,8 +112,8 @@ always @(posedge i_EMUCLK) begin
         noise_sign_z <= noise_sign;
         noise_sign_zz <= noise_sign_z;
 
-        noise_sipo_sr[0] <= noise_sign_zz ^ noise_serial;
-        noise_sipo_sr[9:1] <= noise_sipo_sr[8:0];
+        noise_sipo_sr[0] <= noise_sign_zz ^ ~i_NOISE_ATTENLEVEL;
+        noise_sipo_sr[8:1] <= noise_sipo_sr[7:0];
     end
 
     if(!phi1pcen_n) begin
@@ -121,7 +121,7 @@ always @(posedge i_EMUCLK) begin
             noise_mute <= is_attenlevel_max; //latch mute flag
             noise_sign <= noise_serial; //latch new sign bit
             noise_redundant_bit <= noise_sign_z; //latch redundant bits: previous sign bit
-            noise_parallel <= noise_sipo_sr[9:1]; //latch parallel output
+            noise_parallel <= noise_sipo_sr; //latch parallel output, discard MSB(really)
         end
     end    
 end

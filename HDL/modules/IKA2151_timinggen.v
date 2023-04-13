@@ -1,5 +1,4 @@
-module IKA2151_timinggen
-(
+module IKA2151_timinggen (
     //chip clock
     input   wire            i_EMUCLK, //emulator master clock
 

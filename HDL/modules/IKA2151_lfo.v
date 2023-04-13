@@ -1,5 +1,4 @@
-module IKA2151_lfo
-(
+module IKA2151_lfo (
     //master clock
     input   wire            i_EMUCLK, //emulator master clock
 
@@ -50,16 +49,14 @@ wire            mrst_n = i_MRST_n;
 //additional cycle bits
 reg             cycle_06_22, cycle_13_29, cycle_14_30, cycle_15_31;
 reg             debug_cycle_07_23;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cycle_06_22 <= i_CYCLE_05_21;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cycle_06_22 <= i_CYCLE_05_21;
 
-        cycle_13_29 <= i_CYCLE_12_28;
-        cycle_14_30 <= cycle_13_29;
-        cycle_15_31 <= cycle_14_30;
+    cycle_13_29 <= i_CYCLE_12_28;
+    cycle_14_30 <= cycle_13_29;
+    cycle_15_31 <= cycle_14_30;
 
-        debug_cycle_07_23 <= cycle_06_22;
-    end
+    debug_cycle_07_23 <= cycle_06_22;
 end
 
 
@@ -102,27 +99,25 @@ end
 */
 
 reg     [14:0]  lfolut_dout;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        case(i_LFRQ[7:4])
-            4'hF: lfolut_dout <= 15'h7FFF;
-            4'hE: lfolut_dout <= 15'h7FFE;
-            4'hD: lfolut_dout <= 15'h7FFC;
-            4'hC: lfolut_dout <= 15'h7FF8;
-            4'hB: lfolut_dout <= 15'h7FF0;
-            4'hA: lfolut_dout <= 15'h7FE0;
-            4'h9: lfolut_dout <= 15'h7FC0;
-            4'h8: lfolut_dout <= 15'h7F80;
-            4'h7: lfolut_dout <= 15'h7F00;
-            4'h6: lfolut_dout <= 15'h7E00;
-            4'h5: lfolut_dout <= 15'h7C00;
-            4'h4: lfolut_dout <= 15'h7800;
-            4'h3: lfolut_dout <= 15'h7000;
-            4'h2: lfolut_dout <= 15'h6000;
-            4'h1: lfolut_dout <= 15'h4000;
-            4'h0: lfolut_dout <= 15'h1000;
-        endcase
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    case(i_LFRQ[7:4])
+        4'hF: lfolut_dout <= 15'h7FFF;
+        4'hE: lfolut_dout <= 15'h7FFE;
+        4'hD: lfolut_dout <= 15'h7FFC;
+        4'hC: lfolut_dout <= 15'h7FF8;
+        4'hB: lfolut_dout <= 15'h7FF0;
+        4'hA: lfolut_dout <= 15'h7FE0;
+        4'h9: lfolut_dout <= 15'h7FC0;
+        4'h8: lfolut_dout <= 15'h7F80;
+        4'h7: lfolut_dout <= 15'h7F00;
+        4'h6: lfolut_dout <= 15'h7E00;
+        4'h5: lfolut_dout <= 15'h7C00;
+        4'h4: lfolut_dout <= 15'h7800;
+        4'h3: lfolut_dout <= 15'h7000;
+        4'h2: lfolut_dout <= 15'h6000;
+        4'h1: lfolut_dout <= 15'h4000;
+        4'h0: lfolut_dout <= 15'h1000;
+    endcase
 end
 
 
@@ -133,23 +128,19 @@ end
 
 //locntr cnt up signal
 reg             locntr_cnt;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        locntr_cnt <= prescaler_cout_z | i_TEST[3]; //de morgan
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    locntr_cnt <= prescaler_cout_z | i_TEST[3]; //de morgan
 end
 
 //locntr preload signal
 wire            locntr_cout;
 reg             locntr_cout_z, freq_update;
 reg             locntr_ld;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        locntr_cout_z <= locntr_cout;
-        freq_update <= i_LFRQ_UPDATE;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    locntr_cout_z <= locntr_cout;
+    freq_update <= i_LFRQ_UPDATE;
 
-        locntr_ld <= (locntr_cout_z | freq_update);
-    end
+    locntr_ld <= (locntr_cout_z | freq_update);
 end
 
 //define locntr
@@ -176,10 +167,8 @@ end
 //hicntr cnt up and output decoder enable
 reg             hicntr_cnt;
 wire            hicntr_decode_en = (cycle_13_29 & locntr_cout_step2); //de morgan
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        hicntr_cnt <= hicntr_decode_en;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    hicntr_cnt <= hicntr_decode_en;
 end
 
 //counter
@@ -192,18 +181,16 @@ primitive_counter #(.WIDTH(4)) u_lfo_hicntr (
 
 //hicntr complete flag
 reg             hicntr_complete; //use positive edge
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        if(hicntr_decode_en) begin //decode locntr value only when decode_en == 1
-            casez(hicntr_value)
-                4'b???0: hicntr_complete <= i_LFRQ[3];
-                4'b??01: hicntr_complete <= i_LFRQ[2];
-                4'b?011: hicntr_complete <= i_LFRQ[1];
-                4'b0111: hicntr_complete <= i_LFRQ[0];
-            endcase
-        end
-        else hicntr_complete <= 1'b0; //disable
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    if(hicntr_decode_en) begin //decode locntr value only when decode_en == 1
+        casez(hicntr_value)
+            4'b???0: hicntr_complete <= i_LFRQ[3];
+            4'b??01: hicntr_complete <= i_LFRQ[2];
+            4'b?011: hicntr_complete <= i_LFRQ[1];
+            4'b0111: hicntr_complete <= i_LFRQ[0];
+        endcase
     end
+    else hicntr_complete <= 1'b0; //disable
 end
 
 
@@ -213,10 +200,8 @@ end
 ////
 
 reg             lfo_clk;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        lfo_clk <= |{locntr_cout, hicntr_complete, i_TEST[2]};
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    lfo_clk <= |{locntr_cout, hicntr_complete, i_TEST[2]};
 end
 
 
@@ -228,10 +213,8 @@ end
 //The original one used dynamic D-latch to latch lfo_clk
 //I reused the signal above to eliminate a latch.
 reg             lfo_clk_latched = 1'b0; //dynamic d latch
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        if(cycle_14_30) lfo_clk_latched <= |{locntr_cout, hicntr_complete, i_TEST[2]};
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    if(cycle_14_30) lfo_clk_latched <= |{locntr_cout, hicntr_complete, i_TEST[2]};
 end
 
 
@@ -244,10 +227,8 @@ reg     [1:0]   wfsel;
 wire            wfsel_noise = (wfsel == 2'd3);
 wire            wfsel_tri   = (wfsel == 2'd2);
 wire            wfsel_sq    = (wfsel == 2'd1);
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        wfsel <= i_W;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    wfsel <= i_W;
 end
 
 
@@ -258,8 +239,8 @@ end
 
 //test bit 1 latch
 reg             tst_bit1_latched;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) tst_bit1_latched <= i_TEST[1];
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    tst_bit1_latched <= i_TEST[1];
 end
 
 //phase accumulator
@@ -295,11 +276,9 @@ assign  phase_acc_fa = phase_acc_fa_a + phase_acc_fa_b + phase_acc_fa_cin;
 
 //noise input
 reg             noise_input_z, noise_stream;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        noise_input_z <= i_LFO_NOISE;
-        noise_stream <= lfo_clk_latched & noise_input_z; //de morgan
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    noise_input_z <= i_LFO_NOISE;
+    noise_stream <= lfo_clk_latched & noise_input_z; //de morgan
 end
 
 //phase accumulator input
@@ -318,10 +297,8 @@ end
 
 //for debug
 reg     [15:0]      phase_acc_debug;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        if(cycle_15_31) phase_acc_debug <= phase_acc;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    if(cycle_15_31) phase_acc_debug <= phase_acc;
 end
 
 
@@ -340,8 +317,8 @@ primitive_counter #(.WIDTH(4)) u_lfo_multiplier_bitselcntr (
 
 //this counter output value selects AMD/PMD bit
 reg     [2:0]   multiplier_bitsel;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) multiplier_bitsel <= multiplier_bitselcntr_value[2:0]; //store value at negative edge
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    multiplier_bitsel <= multiplier_bitselcntr_value[2:0]; //store value at negative edge
 end
 
 //timings/control
@@ -369,12 +346,10 @@ wire            multiplier_bitsel_7 = multiplier_bitsel == 3'd7;
 */
 
 reg             wf_tri_sign, wf_saw_sign;
-always @(posedge i_EMUCLK) begin //use posedge
-    if(!phi1pcen_n) begin
-        if(cycle_15_31 & multiplier_bitselcntr_cycle_0_8) begin
-            wf_tri_sign <= phase_acc[8];
-            wf_saw_sign <= phase_acc[7];
-        end
+always @(posedge i_EMUCLK) if(!phi1pcen_n) begin
+    if(cycle_15_31 & multiplier_bitselcntr_cycle_0_8) begin
+        wf_tri_sign <= phase_acc[8];
+        wf_saw_sign <= phase_acc[7];
     end
 end
 
@@ -386,10 +361,8 @@ end
 
 //amd/pmd select latch
 reg             a_np_sel_latched;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        a_np_sel_latched <= a_np_sel;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    a_np_sel_latched <= a_np_sel;
 end
 
 //base value stream, behavioral implementation
@@ -427,12 +400,10 @@ end
 
 //debug
 reg     [6:0]   base_value_am_debug, base_value_pm_debug;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        if(debug_cycle_07_23) begin
-            if(a_np_sel_latched) base_value_am_debug <= base_value_sr;
-            else base_value_pm_debug <= base_value_sr;
-        end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    if(debug_cycle_07_23) begin
+        if(a_np_sel_latched) base_value_am_debug <= base_value_sr;
+        else base_value_pm_debug <= base_value_sr;
     end
 end
 
@@ -477,8 +448,8 @@ end
 
 //AMD/PMD mux
 reg     [6:0]   ap_muxed;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) ap_muxed <= a_np_sel ? i_AMD : i_PMD;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    ap_muxed <= a_np_sel ? i_AMD : i_PMD;
 end
 
 //bit selector

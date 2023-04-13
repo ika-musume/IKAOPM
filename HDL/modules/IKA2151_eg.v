@@ -1,5 +1,4 @@
-module IKA2151_eg
-(
+module IKA2151_eg (
     //master clock
     input   wire            i_EMUCLK, //emulator master clock
 
@@ -57,10 +56,8 @@ wire            mrst_n = i_MRST_n;
 
 //additional cycle bits
 reg             cycle_01_17;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cycle_01_17 <= i_CYCLE_00_16;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cycle_01_17 <= i_CYCLE_00_16;
 end
 
 
@@ -72,16 +69,14 @@ end
 reg     [1:0]   samplecntr;
 wire            third_sample = samplecntr[1] | i_TEST[0];
 
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        if(!i_MRST_n) begin
-            samplecntr <= 2'd0;
-        end
-        else begin
-            if(i_CYCLE_31) begin
-                if(samplecntr == 2'd2) samplecntr <= 2'd0;
-                else samplecntr <= samplecntr + 2'd1;
-            end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    if(!i_MRST_n) begin
+        samplecntr <= 2'd0;
+    end
+    else begin
+        if(i_CYCLE_31) begin
+            if(samplecntr == 2'd2) samplecntr <= 2'd0;
+            else samplecntr <= samplecntr + 2'd1;
         end
     end
 end
@@ -115,51 +110,47 @@ reg     [15:0]  debug_timecntr;
 reg             onebit_det, mrst_dlyd;
 reg     [3:0]   conseczerobitcntr;
 
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        //adder
-        timecntr_adder <= mrst_n ? (((third_sample & i_CYCLE_01_TO_16) & (cycle_01_17 | timecntr_adder[1])) + timecntr_sr[0]) :
-                                   2'd0;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    //adder
+    timecntr_adder <= mrst_n ? (((third_sample & i_CYCLE_01_TO_16) & (cycle_01_17 | timecntr_adder[1])) + timecntr_sr[0]) :
+                                2'd0;
 
-        //sr
-        timecntr_sr[14] <= timecntr_adder[0];
-        timecntr_sr[13:0] <= timecntr_sr[14:1];
+    //sr
+    timecntr_sr[14] <= timecntr_adder[0];
+    timecntr_sr[13:0] <= timecntr_sr[14:1];
 
-        //consecutive zero bits counter
-        mrst_z <= ~mrst_n; //delay master reset, to synchronize the reset timing with timecntr_adder register
+    //consecutive zero bits counter
+    mrst_z <= ~mrst_n; //delay master reset, to synchronize the reset timing with timecntr_adder register
 
-        if(mrst_z | cycle_01_17) begin
-            onebit_det <= 1'b0;
-            conseczerobitcntr <= 4'd1; //start from 1
-        end
-        else begin
-            if(!onebit_det) begin
-                if(timecntr_adder[0]) begin
-                    onebit_det <= 1'b1;
-                    conseczerobitcntr <= conseczerobitcntr;
-                end
-                else begin
-                    onebit_det <= 1'b0;
-                    conseczerobitcntr <= (conseczerobitcntr == 4'd14) ? 4'd0 : conseczerobitcntr + 4'd1; //max 14
-                end
+    if(mrst_z | cycle_01_17) begin
+        onebit_det <= 1'b0;
+        conseczerobitcntr <= 4'd1; //start from 1
+    end
+    else begin
+        if(!onebit_det) begin
+            if(timecntr_adder[0]) begin
+                onebit_det <= 1'b1;
+                conseczerobitcntr <= conseczerobitcntr;
+            end
+            else begin
+                onebit_det <= 1'b0;
+                conseczerobitcntr <= (conseczerobitcntr == 4'd14) ? 4'd0 : conseczerobitcntr + 4'd1; //max 14
             end
         end
-
-        //timecounter parallel output
-        if(cycle_01_17) debug_timecntr <= {timecntr_adder[0], timecntr_sr};
     end
+
+    //timecounter parallel output
+    if(cycle_01_17) debug_timecntr <= {timecntr_adder[0], timecntr_sr};
 end
 
 reg     [1:0]   envcntr;
 reg     [3:0]   attenrate;
 
-always @(posedge i_EMUCLK) begin
-    if(!phi1pcen_n) begin //positive edge!!!!
-        if(third_sample & ~i_CYCLE_01_TO_16 & cycle_01_17) begin
-            envcntr <= timecntr_sr[2:1];
+always @(posedge i_EMUCLK) if(!phi1pcen_n) begin //positive edge!!!!
+    if(third_sample & ~i_CYCLE_01_TO_16 & cycle_01_17) begin
+        envcntr <= timecntr_sr[2:1];
 
-            attenrate <= conseczerobitcntr;
-        end
+        attenrate <= conseczerobitcntr;
     end
 end
 
@@ -190,17 +181,15 @@ wire            cyc9r_kon_current = cyc6r_cyc9r_kon_current_dlyline[3]; //curren
 wire            cyc9r_kon_detected = ~cyc6r_cyc9r_kon_previous[3] & cyc9r_kon_current; //prev=0, curr=1, new kon detected
 assign  o_PG_PHASE_RST = cyc9r_kon_detected;
 
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc6r_cyc9r_kon_current_dlyline[0] <= i_KON;
-        cyc6r_cyc9r_kon_current_dlyline[3:1] <= cyc6r_cyc9r_kon_current_dlyline[2:0];
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc6r_cyc9r_kon_current_dlyline[0] <= i_KON;
+    cyc6r_cyc9r_kon_current_dlyline[3:1] <= cyc6r_cyc9r_kon_current_dlyline[2:0];
 
-        cyc10r_cyc37r_kon_previous[0] <= cyc6r_cyc9r_kon_current_dlyline[3];
-        cyc10r_cyc37r_kon_previous[27:1] <= cyc10r_cyc37r_kon_previous[26:0];
+    cyc10r_cyc37r_kon_previous[0] <= cyc6r_cyc9r_kon_current_dlyline[3];
+    cyc10r_cyc37r_kon_previous[27:1] <= cyc10r_cyc37r_kon_previous[26:0];
 
-        cyc6r_cyc9r_kon_previous[0] <= cyc10r_cyc37r_kon_previous[27];
-        cyc6r_cyc9r_kon_previous[3:1] <= cyc6r_cyc9r_kon_previous[2:0];
-    end
+    cyc6r_cyc9r_kon_previous[0] <= cyc10r_cyc37r_kon_previous[27];
+    cyc6r_cyc9r_kon_previous[3:1] <= cyc6r_cyc9r_kon_previous[2:0];
 end
 
 
@@ -249,14 +238,12 @@ wire    [1:0]   cyc9r_envstate_previous = cyc6r_cyc9r_envstate_previous[3];
 
 
 //sr4
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        //if kon detected, make previous envstate ATTACK
-        cyc6r_cyc9r_envstate_previous[0] <= (~cyc10r_cyc37r_kon_previous[27] & i_KON) ? ATTACK : cyc37r_envstate_previous;
-        cyc6r_cyc9r_envstate_previous[1] <= cyc6r_cyc9r_envstate_previous[0];
-        cyc6r_cyc9r_envstate_previous[2] <= cyc6r_cyc9r_envstate_previous[1];
-        cyc6r_cyc9r_envstate_previous[3] <= cyc6r_cyc9r_envstate_previous[2];
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    //if kon detected, make previous envstate ATTACK
+    cyc6r_cyc9r_envstate_previous[0] <= (~cyc10r_cyc37r_kon_previous[27] & i_KON) ? ATTACK : cyc37r_envstate_previous;
+    cyc6r_cyc9r_envstate_previous[1] <= cyc6r_cyc9r_envstate_previous[0];
+    cyc6r_cyc9r_envstate_previous[2] <= cyc6r_cyc9r_envstate_previous[1];
+    cyc6r_cyc9r_envstate_previous[3] <= cyc6r_cyc9r_envstate_previous[2];
 end
 
 //sr27 first stage
@@ -266,62 +253,60 @@ primitive_sr #(.WIDTH(2), .LENGTH(27), .TAP(27)) u_cyc11r_cyc37r_envstate_sr
 
 
 //state machine
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        if(!mrst_n) begin
-            cyc10r_envstate_current <= RELEASE;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    if(!mrst_n) begin
+        cyc10r_envstate_current <= RELEASE;
+    end
+    else begin
+        if(cyc9r_kon_detected) begin
+            cyc10r_envstate_current <= ATTACK; //start attack
         end
         else begin
-            if(cyc9r_kon_detected) begin
-                cyc10r_envstate_current <= ATTACK; //start attack
+            if(cyc9r_kon_current) begin
+                case(cyc9r_envstate_previous)
+                    //current state 0: attack
+                    2'd0: begin
+                        if(cyc10c_prevatten_min) begin
+                            cyc10r_envstate_current <= FIRST_DECAY; //start first decay
+                        end
+                        else begin
+                            cyc10r_envstate_current <= ATTACK; //hold state
+                        end
+                    end
+
+                    //current state 1: first decay
+                    2'd1: begin
+                        if(cyc10c_prevatten_max) begin
+                            cyc10r_envstate_current <= RELEASE; //start release
+                        end
+                        else begin
+                            if(cyc10c_first_decay_end) begin
+                                cyc10r_envstate_current <= SECOND_DECAY; //start second decay
+                            end
+                            else begin
+                                cyc10r_envstate_current <= FIRST_DECAY; //hold state
+                            end
+                        end
+                    end 
+
+                    //current state 2: second decay
+                    2'd2: begin
+                        if(cyc10c_prevatten_max) begin
+                            cyc10r_envstate_current <= RELEASE; //start release
+                        end
+                        else begin
+                            cyc10r_envstate_current <= SECOND_DECAY; //hold state
+                        end
+                    end
+
+                    //current state 3: release
+                    2'd3: begin
+                        cyc10r_envstate_current <= RELEASE; //hold state
+                    end
+                endcase                    
             end
             else begin
-                if(cyc9r_kon_current) begin
-                    case(cyc9r_envstate_previous)
-                        //current state 0: attack
-                        2'd0: begin
-                            if(cyc10c_prevatten_min) begin
-                                cyc10r_envstate_current <= FIRST_DECAY; //start first decay
-                            end
-                            else begin
-                                cyc10r_envstate_current <= ATTACK; //hold state
-                            end
-                        end
-
-                        //current state 1: first decay
-                        2'd1: begin
-                            if(cyc10c_prevatten_max) begin
-                                cyc10r_envstate_current <= RELEASE; //start release
-                            end
-                            else begin
-                                if(cyc10c_first_decay_end) begin
-                                    cyc10r_envstate_current <= SECOND_DECAY; //start second decay
-                                end
-                                else begin
-                                    cyc10r_envstate_current <= FIRST_DECAY; //hold state
-                                end
-                            end
-                        end 
-
-                        //current state 2: second decay
-                        2'd2: begin
-                            if(cyc10c_prevatten_max) begin
-                                cyc10r_envstate_current <= RELEASE; //start release
-                            end
-                            else begin
-                                cyc10r_envstate_current <= SECOND_DECAY; //hold state
-                            end
-                        end
-
-                        //current state 3: release
-                        2'd3: begin
-                            cyc10r_envstate_current <= RELEASE; //hold state
-                        end
-                    endcase                    
-                end
-                else begin
-                    cyc10r_envstate_current <= RELEASE; //key off -> start release
-                end
+                cyc10r_envstate_current <= RELEASE; //key off -> start release
             end
         end
     end
@@ -364,19 +349,17 @@ reg             cyc8r_egparam_zero;
 reg     [3:0]   cyc8r_d1l;
 reg     [4:0]   cyc8r_keyscale;
 
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc8r_egparam <= cyc8c_egparam;
-        cyc8r_egparam_zero <= cyc8c_egparam == 5'd0;
-        cyc8r_d1l <= i_D1L;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc8r_egparam <= cyc8c_egparam;
+    cyc8r_egparam_zero <= cyc8c_egparam == 5'd0;
+    cyc8r_d1l <= i_D1L;
 
-        case(i_KS)
-            2'd0: cyc8r_keyscale <= (cyc8c_egparam == 5'd0) ? 5'd0 : {3'b000, i_EG_PDELTA_SHIFT_AMOUNT[4:3]};
-            2'd1: cyc8r_keyscale <= {2'b00, i_EG_PDELTA_SHIFT_AMOUNT[4:2]};
-            2'd2: cyc8r_keyscale <= {1'b0, i_EG_PDELTA_SHIFT_AMOUNT[4:1]};
-            2'd3: cyc8r_keyscale <= i_EG_PDELTA_SHIFT_AMOUNT;
-        endcase
-    end
+    case(i_KS)
+        2'd0: cyc8r_keyscale <= (cyc8c_egparam == 5'd0) ? 5'd0 : {3'b000, i_EG_PDELTA_SHIFT_AMOUNT[4:3]};
+        2'd1: cyc8r_keyscale <= {2'b00, i_EG_PDELTA_SHIFT_AMOUNT[4:2]};
+        2'd2: cyc8r_keyscale <= {1'b0, i_EG_PDELTA_SHIFT_AMOUNT[4:1]};
+        2'd3: cyc8r_keyscale <= i_EG_PDELTA_SHIFT_AMOUNT;
+    endcase
 end
 
 
@@ -410,19 +393,17 @@ reg     [3:0]   cyc9r_attenrate;
 
 reg     [9:0]   cyc9r_attenlevel_previous;
 
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc9r_egparam_zero <= cyc8r_egparam_zero;
-        cyc9r_egparam_scaled <= cyc9c_egparam_scaled_adder[6] ? 6'd63 : cyc9c_egparam_scaled_adder[5:0]; //saturation
-        cyc9r_egparam_scaled_fullrate <= cyc9c_egparam_scaled_adder[5:1] == 5'b11111; //eg parameter max
-        cyc9r_d1l <= cyc8r_d1l;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc9r_egparam_zero <= cyc8r_egparam_zero;
+    cyc9r_egparam_scaled <= cyc9c_egparam_scaled_adder[6] ? 6'd63 : cyc9c_egparam_scaled_adder[5:0]; //saturation
+    cyc9r_egparam_scaled_fullrate <= cyc9c_egparam_scaled_adder[5:1] == 5'b11111; //eg parameter max
+    cyc9r_d1l <= cyc8r_d1l;
 
-        cyc9r_third_sample <= third_sample;
-        cyc9r_envcntr <= envcntr;
-        cyc9r_attenrate <= attenrate;
+    cyc9r_third_sample <= third_sample;
+    cyc9r_envcntr <= envcntr;
+    cyc9r_attenrate <= attenrate;
 
-        cyc9r_attenlevel_previous <= cyc40r_attenlevel_previous;
-    end
+    cyc9r_attenlevel_previous <= cyc40r_attenlevel_previous;
 end
 
 
@@ -549,45 +530,43 @@ assign  cyc10c_prevatten_max = cyc9r_attenlevel_previous >= 10'd1008; //==? 10'b
 
 //envelope delta weight
 reg     [3:0]   cyc10r_envdeltaweight; //lv4, lv3, lv2, lv1
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        //only works every third sample
-        if(cyc9r_third_sample) begin
-            //if egparam_scaled == 1111XX
-            if     (cyc9r_egparam_scaled[5:2] == 4'b1111) cyc10r_envdeltaweight <= cyc10c_envdeltaweight_intensity ? 4'b1000 : 4'b1000;
-            
-            //if egparam_scaled == 1110XX
-            else if(cyc9r_egparam_scaled[5:2] == 4'b1110) cyc10r_envdeltaweight <= cyc10c_envdeltaweight_intensity ? 4'b1000 : 4'b0100;
-            
-            //if egparam_scaled == 1101XX
-            else if(cyc9r_egparam_scaled[5:2] == 4'b1101) cyc10r_envdeltaweight <= cyc10c_envdeltaweight_intensity ? 4'b0100 : 4'b0010;
-            
-            //if egparam_scaled == 1100XX
-            else if(cyc9r_egparam_scaled[5:2] == 4'b1100) cyc10r_envdeltaweight <= cyc10c_envdeltaweight_intensity ? 4'b0010 : 4'b0001;
-            
-            //else, not 11XXXX
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    //only works every third sample
+    if(cyc9r_third_sample) begin
+        //if egparam_scaled == 1111XX
+        if     (cyc9r_egparam_scaled[5:2] == 4'b1111) cyc10r_envdeltaweight <= cyc10c_envdeltaweight_intensity ? 4'b1000 : 4'b1000;
+        
+        //if egparam_scaled == 1110XX
+        else if(cyc9r_egparam_scaled[5:2] == 4'b1110) cyc10r_envdeltaweight <= cyc10c_envdeltaweight_intensity ? 4'b1000 : 4'b0100;
+        
+        //if egparam_scaled == 1101XX
+        else if(cyc9r_egparam_scaled[5:2] == 4'b1101) cyc10r_envdeltaweight <= cyc10c_envdeltaweight_intensity ? 4'b0100 : 4'b0010;
+        
+        //if egparam_scaled == 1100XX
+        else if(cyc9r_egparam_scaled[5:2] == 4'b1100) cyc10r_envdeltaweight <= cyc10c_envdeltaweight_intensity ? 4'b0010 : 4'b0001;
+        
+        //else, not 11XXXX
+        else begin
+            if(cyc9r_egparam_zero) begin
+                cyc10r_envdeltaweight <= 4'b0000;
+            end
             else begin
-                if(cyc9r_egparam_zero) begin
-                    cyc10r_envdeltaweight <= 4'b0000;
+                if(cyc9r_egparam_scaled != 6'd0 & 
+                    |{cyc10c_egparam_rateapplied == 6'd59, cyc10c_egparam_rateapplied == 6'd57,
+                        cyc10c_egparam_rateapplied == 6'd55, cyc10c_egparam_rateapplied == 6'd54,
+                        cyc10c_egparam_rateapplied == 6'd51, cyc10c_egparam_rateapplied == 6'd50,
+                        cyc10c_egparam_rateapplied == 6'd49, cyc10c_egparam_rateapplied == 6'd48}) begin
+                    
+                    cyc10r_envdeltaweight <= 4'b0001;
                 end
                 else begin
-                    if(cyc9r_egparam_scaled != 6'd0 & 
-                       |{cyc10c_egparam_rateapplied == 6'd59, cyc10c_egparam_rateapplied == 6'd57,
-                         cyc10c_egparam_rateapplied == 6'd55, cyc10c_egparam_rateapplied == 6'd54,
-                         cyc10c_egparam_rateapplied == 6'd51, cyc10c_egparam_rateapplied == 6'd50,
-                         cyc10c_egparam_rateapplied == 6'd49, cyc10c_egparam_rateapplied == 6'd48}) begin
-                        
-                        cyc10r_envdeltaweight <= 4'b0001;
-                    end
-                    else begin
-                        cyc10r_envdeltaweight <= 4'b0000;
-                    end
+                    cyc10r_envdeltaweight <= 4'b0000;
                 end
             end
         end
-        else begin
-            cyc10r_envdeltaweight <= 4'b0000;
-        end
+    end
+    else begin
+        cyc10r_envdeltaweight <= 4'b0000;
     end
 end
 
@@ -596,40 +575,36 @@ reg             cyc10r_atten_inc; //attenuation level decrement mode(for decay a
 reg             cyc10r_atten_dec; //attenuation level increment mode(for attack)
 reg             cyc10r_fix_prevatten_max; //force previous attenuation level max(quiet)
 reg             cyc10r_enable_prevatten; //previous attenuation level enable(disable = 0)
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        if(!mrst_n) begin
-            cyc10r_atten_inc <= 1'b0;
-            cyc10r_atten_dec <= 1'b0;
-        end
-        else begin
-            cyc10r_atten_inc     <= ( cyc9r_envstate_previous == FIRST_DECAY &
-                                    ~cyc9r_kon_detected &
-                                    ~cyc10c_first_decay_end &
-                                    ~cyc10c_prevatten_max ) |
-                                    ((cyc9r_envstate_previous == SECOND_DECAY | cyc9r_envstate_previous == RELEASE) &
-                                    ~cyc9r_kon_detected &
-                                    ~cyc10c_prevatten_max );
-
-            cyc10r_atten_dec      <= ( cyc9r_envstate_previous == ATTACK &
-                                    cyc9r_kon_current &
-                                    ~cyc10c_prevatten_min &
-                                    ~cyc9r_egparam_scaled_fullrate );
-        end
-
-        cyc10r_fix_prevatten_max <= ( cyc9r_envstate_previous != ATTACK ) & ~cyc9r_kon_detected & cyc10c_prevatten_max;
-
-        cyc10r_enable_prevatten  <= (~cyc9r_kon_detected &
-                                      cyc9r_egparam_scaled_fullrate) |
-                                     ~cyc9r_egparam_scaled_fullrate;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    if(!mrst_n) begin
+        cyc10r_atten_inc <= 1'b0;
+        cyc10r_atten_dec <= 1'b0;
     end
+    else begin
+        cyc10r_atten_inc     <= ( cyc9r_envstate_previous == FIRST_DECAY &
+                                ~cyc9r_kon_detected &
+                                ~cyc10c_first_decay_end &
+                                ~cyc10c_prevatten_max ) |
+                                ((cyc9r_envstate_previous == SECOND_DECAY | cyc9r_envstate_previous == RELEASE) &
+                                ~cyc9r_kon_detected &
+                                ~cyc10c_prevatten_max );
+
+        cyc10r_atten_dec      <= ( cyc9r_envstate_previous == ATTACK &
+                                cyc9r_kon_current &
+                                ~cyc10c_prevatten_min &
+                                ~cyc9r_egparam_scaled_fullrate );
+    end
+
+    cyc10r_fix_prevatten_max <= ( cyc9r_envstate_previous != ATTACK ) & ~cyc9r_kon_detected & cyc10c_prevatten_max;
+
+    cyc10r_enable_prevatten  <= (~cyc9r_kon_detected &
+                                    cyc9r_egparam_scaled_fullrate) |
+                                    ~cyc9r_egparam_scaled_fullrate;
 end
 
 reg     [9:0]   cyc10r_attenlevel_previous;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc10r_attenlevel_previous <= cyc9r_attenlevel_previous;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc10r_attenlevel_previous <= cyc9r_attenlevel_previous;
 end
 
 
@@ -660,37 +635,34 @@ end
 
 reg     [9:0]   cyc11r_attenlevel_previous_gated; //loud: 10'd0, quiet: 10'd1023
 reg     [9:0]   cyc11r_attenlevel_weighted_delta;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        if(cyc10r_fix_prevatten_max | ~mrst_n) cyc11r_attenlevel_previous_gated <= 10'd1023;
-        else begin
-            if(cyc10r_enable_prevatten) cyc11r_attenlevel_previous_gated <= cyc10r_attenlevel_previous;
-            else                        cyc11r_attenlevel_previous_gated <= 10'd0;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    if(cyc10r_fix_prevatten_max | ~mrst_n) cyc11r_attenlevel_previous_gated <= 10'd1023;
+    else begin
+        if(cyc10r_enable_prevatten) cyc11r_attenlevel_previous_gated <= cyc10r_attenlevel_previous;
+        else                        cyc11r_attenlevel_previous_gated <= 10'd0;
+    end
+
+    case({cyc10r_atten_dec, cyc10r_atten_inc})
+        //off, no change
+        2'b00: cyc11r_attenlevel_weighted_delta <= 10'd0;
+
+        //attenuation level increment: quieter
+        2'b01: cyc11r_attenlevel_weighted_delta <= {6'b000000, cyc10r_envdeltaweight};
+
+        //attenuation level decrement: louder
+        2'b10: begin
+            case(cyc10r_envdeltaweight)
+                4'b0001: cyc11r_attenlevel_weighted_delta <= {4'b1111, ~cyc10r_attenlevel_previous[9:5], ~cyc10r_attenlevel_previous[3]};
+                4'b0010: cyc11r_attenlevel_weighted_delta <= {3'b111, ~cyc10r_attenlevel_previous[9:5], ~cyc10r_attenlevel_previous[3], ~cyc10r_attenlevel_previous[1]};
+                4'b0100: cyc11r_attenlevel_weighted_delta <= {2'b11, ~cyc10r_attenlevel_previous[9:5], ~cyc10r_attenlevel_previous[3], {2{~cyc10r_attenlevel_previous[2]}}};
+                4'b1000: cyc11r_attenlevel_weighted_delta <= {1'b1, ~cyc10r_attenlevel_previous[9:5], {4{~cyc10r_attenlevel_previous[4]}}};
+                default: cyc11r_attenlevel_weighted_delta <= 10'd0;
+            endcase
         end
 
-        case({cyc10r_atten_dec, cyc10r_atten_inc})
-            //off, no change
-            2'b00: cyc11r_attenlevel_weighted_delta <= 10'd0;
-
-            //attenuation level increment: quieter
-            2'b01: cyc11r_attenlevel_weighted_delta <= {6'b000000, cyc10r_envdeltaweight};
-
-            //attenuation level decrement: louder
-            2'b10: begin
-                case(cyc10r_envdeltaweight)
-                    4'b0001: cyc11r_attenlevel_weighted_delta <= {4'b1111, ~cyc10r_attenlevel_previous[9:5], ~cyc10r_attenlevel_previous[3]};
-                    4'b0010: cyc11r_attenlevel_weighted_delta <= {3'b111, ~cyc10r_attenlevel_previous[9:5], ~cyc10r_attenlevel_previous[3], ~cyc10r_attenlevel_previous[1]};
-                    4'b0100: cyc11r_attenlevel_weighted_delta <= {2'b11, ~cyc10r_attenlevel_previous[9:5], ~cyc10r_attenlevel_previous[3], {2{~cyc10r_attenlevel_previous[2]}}};
-                    4'b1000: cyc11r_attenlevel_weighted_delta <= {1'b1, ~cyc10r_attenlevel_previous[9:5], {4{~cyc10r_attenlevel_previous[4]}}};
-                    default: cyc11r_attenlevel_weighted_delta <= 10'd0;
-                endcase
-            end
-
-            //invalid, will not happen
-            2'b11: cyc11r_attenlevel_weighted_delta <= 10'd1023;
-        endcase
-
-    end
+        //invalid, will not happen
+        2'b11: cyc11r_attenlevel_weighted_delta <= 10'd1023;
+    endcase
 end
 
 
@@ -700,10 +672,8 @@ end
 //
 
 reg     [9:0]   cyc12r_attenlevel_current;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc12r_attenlevel_current <= cyc11r_attenlevel_previous_gated + cyc11r_attenlevel_weighted_delta; //discard carry
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc12r_attenlevel_current <= cyc11r_attenlevel_previous_gated + cyc11r_attenlevel_weighted_delta; //discard carry
 end
 
 
@@ -733,18 +703,16 @@ primitive_sr #(.WIDTH(10), .LENGTH(28), .TAP(28)) u_cyc13r_cyc40r_phase_sr
 reg     [9:0]   cyc40r_lfa_shifted;
 reg             cyc40r_force_no_atten;
 reg     [6:0]   cyc40r_tl;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        case(i_AMS)
-            2'd0: cyc40r_lfa_shifted <= {10'd0};
-            2'd1: cyc40r_lfa_shifted <= {2'b00, i_LFA};
-            2'd2: cyc40r_lfa_shifted <= {1'b0, i_LFA, 1'b0};
-            2'd3: cyc40r_lfa_shifted <= {i_LFA, 2'b00};
-        endcase
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    case(i_AMS)
+        2'd0: cyc40r_lfa_shifted <= {10'd0};
+        2'd1: cyc40r_lfa_shifted <= {2'b00, i_LFA};
+        2'd2: cyc40r_lfa_shifted <= {1'b0, i_LFA, 1'b0};
+        2'd3: cyc40r_lfa_shifted <= {i_LFA, 2'b00};
+    endcase
 
-        cyc40r_force_no_atten <= i_TEST[5];
-        cyc40r_tl <= i_TL;
-    end
+    cyc40r_force_no_atten <= i_TEST[5];
+    cyc40r_tl <= i_TL;
 end
 
 
@@ -768,13 +736,11 @@ wire    [10:0]  cyc41c_attenlevel_mod_adder = cyc40r_attenlevel_previous + cyc40
 reg     [9:0]   cyc41r_attenlevel_mod;
 reg             cyc41r_force_no_atten;
 reg     [6:0]   cyc41r_tl;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc41r_attenlevel_mod <= cyc41c_attenlevel_mod_adder[10] ? 10'd1023 : cyc41c_attenlevel_mod_adder[9:0]; //attenlevel saturation
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc41r_attenlevel_mod <= cyc41c_attenlevel_mod_adder[10] ? 10'd1023 : cyc41c_attenlevel_mod_adder[9:0]; //attenlevel saturation
 
-        cyc41r_force_no_atten <= cyc40r_force_no_atten;
-        cyc41r_tl <= cyc40r_tl;
-    end
+    cyc41r_force_no_atten <= cyc40r_force_no_atten;
+    cyc41r_tl <= cyc40r_tl;
 end
 
 
@@ -797,12 +763,10 @@ wire    [10:0]  cyc42c_attenlevel_tl_adder = cyc41r_attenlevel_mod + {cyc41r_tl,
 
 reg     [9:0]   cyc42r_attenlevel_tl;
 reg             cyc42r_force_no_atten;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc42r_attenlevel_tl <= cyc42c_attenlevel_tl_adder[10] ? 10'd1023 : cyc42c_attenlevel_tl_adder[9:0]; //attenlevel saturation
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc42r_attenlevel_tl <= cyc42c_attenlevel_tl_adder[10] ? 10'd1023 : cyc42c_attenlevel_tl_adder[9:0]; //attenlevel saturation
 
-        cyc42r_force_no_atten <= cyc41r_force_no_atten;
-    end
+    cyc42r_force_no_atten <= cyc41r_force_no_atten;
 end
 
 
@@ -813,10 +777,8 @@ end
 ////
 
 reg     [9:0]   cyc43r_attenlevel_final;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc43r_attenlevel_final <= cyc42r_force_no_atten ? 10'd0 : cyc42r_attenlevel_tl; //force attenlevel min(loud)
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc43r_attenlevel_final <= cyc42r_force_no_atten ? 10'd0 : cyc42r_attenlevel_tl; //force attenlevel min(loud)
 end
 
 //final value
@@ -832,10 +794,11 @@ reg     [9:0]   noise_attenlevel;
 assign  o_NOISE_ATTENLEVEL = noise_attenlevel[9];
 assign  o_REG_ATTENLEVEL_CH8_C2 = noise_attenlevel[9];
 
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        if(i_CYCLE_03) noise_attenlevel <= cyc43r_attenlevel_final;
-        else noise_attenlevel[9:1] <= noise_attenlevel[8:0];
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    if(i_CYCLE_03) noise_attenlevel <= cyc43r_attenlevel_final;
+    else begin 
+        noise_attenlevel[9:1] <= noise_attenlevel[8:0];
+        noise_attenlevel[0] <= 1'b1;
     end
 end
 
@@ -849,23 +812,19 @@ end
 
 reg     [4:0]   sim_attenlevel_static_storage_addr_cntr = 5'd0;
 reg     [4:0]   sim_envstate_static_storage_addr_cntr = 5'd0;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        if(i_CYCLE_03) sim_attenlevel_static_storage_addr_cntr <= 5'd0;
-        else sim_attenlevel_static_storage_addr_cntr <= sim_attenlevel_static_storage_addr_cntr == 5'd31 ? 5'd0 : sim_attenlevel_static_storage_addr_cntr + 5'd1;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    if(i_CYCLE_03) sim_attenlevel_static_storage_addr_cntr <= 5'd0;
+    else sim_attenlevel_static_storage_addr_cntr <= sim_attenlevel_static_storage_addr_cntr == 5'd31 ? 5'd0 : sim_attenlevel_static_storage_addr_cntr + 5'd1;
 
-        if(i_CYCLE_03) sim_envstate_static_storage_addr_cntr <= 5'd1;
-        else sim_envstate_static_storage_addr_cntr <= sim_envstate_static_storage_addr_cntr == 5'd31 ? 5'd0 : sim_envstate_static_storage_addr_cntr + 5'd1;
-    end
+    if(i_CYCLE_03) sim_envstate_static_storage_addr_cntr <= 5'd1;
+    else sim_envstate_static_storage_addr_cntr <= sim_envstate_static_storage_addr_cntr == 5'd31 ? 5'd0 : sim_envstate_static_storage_addr_cntr + 5'd1;
 end
 
 reg     [9:0]  sim_attenlevel_static_storage[0:31];
 reg     [1:0]  sim_envstate_static_storage[0:31];
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        sim_attenlevel_static_storage[sim_attenlevel_static_storage_addr_cntr] <= mrst_n ? ~cyc43r_attenlevel_final : 10'd0;
-        sim_envstate_static_storage[sim_envstate_static_storage_addr_cntr] <= mrst_n ? cyc10r_envstate_current : 2'd3;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    sim_attenlevel_static_storage[sim_attenlevel_static_storage_addr_cntr] <= mrst_n ? ~cyc43r_attenlevel_final : 10'd0;
+    sim_envstate_static_storage[sim_envstate_static_storage_addr_cntr] <= mrst_n ? cyc10r_envstate_current : 2'd3;
 end
 
 `endif
