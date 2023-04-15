@@ -148,8 +148,8 @@ end
 //
 
 //sh1/sh2
-wire            sh1 = timinggen_cntr[4:3] == 2'b11; //11XXX
-wire            sh2 = timinggen_cntr[4:3] == 2'b01; //01XXX
+wire            sh1 = timinggen_cntr[4:3] == 2'b01; //01XXX
+wire            sh2 = timinggen_cntr[4:3] == 2'b11; //11XXX
 
 //REG
 always @(posedge i_EMUCLK) begin

@@ -27,9 +27,9 @@ module IKA2151_reg #(parameter USE_BRAM_FOR_D32REG = 0) (
     output  wire            o_CTRL_OE_n,
 
     //timer input
+    input   wire            i_TIMERA_OVFL,
     input   wire            i_TIMERA_FLAG,
     input   wire            i_TIMERB_FLAG,
-    input   wire            i_TIMERA_OVFL,
 
     //register output
     output  reg     [7:0]   o_TEST,     //0x01      TEST register

@@ -25,6 +25,9 @@ module IKA2151 (
     //ct
     output  wire    [1:0]   o_CT,
 
+    //interrupt
+    output  wire            o_IRQ_n,
+
     //sh
     output  wire            o_SH1,
     output  wire            o_SH2
@@ -157,9 +160,9 @@ IKA2151_reg #(
 
     .o_CTRL_OE_n                (o_CTRL_OE_n                ),
 
+    .i_TIMERA_OVFL              (timera_ovfl                ),
     .i_TIMERA_FLAG              (timera_flag                ),
     .i_TIMERB_FLAG              (timerb_flag                ),
-    .i_TIMERA_OVFL              (timera_ovfl                ),
 
     .o_TEST                     (test                       ),
 
@@ -338,11 +341,51 @@ IKA2151_op OP (
 
     .i_ALG                      (alg                        ),
     .i_FL                       (3'b100                     ),
+    .i_TEST                     (test                       ),
 
-    .o_ACC_OPOUT                (                           ),
-    .o_ACC_OPADD                (                           ),
+    .o_ACC_OPDATA               (                           ),
+    .o_ACC_SNDADD               (                           ),
     .i_OP_ORIGINAL_PHASE        (original_phase             ),
     .i_OP_ATTENLEVEL            (op_attenlevel              )
 );
 
-endmodule
+
+IKA2151_timer TIMER (
+    .i_EMUCLK                   (i_EMUCLK                   ),
+
+    .i_MRST_n                   (mrst_n                     ),
+    
+    .i_phi1_PCEN_n              (phi1pcen_n                 ),
+    .i_phi1_NCEN_n              (phi1ncen_n                 ),
+
+    .i_CYCLE_31                 (cycle_31                   ),
+
+    .i_CLKA1                    (clka1                      ),
+    .i_CLKA2                    (clka2                      ),
+    .i_CLKB                     (clkb                       ),
+    .i_TIMERA_RUN               (timerctrl[0]               ),
+    .i_TIMERB_RUN               (timerctrl[1]               ),
+    .i_TIMERA_IRQ_EN            (timerctrl[2]               ),
+    .i_TIMERB_IRQ_EN            (timerctrl[3]               ),
+    .i_TIMERA_FRST              (timerctrl[4]               ),
+    .i_TIMERB_FRST              (timerctrl[5]               ),
+    .i_TEST                     (test                       ),
+
+    .o_TIMERA_OVFL              (timera_ovfl                ),
+    .o_TIMERA_FLAG              (timera_flag                ),
+    .o_TIMERB_FLAG              (timerb_flag                ),
+    .o_IRQ_n                    (o_IRQ_n                    )
+);
+
+
+
+
+
+
+
+
+
+
+
+
+endmodule 

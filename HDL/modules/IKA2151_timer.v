@@ -16,12 +16,12 @@ module IKA2151_timer (
     input   wire    [7:0]   i_CLKA1,
     input   wire    [1:0]   i_CLKA2,
     input   wire    [7:0]   i_CLKB,
-    input   wire            i_TIMERA_FRST,
-    input   wire            i_TIMERB_FRST,
     input   wire            i_TIMERA_RUN,
     input   wire            i_TIMERB_RUN,
     input   wire            i_TIMERA_IRQ_EN,
     input   wire            i_TIMERB_IRQ_EN,
+    input   wire            i_TIMERA_FRST,
+    input   wire            i_TIMERB_FRST,
     input   wire    [7:0]   i_TEST, //test register
 
     //timer output

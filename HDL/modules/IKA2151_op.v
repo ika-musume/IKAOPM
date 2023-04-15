@@ -16,10 +16,11 @@ module IKA2151_op (
 
     input   wire    [2:0]   i_ALG,
     input   wire    [2:0]   i_FL,
+    input   wire    [7:0]   i_TEST, //test register
     
 
-    output  wire    [13:0]  o_ACC_OPOUT,
-    output  wire            o_ACC_OPADD,
+    output  wire    [13:0]  o_ACC_OPDATA,
+    output  wire            o_ACC_SNDADD,
     input   wire    [9:0]   i_OP_ORIGINAL_PHASE,
     input   wire    [9:0]   i_OP_ATTENLEVEL
 );
@@ -248,7 +249,7 @@ always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     cyc47r_level_fp_mant <= cyc47c_exprom_addend0 + cyc47c_exprom_addend1; //discard carry
     cyc47r_level_fp_exp <= cyc46r_level_fp_exp;
     cyc47r_level_fp_sign <= cyc46r_level_fp_sign;
-    cyc47r_level_negate <= 1'b0;
+    cyc47r_level_negate <= i_TEST[4];
 end
 
 
@@ -364,6 +365,23 @@ end
 ////
 
 //
+//  combinational part
+//
+
+assign  o_ACC_OPDATA = cyc52r_level_signed; //OP data output
+reg             cyc53c_accumulation_en;
+assign  o_ACC_SNDADD = cyc53c_accumulation_en;
+always @(*) begin
+    case(cyc52r_algst)
+        2'd0: cyc53c_accumulation_en <= cyc52r_algtype == 3'd7; //Add M1?
+        2'd1: cyc53c_accumulation_en <= cyc52r_algtype == 3'd7 || cyc52r_algtype == 3'd6 || cyc52r_algtype == 3'd5; //Add M2?
+        2'd2: cyc53c_accumulation_en <= cyc52r_algtype == 3'd7 || cyc52r_algtype == 3'd6 || cyc52r_algtype == 3'd5 || cyc52r_algtype == 3'd4; //Add C1?
+        2'd3: cyc53c_accumulation_en <= 1'b1; //Add C2?
+    endcase
+end
+
+
+//
 //  register part
 //
 
@@ -371,7 +389,6 @@ end
 reg     [1:0]   cyc53r_algst;
 reg     [2:0]   cyc53r_algtype;
 reg     [13:0]  cyc53r_OP_current;
-assign  o_ACC_OPOUT = cyc53r_OP_current; //OP data output
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     cyc53r_algst <= cyc52r_algst;
     cyc53r_algtype <=cyc52r_algtype;
@@ -409,20 +426,12 @@ primitive_sr #(.WIDTH(14), .LENGTH(8), .TAP(8)) u_cyc46r_cyc53r_M1_zz
 primitive_sr #(.WIDTH(14), .LENGTH(8), .TAP(8)) u_cyc46r_cyc53r_C1_z
 (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(cyc46c_C1_z_reg_in), .o_Q_TAP(), .o_Q_LAST(cyc53r_C1_z_reg_out));
 
-
 //misc control bits
-reg             cyc53r_self_fdbk_en, cyc53r_accumulation_en;
-assign  o_ACC_OPADD = cyc53r_accumulation_en;
+reg             cyc53r_self_fdbk_en;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     cyc53r_self_fdbk_en <= cyc52r_algst == 2'd2;
-    
-    case(cyc52r_algst)
-        2'd0: cyc53r_accumulation_en <= cyc52r_algtype == 3'd7; //Add M1?
-        2'd1: cyc53r_accumulation_en <= cyc52r_algtype == 3'd7 || cyc52r_algtype == 3'd6 || cyc52r_algtype == 3'd5; //Add M2?
-        2'd2: cyc53r_accumulation_en <= cyc52r_algtype == 3'd7 || cyc52r_algtype == 3'd6 || cyc52r_algtype == 3'd5 || cyc52r_algtype == 3'd4; //Add C1?
-        2'd3: cyc53r_accumulation_en <= 1'b1; //Add C2?
-    endcase
 end
+
 
 
 
