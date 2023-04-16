@@ -30,6 +30,16 @@ module IKA2151_acc (
 
 
 ///////////////////////////////////////////////////////////
+//////  Clock and reset
+////
+
+wire            phi1pcen_n = i_phi1_PCEN_n;
+wire            phi1ncen_n = i_phi1_NCEN_n;
+wire            mrst_n = i_MRST_n;
+
+
+
+///////////////////////////////////////////////////////////
 //////  Cycle number
 ////
 
@@ -86,7 +96,7 @@ end
 */
 
 reg     [15:0]  mcyc14_r_piso, mcyc30_l_piso;
-reg     [2:0]   mcyc14_r_saturation_ctrl, mcyc14_l_saturation_ctrl;
+reg     [2:0]   mcyc14_r_saturation_ctrl, mcyc30_l_saturation_ctrl;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     if(cycle_13) begin
         mcyc14_r_piso <= {~r_accumulator[17], r_accumulator[14:0]}; //FLIP THE SIGN BIT!!
@@ -107,7 +117,7 @@ end
 
 reg             mcyc15_r_stream, mcyc31_l_stream;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
-    case(r_saturation_ctrl)
+    case(mcyc14_r_saturation_ctrl)
         3'b000: mcyc15_r_stream <= mcyc14_r_piso[0];
         3'b001: mcyc15_r_stream <= 1'b1; //saturated to positive maximum
         3'b010: mcyc15_r_stream <= 1'b1;
@@ -118,7 +128,16 @@ always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
         3'b111: mcyc15_r_stream <= mcyc14_r_piso[0];
     endcase
 
-    if(i_CYCLE_29) {l_saturation_ctrl, l_piso} <= l_accumulator;
+    case(mcyc30_l_saturation_ctrl)
+        3'b000: mcyc31_l_stream <= mcyc30_l_piso[0];
+        3'b001: mcyc31_l_stream <= 1'b1; //saturated to positive maximum
+        3'b010: mcyc31_l_stream <= 1'b1;
+        3'b011: mcyc31_l_stream <= 1'b1;
+        3'b100: mcyc31_l_stream <= 1'b0; //saturated to negative maximum
+        3'b101: mcyc31_l_stream <= 1'b0;
+        3'b110: mcyc31_l_stream <= 1'b0;
+        3'b111: mcyc31_l_stream <= mcyc30_l_piso[0];
+    endcase
 end
 
 
@@ -128,13 +147,13 @@ end
 ////
 
 reg             mcyc16_r_stream_z, mcyc17_r_stream_zz;
-reg             mcyc16_l_stream_z, mcyc17_l_stream_zz;
+reg             mcyc00_l_stream_z, mcyc01_l_stream_zz;
 
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     mcyc16_r_stream_z <= mcyc15_r_stream;
-    mcyc16_l_stream_z <= mcyc15_l_stream;
+    mcyc00_l_stream_z <= mcyc31_l_stream;
     mcyc17_r_stream_zz <= mcyc16_r_stream_z;
-    mcyc17_l_stream_zz <= mcyc16_l_stream_z;
+    mcyc01_l_stream_zz <= mcyc00_l_stream_z;
 end
 
 
@@ -147,7 +166,7 @@ reg     [20:0]  sound_data_lookaround_register;
 reg     [6:0]   sound_data_bit_15_9;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     //Serial sound data is placed on the MSB register at master cycle == 17. It flows in from the LSB.
-    sound_data_lookaround_register[20] <= i_CYCLE_00_TO_16 ? mcyc17_l_stream_zz : mcyc17_r_stream_zz; //sound data LSB is latched at master cycle 18
+    sound_data_lookaround_register[20] <= i_CYCLE_01_TO_16 ? mcyc01_l_stream_zz : mcyc17_r_stream_zz; //sound data LSB is latched at master cycle 18
     sound_data_lookaround_register[19:0] <= sound_data_lookaround_register[20:1];
 
     if(cycle_01_17) sound_data_bit_15_9 <= sound_data_lookaround_register[20:14];
@@ -159,10 +178,46 @@ end
 //////  Output MUX
 ////
 
+//original chip used shift register to select bits
+reg     [3:0]   outmux_sel_cntr;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    if(i_CYCLE_06_22) outmux_sel_cntr <= 4'd1;
+    else outmux_sel_cntr <= (outmux_sel_cntr == 4'd15) ? 4'd1 : outmux_sel_cntr + 4'd1;
+end
 
+//sound data magnitude
+wire    [5:0]   sound_data_magnitude = sound_data_bit_15_9 ? sound_data_bit_15_9[5:0] : ~sound_data_bit_15_9[5:0];
+reg             sound_data_sign;
+reg     [2:0]   sound_data_output_tap;
+reg     [2:0]   sound_data_shift_amount;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    if(i_CYCLE_06_22) begin
+        sound_data_sign <= sound_data_bit_15_9[6];
 
+        casez(sound_data_magnitude)
+            6'b111111: begin sound_data_output_tap <= 3'd6; sound_data_shift_amount <= 3'd1; end //small number
+            6'b111110: begin sound_data_output_tap <= 3'd5; sound_data_shift_amount <= 3'd2; end
+            6'b11110?: begin sound_data_output_tap <= 3'd4; sound_data_shift_amount <= 3'd3; end
+            6'b1110??: begin sound_data_output_tap <= 3'd3; sound_data_shift_amount <= 3'd4; end
+            6'b110???: begin sound_data_output_tap <= 3'd2; sound_data_shift_amount <= 3'd5; end
+            6'b10????: begin sound_data_output_tap <= 3'd1; sound_data_shift_amount <= 3'd6; end
+            6'b0?????: begin sound_data_output_tap <= 3'd0; sound_data_shift_amount <= 3'd7; end //large number
+            
+            default:   begin sound_data_output_tap <= 3'd6; sound_data_shift_amount <= 3'd1; end
+        endcase
+    end
+end
 
+reg             floating_sound_data;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    if(outmux_sel_cntr >= 4'd1 && outmux_sel_cntr < 4'd10)  floating_sound_data <= sound_data_lookaround_register[sound_data_output_tap];
+    else if(outmux_sel_cntr == 4'd10)                       floating_sound_data <= sound_data_sign;
+    else if(outmux_sel_cntr == 4'd11)                       floating_sound_data <= sound_data_shift_amount[0];
+    else if(outmux_sel_cntr == 4'd12)                       floating_sound_data <= sound_data_shift_amount[1];
+    else if(outmux_sel_cntr == 4'd13)                       floating_sound_data <= sound_data_shift_amount[2];
+    else                                                    floating_sound_data <= 1'b0;
 
-
+    o_SO <= floating_sound_data;
+end
 
 endmodule
