@@ -21,8 +21,8 @@ module IKA2151_acc (
     input   wire    [1:0]   i_RL,
 
     input   wire            i_ACC_SNDADD,
-    input   wire    [13:0]  i_ACC_NOISE,
     input   wire    [13:0]  i_ACC_OPDATA,
+    input   wire    [13:0]  i_ACC_NOISE,
 
     output  reg             o_SO
 );
@@ -74,11 +74,17 @@ end
 
 reg     [17:0]  r_accumulator, l_accumulator;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
-    if(cycle_13)   r_accumulator <= r_add ? {{4{sound_inlatch[13]}}, sound_inlatch}                 : 17'd0;         //reset
-    else           r_accumulator <= r_add ? {{4{sound_inlatch[13]}}, sound_inlatch} + r_accumulator : r_accumulator; //accumulation
+    if(!mrst_n) begin
+        r_accumulator <= 18'd0; //original chip doesn't have this reset
+        l_accumulator <= 18'd0;
+    end
+    else begin
+        if(cycle_13)   r_accumulator <= r_add ? {{4{sound_inlatch[13]}}, sound_inlatch}                 : 17'd0;         //reset
+        else           r_accumulator <= r_add ? {{4{sound_inlatch[13]}}, sound_inlatch} + r_accumulator : r_accumulator; //accumulation
 
-    if(i_CYCLE_29) l_accumulator <= l_add ? {{4{sound_inlatch[13]}}, sound_inlatch}                 : 17'd0;         //reset
-    else           l_accumulator <= l_add ? {{4{sound_inlatch[13]}}, sound_inlatch} + l_accumulator : l_accumulator; //accumulation
+        if(i_CYCLE_29) l_accumulator <= l_add ? {{4{sound_inlatch[13]}}, sound_inlatch}                 : 17'd0;         //reset
+        else           l_accumulator <= l_add ? {{4{sound_inlatch[13]}}, sound_inlatch} + l_accumulator : l_accumulator; //accumulation
+    end
 end
 
 
@@ -92,7 +98,7 @@ end
     11111...(positive max)
     10000...(positive min)
     01111...(negative min)
-    00000...(negatice max)
+    00000...(negative max)
 */
 
 reg     [15:0]  mcyc14_r_piso, mcyc30_l_piso;
@@ -186,10 +192,17 @@ always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
 end
 
 //sound data magnitude
-wire    [5:0]   sound_data_magnitude = sound_data_bit_15_9 ? sound_data_bit_15_9[5:0] : ~sound_data_bit_15_9[5:0];
+/*
+    Invert the upper bits when the number is negative.
+    11111...(positive max)
+    10000...(positive min)
+    00000...(negative min)
+    01111...(negative max)
+*/
+wire    [5:0]   sound_data_magnitude = sound_data_bit_15_9[6] ? sound_data_bit_15_9[5:0] : ~sound_data_bit_15_9[5:0];
 reg             sound_data_sign;
-reg     [2:0]   sound_data_output_tap;
 reg     [2:0]   sound_data_shift_amount;
+reg     [2:0]   sound_data_output_tap;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     if(i_CYCLE_06_22) begin
         sound_data_sign <= sound_data_bit_15_9[6];

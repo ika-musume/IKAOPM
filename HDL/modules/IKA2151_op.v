@@ -17,12 +17,11 @@ module IKA2151_op (
     input   wire    [2:0]   i_ALG,
     input   wire    [2:0]   i_FL,
     input   wire    [7:0]   i_TEST, //test register
-    
 
-    output  wire    [13:0]  o_ACC_OPDATA,
-    output  wire            o_ACC_SNDADD,
     input   wire    [9:0]   i_OP_ORIGINAL_PHASE,
-    input   wire    [9:0]   i_OP_ATTENLEVEL
+    input   wire    [9:0]   i_OP_ATTENLEVEL,
+    output  wire            o_ACC_SNDADD,
+    output  wire    [13:0]  o_ACC_OPDATA
 );
 
 

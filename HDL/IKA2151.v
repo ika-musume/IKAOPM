@@ -53,6 +53,7 @@ wire            cycle_12_28, cycle_05_21, cycle_byte;   //to LFO
 wire            cycle_05, cycle_10;                     //to PG
 wire            cycle_03, cycle_00_16, cycle_01_to_16;  //to EG
 wire            cycle_04_12_20_28;                      //to OP(algorithm state counter)
+wire            cycle_29, cycle_06_22;                  //to ACC
 wire            cycle_12, cycle_15_31;                  //to NOISE
 
 //global
@@ -60,7 +61,7 @@ wire    [7:0]   test;
 
 //NOISE
 wire    [4:0]   nfrq;
-wire            acc_noise, lfo_noise; //same signal
+wire            lfo_noise;
 wire            noise_attenlevel;
 
 //LFO
@@ -94,6 +95,13 @@ wire    [1:0]   ams;
 //OP
 wire    [9:0]   op_attenlevel, original_phase;
 wire    [2:0]   alg, fl;
+
+//ACC
+wire            ne;
+wire    [1:0]   rl;
+wire            acc_snd_add;
+wire    [13:0]  acc_noise;
+wire    [13:0]  acc_opdata;
 
 //TIMER
 wire    [7:0]   clka1, clkb;
@@ -135,7 +143,10 @@ IKA2151_timinggen TIMINGGEN (
     .o_CYCLE_04_12_20_28        (cycle_04_12_20_28          ),
 
     .o_CYCLE_12                 (cycle_12                   ),
-    .o_CYCLE_15_31              (cycle_15_31                )
+    .o_CYCLE_15_31              (cycle_15_31                ),
+
+    .o_CYCLE_29                 (cycle_29                   ),
+    .o_CYCLE_06_22              (cycle_06_22                )
 );
 
 IKA2151_reg #(
@@ -168,7 +179,7 @@ IKA2151_reg #(
 
     .o_CT                       (o_CT                       ),
 
-    .o_NE                       (                           ),
+    .o_NE                       (ne                         ),
     .o_NFRQ                     (nfrq                       ),
 
     .o_CLKA1                    (clka1                      ),
@@ -207,7 +218,7 @@ IKA2151_reg #(
     .o_ALG                      (alg                        ),
     .o_FL                       (fl                         ),
 
-    .o_RL                       (                           ),
+    .o_RL                       (rl                         ),
 
     .i_REG_LFO_CLK              (                           )
 );
@@ -229,7 +240,7 @@ IKA2151_noise NOISE (
 
     .i_NOISE_ATTENLEVEL         (noise_attenlevel           ),
 
-    .o_ACC_NOISE                (                           ),
+    .o_ACC_NOISE                (acc_noise                  ),
     .o_LFO_NOISE                (lfo_noise                  )
 );
 
@@ -343,10 +354,34 @@ IKA2151_op OP (
     .i_FL                       (3'b100                     ),
     .i_TEST                     (test                       ),
 
-    .o_ACC_OPDATA               (                           ),
-    .o_ACC_SNDADD               (                           ),
     .i_OP_ORIGINAL_PHASE        (original_phase             ),
-    .i_OP_ATTENLEVEL            (op_attenlevel              )
+    .i_OP_ATTENLEVEL            (op_attenlevel              ),
+    .o_ACC_SNDADD               (acc_snd_add                ),
+    .o_ACC_OPDATA               (acc_opdata                 )
+);
+
+
+IKA2151_acc ACC (
+    .i_EMUCLK                   (i_EMUCLK                   ),
+
+    .i_MRST_n                   (mrst_n                     ),
+    
+    .i_phi1_PCEN_n              (phi1pcen_n                 ),
+    .i_phi1_NCEN_n              (phi1ncen_n                 ),
+
+    .i_CYCLE_12                 (cycle_12                   ),
+    .i_CYCLE_29                 (cycle_29                   ),
+    .i_CYCLE_00_16              (cycle_00_16                ),
+    .i_CYCLE_06_22              (cycle_06_22                ),
+    .i_CYCLE_01_TO_16           (cycle_01_to_16             ),
+
+    .i_NE                       (ne                         ),
+    .i_RL                       (rl                         ),
+
+    .i_ACC_SNDADD               (acc_snd_add                ),
+    .i_ACC_OPDATA               (acc_opdata                 ),
+    .i_ACC_NOISE                (acc_noise                  ),
+    .o_SO                       (o_SO                       )
 );
 
 
@@ -376,16 +411,6 @@ IKA2151_timer TIMER (
     .o_TIMERB_FLAG              (timerb_flag                ),
     .o_IRQ_n                    (o_IRQ_n                    )
 );
-
-
-
-
-
-
-
-
-
-
 
 
 endmodule 
