@@ -1,7 +1,4 @@
-module IKA2151_reg #(
-    parameter USE_BRAM_FOR_SR8 = 0,  
-    parameter USE_BRAM_FOR_SR32 = 0
-    ) (
+module IKA2151_reg #(parameter USE_BRAM_FOR_D32REG = 0) (
     //master clock
     input   wire            i_EMUCLK, //emulator master clock
 
@@ -13,8 +10,9 @@ module IKA2151_reg #(
     input   wire            i_phi1_NCEN_n, //engative edge clock enable for emulation
 
     //timings
+    input   wire            i_CYCLE_01,
     input   wire            i_CYCLE_31,
-
+    
     //control/address
     input   wire            i_CS_n,
     input   wire            i_RD_n,
@@ -29,9 +27,9 @@ module IKA2151_reg #(
     output  wire            o_CTRL_OE_n,
 
     //timer input
+    input   wire            i_TIMERA_OVFL,
     input   wire            i_TIMERA_FLAG,
     input   wire            i_TIMERB_FLAG,
-    input   wire            i_TIMERA_OVFL,
 
     //register output
     output  reg     [7:0]   o_TEST,     //0x01      TEST register
@@ -41,10 +39,15 @@ module IKA2151_reg #(
     output  reg             o_NE,       //0x0F[7]   Noise Enable
     output  reg     [4:0]   o_NFRQ,     //0x0F[4:0] Noise Frequency
 
-    output  reg     [7:0]   o_CLKA1,    //0x10      Timer A D[9:2]
-    output  reg     [1:0]   o_CLKA2,    //0x11      Timer A D[1:0]
-    output  reg     [7:0]   o_CLKB,     //0x12      Timer B
-    output  reg     [5:0]   o_TIMERCTRL,//0x14      Timer Control
+    output  reg     [7:0]   o_CLKA1,        //0x10      Timer A D[9:2]
+    output  reg     [1:0]   o_CLKA2,        //0x11      Timer A D[1:0]
+    output  reg     [7:0]   o_CLKB,         //0x12      Timer B
+    output  wire            o_TIMERA_FRST,  //0x14      Timer Control
+    output  wire            o_TIMERB_FRST,  //          |
+    output  reg             o_TIMERA_RUN,   //          |
+    output  reg             o_TIMERB_RUN,   //          |
+    output  reg             o_TIMERA_IRQ_EN,//          |
+    output  reg             o_TIMERB_IRQ_EN,//          |
 
     output  reg     [7:0]   o_LFRQ,     //0x18      LFO frequency
     output  reg     [6:0]   o_PMD,      //0x19[6:0] D[7] == 1
@@ -68,11 +71,12 @@ module IKA2151_reg #(
     output  wire    [4:0]   o_D2R,
     output  wire    [3:0]   o_RR,
     output  wire    [3:0]   o_D1L,
-    output  wire    [3:0]   o_TL,
+    output  wire    [6:0]   o_TL,
     output  wire    [1:0]   o_AMS,
 
     //OP
     output  wire    [2:0]   o_ALG,
+    output  wire    [2:0]   o_FL,
 
     //ACC
     output  wire    [1:0]   o_RL,
@@ -142,16 +146,16 @@ always @(posedge i_EMUCLK or negedge mrst_n) begin
 end
 
 //D latch
-submdl_dlatch #(.WIDTH(8)) BUS_INLATCH (
-    .i_EN(|{i_CS_n, i_WR_n}), .i_D(i_D), .i_Q(bus_inlatch)
+primitive_dlatch #(.WIDTH(8)) u_bus_inlatch (
+    .i_EN(~|{i_CS_n, i_WR_n}), .i_D(i_D), .o_Q(bus_inlatch)
 );
 
 //SR latch
-submdl_srlatch DREG_RQ_INLATCH (
-    .i_S(~(|{i_CS_n, i_WR_n, ~i_A0, ~mrst_n} | dreg_rq_synced1)), .i_R(dreg_rq_synced1), .o_Q(dreg_rq_inlatch)
+primitive_srlatch u_dreg_req_inlatch (
+    .i_S(~(|{i_CS_n, i_WR_n, ~i_A0, ~mrst_n} | dreg_rq_synced1)), .i_R(dreg_rq_synced1 | ~mrst_n), .o_Q(dreg_rq_inlatch)
 );
-submdl_srlatch AREG_RQ_INLATCH (
-    .i_S(~(|{i_CS_n, i_WR_n,  i_A0, ~mrst_n} | areg_rq_synced1)), .i_R(areg_rq_synced1), .o_Q(areg_rq_inlatch)
+primitive_srlatch u_areg_req_inlatch (
+    .i_S(~(|{i_CS_n, i_WR_n,  i_A0, ~mrst_n} | areg_rq_synced1)), .i_R(areg_rq_synced1 | ~mrst_n), .o_Q(areg_rq_inlatch)
 );
 
 
@@ -170,52 +174,52 @@ wire            reg08_en; //KON register
 
 assign  o_LFRQ_UPDATE = reg18_en; //LFO frequency update flag;
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h10)) REG10 (
+reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h10)) u_reg10 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg10_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h11)) REG11 (
+reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h11)) u_reg11 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg11_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h12)) REG12 (
+reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h12)) u_reg12 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg12_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h14)) REG14 (
+reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h14)) u_reg14 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg14_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h01)) REG01 (
+reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h01)) u_reg01 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg01_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h0f)) REG0f (
+reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h0f)) u_reg0f (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg0f_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h19)) REG19 (
+reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h19)) u_reg19 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg19_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h18)) REG18 (
+reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h18)) u_reg18 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg18_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h1b)) REG1b (
+reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h1B)) u_reg1b (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg1b_en)
 );
 
-submdl_loreg_decoder #(.TARGET_ADDR(8'h08)) REG08 (
+reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h08)) u_reg08 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
     .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg08_en)
 );
@@ -266,7 +270,7 @@ wire            hireg_datareg_en = data_ld & hireg_addr_valid;
 reg     [7:0]   hireg_data;
 always @(posedge i_EMUCLK or negedge mrst_n) begin
     if(!mrst_n) begin
-        hireg_addr <= 8'hFF;
+        hireg_data <= 8'hFF;
     end
     else begin
         if(!phi1pcen_n) begin
@@ -279,7 +283,7 @@ end
 reg             hireg_data_valid;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        hireg_addr_valid <= hireg_addrreg_en | (hireg_addr_valid & ~addr_ld);
+        hireg_data_valid <= hireg_datareg_en | (hireg_data_valid & ~addr_ld);
     end
 end
 
@@ -288,13 +292,13 @@ end
 //  HIREG ADDRESS COUNTER
 //
 
-reg     [4:0]   hireg_addrcntr;
-always @(posedge i_EMUCLK) begin
-    if(!phi1pcen_n) begin
-        if(i_CYCLE_31) hireg_addrcntr <= 5'd0;
-        else hireg_addrcntr <= (hireg_addrcntr == 5'd31) ? 5'd0 : hireg_addrcntr + 5'd1;
-    end
-end
+wire    [4:0]   hireg_addrcntr;
+primitive_counter #(.WIDTH(5)) u_hireg_addrcntr (
+    .i_EMUCLK(i_EMUCLK), .i_PCEN_n(phi1pcen_n), .i_NCEN_n(phi1ncen_n),
+    .i_CNT(1'b1), .i_LD(1'b0), .i_RST(i_CYCLE_31 | ~mrst_n),
+    .i_D(5'd0), .o_Q(hireg_addrcntr), .o_CO()
+);
+
 
 
 //
@@ -339,12 +343,18 @@ end
 //  GENERAL STATIC REGISTERS
 //
 
+//CT reg output
 reg     [1:0]   ct_reg;
 assign  o_CT[0] = ct_reg[0];
 assign  o_CT[1] = o_TEST[3] ? i_REG_LFO_CLK : ct_reg[1]; //LSI test purpose
 
+//reg for KON
 reg             csm_reg;
 reg     [6:0]   kon_temp_reg;
+
+//timer flag reset
+assign  o_TIMERA_FRST = (reg14_en & bus_inlatch[4]) | ~mrst_n;
+assign  o_TIMERB_FRST = (reg14_en & bus_inlatch[5]) | ~mrst_n;
 
 always @(posedge i_EMUCLK) begin
     if(!phi1pcen_n) begin //positive edge!!
@@ -359,7 +369,10 @@ always @(posedge i_EMUCLK) begin
             o_CLKA1         <= 8'h0;
             o_CLKA2         <= 2'h0;
             o_CLKB          <= 8'h0;
-            o_TIMERCTRL     <= 6'b00_00_00;
+            o_TIMERA_RUN    <= 1'b0;
+            o_TIMERB_RUN    <= 1'b0;
+            o_TIMERA_IRQ_EN <= 1'b0;
+            o_TIMERB_IRQ_EN <= 1'b0;
 
             o_LFRQ          <= 8'h00;
             o_PMD           <= 7'h00;
@@ -380,7 +393,10 @@ always @(posedge i_EMUCLK) begin
             o_CLKA1         <= reg10_en ? bus_inlatch      : o_CLKA1;
             o_CLKA2         <= reg11_en ? bus_inlatch[1:0] : o_CLKA2;
             o_CLKB          <= reg12_en ? bus_inlatch      : o_CLKB;
-            o_TIMERCTRL     <= reg14_en ? bus_inlatch[5:0] : o_TIMERCTRL;
+            o_TIMERA_RUN    <= reg14_en ? bus_inlatch[0]   : o_TIMERA_RUN;
+            o_TIMERB_RUN    <= reg14_en ? bus_inlatch[1]   : o_TIMERB_RUN;
+            o_TIMERA_IRQ_EN <= reg14_en ? bus_inlatch[2]   : o_TIMERA_IRQ_EN;
+            o_TIMERB_IRQ_EN <= reg14_en ? bus_inlatch[3]   : o_TIMERB_IRQ_EN;
 
             o_LFRQ          <= reg18_en ? bus_inlatch      : o_LFRQ;
             o_PMD           <= reg19_en ? (bus_inlatch[7] == 1'b1) ? bus_inlatch[6:0] : o_PMD :
@@ -405,7 +421,8 @@ always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         ch_equal <= hireg_addrcntr == {2'b00, kon_temp_reg[2:0]}; //channel number
 
-        force_kon <= i_TIMERA_OVFL & csm_reg;
+        if(!mrst_n) force_kon <= 1'b0;
+        else begin if(i_CYCLE_01) force_kon <= i_TIMERA_OVFL & csm_reg; end
         force_kon_z <= force_kon;
     end
 end
@@ -442,7 +459,7 @@ always @(posedge i_EMUCLK) begin
     end
 end
 
-wire            kon_data = kon_sr_24_31[5] | force_kon_z;
+assign  o_KON = kon_sr_24_31[5] | force_kon_z;
 
 
 
@@ -463,53 +480,45 @@ wire            kon_data = kon_sr_24_31[5] | force_kon_z;
     Address 20_27 : RL[7:6]     FL[5:3]     CONNECT(algorithm)[2:0]
 */
 
-//define register
-reg     [2:0]   pms_reg[0:7]; //phase modulation sensitivity
-reg     [1:0]   ams_reg[0:7]; //amplitude modulation sensitivity
-reg     [5:0]   kf_reg[0:7];  //key fraction
-reg     [6:0]   kc_reg[0:7];  //key code
-reg     [2:0]   fl_reg[0:7];  //feedback level
-reg     [2:0]   alg_reg[0:7]; //algorithm type
-reg     [1:0]   rl_reg[0:7];  //right/left channel enable
+//define in/out port
+wire    [2:0]   pms_out;    //phase modulation sensitivity
+wire    [1:0]   ams_out;    //amplitude modulation sensitivity
+wire    [5:0]   kf_out;     //key fraction
+wire    [6:0]   kc_out;     //key code
+wire    [2:0]   fl_out;     //feedback level
+wire    [2:0]   alg_out;    //algorithm type
+wire    [1:0]   rl_out;     //right/left channel enable
 
-//define taps
-assign  o_PMS = !mrst_n ? 3'd0  : reg38_3f_en ? hireg_data[6:4] : pms_reg[7]; //input of stage 0
-assign  o_KF = kf_reg[0];
-assign  o_KC = kc_reg[0];
-assign  o_FL = fl_reg[6];
-assign  o_ALG = alg_reg[3];
-assign  o_RL = rl_reg[4];
+wire    [2:0]   pms_in  = !mrst_n ? 3'd0  : reg38_3f_en ? hireg_data[6:4] : pms_out;
+wire    [1:0]   ams_in  = !mrst_n ? 2'd0  : reg38_3f_en ? hireg_data[1:0] : ams_out;
+wire    [5:0]   kf_in   = !mrst_n ? 6'd0  : reg30_37_en ? hireg_data[7:2] : kf_out;
+wire    [6:0]   kc_in   = !mrst_n ? 7'd0  : reg28_2f_en ? hireg_data[6:0] : kc_out;
+wire    [2:0]   fl_in   = !mrst_n ? 3'd0  : reg20_27_en ? hireg_data[5:3] : fl_out;
+wire    [2:0]   alg_in  = !mrst_n ? 3'd0  : reg20_27_en ? hireg_data[2:0] : alg_out;
+wire    [1:0]   rl_in   = !mrst_n ? 2'b00 : reg20_27_en ? hireg_data[7:6] : rl_out;
 
-//first stage
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        pms_reg[0] <= !mrst_n ? 3'd0  : reg38_3f_en ? hireg_data[6:4] : pms_reg[7];
-        ams_reg[0] <= !mrst_n ? 2'd0  : reg38_3f_en ? hireg_data[1:0] : ams_reg[7];
-        kf_reg[0]  <= !mrst_n ? 6'd0  : reg30_37_en ? hireg_data[7:2] : kf_reg[7]; 
-        kc_reg[0]  <= !mrst_n ? 7'd0  : reg28_2f_en ? hireg_data[6:0] : kc_reg[7]; 
-        fl_reg[0]  <= !mrst_n ? 3'd0  : reg20_27_en ? hireg_data[5:3] : fl_reg[7]; 
-        alg_reg[0] <= !mrst_n ? 3'd0  : reg20_27_en ? hireg_data[2:0] : alg_reg[7];
-        rl_reg[0]  <= !mrst_n ? 2'b00 : reg20_27_en ? hireg_data[7:6] : rl_reg[7]; 
-    end
-end
+primitive_sr #(.WIDTH(3), .LENGTH(8), .TAP(0)) u_pms_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(pms_in), .o_Q_TAP(o_PMS), .o_Q_LAST(pms_out));
 
-//the other stages
-genvar stage;
-generate
-for(stage = 0; stage < 7; stage = stage + 1) begin : hireg_sr8
-    always @(posedge i_EMUCLK) begin
-        if(!phi1ncen_n) begin
-            pms_reg[stage + 1] <= pms_reg[stage];
-            ams_reg[stage + 1] <= ams_reg[stage];
-            kf_reg[stage + 1]  <= kf_reg[stage];
-            kc_reg[stage + 1]  <= kc_reg[stage];
-            fl_reg[stage + 1]  <= fl_reg[stage];
-            alg_reg[stage + 1] <= alg_reg[stage];
-            rl_reg[stage + 1]  <= rl_reg[stage];
-        end
-    end
-end
-endgenerate
+primitive_sr #(.WIDTH(2), .LENGTH(8), .TAP(8)) u_ams_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(ams_in), .o_Q_TAP(), .o_Q_LAST(ams_out));
+
+primitive_sr #(.WIDTH(6), .LENGTH(8), .TAP(1)) u_kf_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(kf_in), .o_Q_TAP(o_KF), .o_Q_LAST(kf_out));
+
+primitive_sr #(.WIDTH(7), .LENGTH(8), .TAP(1)) u_kc_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(kc_in), .o_Q_TAP(o_KC), .o_Q_LAST(kc_out));
+
+primitive_sr #(.WIDTH(3), .LENGTH(8), .TAP(7)) u_fl_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(fl_in), .o_Q_TAP(o_FL), .o_Q_LAST(fl_out));
+
+primitive_sr #(.WIDTH(3), .LENGTH(8), .TAP(4)) u_alg_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(alg_in), .o_Q_TAP(o_ALG), .o_Q_LAST(alg_out));
+
+primitive_sr #(.WIDTH(2), .LENGTH(8), .TAP(5)) u_rl_reg 
+(.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(rl_in), .o_Q_TAP(o_RL), .o_Q_LAST(rl_out));
+
+
 
 
 //
@@ -527,68 +536,115 @@ endgenerate
     Address 40_5f : DT1[6:4]    MUL[3:0]
 */
 
-//define register
-reg     [1:0]   dt2_reg[0:31];  //detune2
-reg     [2:0]   dt1_reg[0:31];  //detune1
-reg     [3:0]   mul_reg[0:31];  //phase multuply
-reg     [4:0]   ar_reg[0:31];   //attack rate
-reg     [4:0]   d1r_reg[0:31];  //first decay rate
-reg     [4:0]   d2r_reg[0:31];  //second decay rate
-reg     [3:0]   rr_reg[0:31];   //release rate
-reg     [3:0]   d1l_reg[0:31];  //first decay level
-reg             amen_reg[0:31]; //amplitude modulation enable
-reg     [1:0]   ks_reg[0:31];   //key scale
-reg     [6:0]   tl_reg[0:31];   //total level
+//define in/out port
+wire    [1:0]   dt2_out;    //detune2
+wire    [2:0]   dt1_out;    //detune1
+wire    [3:0]   mul_out;    //phase multuply
+wire    [4:0]   ar_out;     //attack rate
+wire    [4:0]   d2r_out;    //second decay rate
+wire    [4:0]   d1r_out;    //first decay rate
+wire    [3:0]   rr_out;     //release rate
+wire    [3:0]   d1l_out;    //first decay level
+wire            amen_out;   //amplitude modulation enable
+wire    [1:0]   ks_out;     //key scale
+wire    [6:0]   tl_out;     //total level
 
-//define taps
-assign  o_DT2 = dt2_reg[26];
-assign  o_DT1 = dt1_reg[31];
-assign  o_MUL = mul_reg[31];
-assign  o_AR = ar_reg[31];
-assign  o_D1R = d1r_reg[31];
-assign  o_D2R = d2r_reg[31];
-assign  o_RR = rr_reg[31];
-assign  o_D1L = d1l_reg[31];
-assign  o_KS = ks_reg[31];
-assign  o_TL = tl_reg[31];
-
-assign  o_AMS = ams_reg[7] & {2{amen_reg[31]}};
-
-//first stage
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        dt2_reg[0]  <= !mrst_n ? 2'd0 : regc0_df_en ? hireg_data[7:6] : dt2_reg[0];
-        dt1_reg[0]  <= !mrst_n ? 3'd0 : reg40_5f_en ? hireg_data[6:4] : dt1_reg[0];
-        mul_reg[0]  <= !mrst_n ? 4'd0 : reg40_5f_en ? hireg_data[3:0] : mul_reg[0];
-        ar_reg[0]   <= !mrst_n ? 5'd0 : reg80_9f_en ? hireg_data[4:0] : ar_reg[0];
-        d1r_reg[0]  <= !mrst_n ? 5'd0 : rega0_bf_en ? hireg_data[4:0] : d1r_reg[0];
-        d2r_reg[0]  <= !mrst_n ? 5'd0 : regc0_df_en ? hireg_data[4:0] : d2r_reg[0];
-        rr_reg[0]   <= !mrst_n ? 4'd0 : rege0_ff_en ? hireg_data[3:0] : rr_reg[0];
-        d1l_reg[0]  <= !mrst_n ? 4'd0 : rege0_ff_en ? hireg_data[7:4] : d1l_reg[0];
-        amen_reg[0] <= !mrst_n ? 1'b0 : rega0_bf_en ? hireg_data[7]   : amen_reg[0];
-        ks_reg[0]   <= !mrst_n ? 2'd0 : reg80_9f_en ? hireg_data[7:6] : ks_reg[0] ;
-        tl_reg[0]   <= !mrst_n ? 7'd0 : reg60_7f_en ? hireg_data[6:0] : tl_reg[0] ;
-    end
-end
-
-//the other stages
 generate
-for(stage = 0; stage < 31; stage = stage + 1) begin : hireg_sr32
-    always @(posedge i_EMUCLK) begin
-        if(!phi1ncen_n) begin
-            dt2_reg[stage + 1]  <= dt2_reg[stage];
-            dt1_reg[stage + 1]  <= dt1_reg[stage];
-            mul_reg[stage + 1]  <= mul_reg[stage];
-            ar_reg[stage + 1]   <= ar_reg[stage];
-            d1r_reg[stage + 1]  <= d1r_reg[stage];
-            d2r_reg[stage + 1]  <= d2r_reg[stage];
-            rr_reg[stage + 1]   <= rr_reg[stage];
-            d1l_reg[stage + 1]  <= d1l_reg[stage];
-            amen_reg[stage + 1] <= amen_reg[stage];
-            ks_reg[stage + 1]   <= ks_reg[stage];
-            tl_reg[stage + 1]   <= tl_reg[stage];
-        end
-    end
+if(USE_BRAM_FOR_D32REG == 0) begin: d32reg_mode_sr
+    wire    [1:0]   dt2_in  = !mrst_n ? 2'd0 : regc0_df_en ? hireg_data[7:6] : dt2_out;
+    wire    [2:0]   dt1_in  = !mrst_n ? 3'd0 : reg40_5f_en ? hireg_data[6:4] : dt1_out;
+    wire    [3:0]   mul_in  = !mrst_n ? 4'd0 : reg40_5f_en ? hireg_data[3:0] : mul_out;
+    wire    [4:0]   ar_in   = !mrst_n ? 5'd0 : reg80_9f_en ? hireg_data[4:0] : ar_out;
+    wire    [4:0]   d1r_in  = !mrst_n ? 5'd0 : rega0_bf_en ? hireg_data[4:0] : d1r_out;
+    wire    [4:0]   d2r_in  = !mrst_n ? 5'd0 : regc0_df_en ? hireg_data[4:0] : d2r_out;
+    wire    [3:0]   rr_in   = !mrst_n ? 4'd0 : rege0_ff_en ? hireg_data[3:0] : rr_out;
+    wire    [3:0]   d1l_in  = !mrst_n ? 4'd0 : rege0_ff_en ? hireg_data[7:4] : d1l_out;
+    wire            amen_in = !mrst_n ? 1'b0 : rega0_bf_en ? hireg_data[7]   : amen_out;
+    wire    [1:0]   ks_in   = !mrst_n ? 2'd0 : reg80_9f_en ? hireg_data[7:6] : ks_out; 
+    wire    [6:0]   tl_in   = !mrst_n ? 7'd0 : reg60_7f_en ? hireg_data[6:0] : tl_out; 
+
+    primitive_sr #(.WIDTH(2), .LENGTH(32), .TAP(27)) u_dt2_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(dt2_in), .o_Q_TAP(o_DT2), .o_Q_LAST(dt2_out));
+
+    primitive_sr #(.WIDTH(3), .LENGTH(32), .TAP(32)) u_dt1_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(dt1_in), .o_Q_TAP(o_DT1), .o_Q_LAST(dt1_out));
+
+    primitive_sr #(.WIDTH(4), .LENGTH(32), .TAP(32)) u_mul_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(mul_in), .o_Q_TAP(o_MUL), .o_Q_LAST(mul_out));
+
+    primitive_sr #(.WIDTH(5), .LENGTH(32), .TAP(32)) u_ar_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(ar_in), .o_Q_TAP(o_AR), .o_Q_LAST(ar_out));
+
+    primitive_sr #(.WIDTH(5), .LENGTH(32), .TAP(32)) u_d1r_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(d1r_in), .o_Q_TAP(o_D1R), .o_Q_LAST(d1r_out));
+
+    primitive_sr #(.WIDTH(5), .LENGTH(32), .TAP(32)) u_d2r_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(d2r_in), .o_Q_TAP(o_D2R), .o_Q_LAST(d2r_out));
+
+    primitive_sr #(.WIDTH(4), .LENGTH(32), .TAP(32)) u_rr_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(rr_in), .o_Q_TAP(o_RR), .o_Q_LAST(rr_out));
+
+    primitive_sr #(.WIDTH(4), .LENGTH(32), .TAP(32)) u_d1l_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(d1l_in), .o_Q_TAP(o_D1L), .o_Q_LAST(d1l_out));
+
+    primitive_sr #(.WIDTH(1), .LENGTH(32), .TAP(32)) u_amen_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(amen_in), .o_Q_TAP(), .o_Q_LAST(amen_out));
+
+    primitive_sr #(.WIDTH(2), .LENGTH(32), .TAP(32)) u_ks_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(ks_in), .o_Q_TAP(o_KS), .o_Q_LAST(ks_out));
+
+    primitive_sr #(.WIDTH(7), .LENGTH(32), .TAP(32)) u_tl_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(tl_in), .o_Q_TAP(o_TL), .o_Q_LAST(tl_out));
+
+    assign  o_AMS = ams_out & {2{amen_out}};
+end
+else begin: d32reg_mode_bram
+    wire    [1:0]   dt2_in  = !mrst_n ? 2'd0 : regc0_df_en ? hireg_data[7:6] : dt2_out;
+    wire    [2:0]   dt1_in  = !mrst_n ? 3'd0 : hireg_data[6:4];
+    wire    [3:0]   mul_in  = !mrst_n ? 4'd0 : hireg_data[3:0];
+    wire    [4:0]   ar_in   = !mrst_n ? 5'd0 : hireg_data[4:0];
+    wire    [4:0]   d1r_in  = !mrst_n ? 5'd0 : hireg_data[4:0];
+    wire    [4:0]   d2r_in  = !mrst_n ? 5'd0 : hireg_data[4:0];
+    wire    [3:0]   rr_in   = !mrst_n ? 4'd0 : hireg_data[3:0];
+    wire    [3:0]   d1l_in  = !mrst_n ? 4'd0 : hireg_data[7:4];
+    wire            amen_in = !mrst_n ? 1'b0 : hireg_data[7]  ;
+    wire    [1:0]   ks_in   = !mrst_n ? 2'd0 : hireg_data[7:6];
+    wire    [6:0]   tl_in   = !mrst_n ? 7'd0 : hireg_data[6:0];
+
+    wire            d32reg_cntr_rst = i_CYCLE_31 | ~mrst_n;
+
+    primitive_sr #(.WIDTH(2), .LENGTH(32), .TAP(27)) u_dt2_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(dt2_in), .o_Q_TAP(o_DT2), .o_Q_LAST(dt2_out));
+
+    primitive_sr_bram #(.WIDTH(3), .LENGTH(32), .TAP(32)) u_dt1_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(reg40_5f_en), .i_D(dt1_in), .o_Q_TAP(o_DT1));
+
+    primitive_sr_bram #(.WIDTH(4), .LENGTH(32), .TAP(32)) u_mul_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(reg40_5f_en), .i_D(mul_in), .o_Q_TAP(o_MUL));
+
+    primitive_sr_bram #(.WIDTH(5), .LENGTH(32), .TAP(32)) u_ar_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(reg80_9f_en), .i_D(ar_in), .o_Q_TAP(o_AR));
+
+    primitive_sr_bram #(.WIDTH(5), .LENGTH(32), .TAP(32)) u_d1r_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(rega0_bf_en), .i_D(d1r_in), .o_Q_TAP(o_D1R));
+
+    primitive_sr_bram #(.WIDTH(5), .LENGTH(32), .TAP(32)) u_d2r_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(regc0_df_en), .i_D(d2r_in), .o_Q_TAP(o_D2R));
+
+    primitive_sr_bram #(.WIDTH(4), .LENGTH(32), .TAP(32)) u_rr_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(rege0_ff_en), .i_D(rr_in), .o_Q_TAP(o_RR));
+
+    primitive_sr_bram #(.WIDTH(4), .LENGTH(32), .TAP(32)) u_d1l_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(rege0_ff_en), .i_D(d1l_in), .o_Q_TAP(o_D1L));
+
+    primitive_sr_bram #(.WIDTH(1), .LENGTH(32), .TAP(32)) u_amen_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(rega0_bf_en), .i_D(amen_in), .o_Q_TAP());
+
+    primitive_sr_bram #(.WIDTH(2), .LENGTH(32), .TAP(32)) u_ks_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(reg80_9f_en), .i_D(ks_in), .o_Q_TAP(o_KS));
+
+    primitive_sr_bram #(.WIDTH(7), .LENGTH(32), .TAP(32)) u_tl_reg 
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(reg60_7f_en), .i_D(tl_in), .o_Q_TAP(o_TL));
 end
 endgenerate
 
@@ -599,21 +655,9 @@ endgenerate
 ////
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 endmodule
 
-module submdl_loreg_decoder #(parameter TARGET_ADDR = 8'h00 ) (
+module reg_submdl_loreg_decoder #(parameter TARGET_ADDR = 8'h00 ) (
     //master clock
     input   wire            i_EMUCLK, //emulator master clock
 
@@ -637,38 +681,5 @@ always @(posedge i_EMUCLK) begin
 end
 
 assign  o_REG_LD = loreg_addr_valid & i_DATA_LD;
-
-endmodule
-
-//submodule : SR latch
-module submdl_srlatch (
-    input   wire            i_S,
-    input   wire            i_R,
-    output  reg             o_Q
-);
-
-always @(*) begin
-    case({i_S, i_R})
-        2'b00: o_Q <= o_Q;
-        2'b01: o_Q <= 1'b0;
-        2'b10: o_Q <= 1'b1;
-        2'b11: o_Q <= 1'b0; //invalid
-    endcase
-end
-
-endmodule
-
-//submodule : D latch
-module submdl_dlatch #(parameter WIDTH = 8 ) (
-    //master clock
-    input   wire                    i_EN,
-    input   wire    [WIDTH-1:0]     i_D,
-    output  reg     [WIDTH-1:0]     o_Q
-);
-
-always @(*) begin
-    if(i_EN) o_Q <= i_D;
-    else o_Q <= o_Q;
-end
 
 endmodule
