@@ -103,16 +103,26 @@ end
 
 reg     [15:0]  mcyc14_r_piso, mcyc30_l_piso;
 reg     [2:0]   mcyc14_r_saturation_ctrl, mcyc30_l_saturation_ctrl;
+reg     [15:0]  debug_mcyc14_r_piso, debug_mcyc30_l_piso;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     if(cycle_13) begin
         mcyc14_r_piso <= {~r_accumulator[17], r_accumulator[14:0]}; //FLIP THE SIGN BIT!!
         mcyc14_r_saturation_ctrl <= r_accumulator[17:15];
+    end
+    else begin
+        mcyc14_r_piso[14:0] <= mcyc14_r_piso[15:1]; //shift
     end
 
     if(i_CYCLE_29) begin
         mcyc30_l_piso <= {~l_accumulator[17], l_accumulator[14:0]}; //FLIP THE SIGN BIT!!
         mcyc30_l_saturation_ctrl <= l_accumulator[17:15];
     end
+    else begin
+        mcyc30_l_piso[14:0] <= mcyc30_l_piso[15:1]; //shift
+    end
+
+    if(cycle_13) debug_mcyc14_r_piso <= {r_accumulator[17], r_accumulator[14:0]};
+    if(i_CYCLE_29) debug_mcyc30_l_piso <= {l_accumulator[17], l_accumulator[14:0]};
 end
 
 
@@ -149,7 +159,7 @@ end
 
 
 ///////////////////////////////////////////////////////////
-//////  R/L Saturation control
+//////  Delays
 ////
 
 reg             mcyc16_r_stream_z, mcyc17_r_stream_zz;
@@ -188,7 +198,7 @@ end
 reg     [3:0]   outmux_sel_cntr;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     if(i_CYCLE_06_22) outmux_sel_cntr <= 4'd1;
-    else outmux_sel_cntr <= (outmux_sel_cntr == 4'd15) ? 4'd1 : outmux_sel_cntr + 4'd1;
+    else outmux_sel_cntr <= (outmux_sel_cntr == 4'd15) ? 4'd0 : outmux_sel_cntr + 4'd1;
 end
 
 //sound data magnitude
@@ -208,13 +218,13 @@ always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
         sound_data_sign <= sound_data_bit_15_9[6];
 
         casez(sound_data_magnitude)
-            6'b111111: begin sound_data_output_tap <= 3'd6; sound_data_shift_amount <= 3'd1; end //small number
-            6'b111110: begin sound_data_output_tap <= 3'd5; sound_data_shift_amount <= 3'd2; end
-            6'b11110?: begin sound_data_output_tap <= 3'd4; sound_data_shift_amount <= 3'd3; end
-            6'b1110??: begin sound_data_output_tap <= 3'd3; sound_data_shift_amount <= 3'd4; end
-            6'b110???: begin sound_data_output_tap <= 3'd2; sound_data_shift_amount <= 3'd5; end
-            6'b10????: begin sound_data_output_tap <= 3'd1; sound_data_shift_amount <= 3'd6; end
-            6'b0?????: begin sound_data_output_tap <= 3'd0; sound_data_shift_amount <= 3'd7; end //large number
+            6'b000000: begin sound_data_output_tap <= 3'd6; sound_data_shift_amount <= 3'd1; end //small number
+            6'b000001: begin sound_data_output_tap <= 3'd5; sound_data_shift_amount <= 3'd2; end
+            6'b00001?: begin sound_data_output_tap <= 3'd4; sound_data_shift_amount <= 3'd3; end
+            6'b0001??: begin sound_data_output_tap <= 3'd3; sound_data_shift_amount <= 3'd4; end
+            6'b001???: begin sound_data_output_tap <= 3'd2; sound_data_shift_amount <= 3'd5; end
+            6'b01????: begin sound_data_output_tap <= 3'd1; sound_data_shift_amount <= 3'd6; end
+            6'b1?????: begin sound_data_output_tap <= 3'd0; sound_data_shift_amount <= 3'd7; end //large number
             
             default:   begin sound_data_output_tap <= 3'd6; sound_data_shift_amount <= 3'd1; end
         endcase

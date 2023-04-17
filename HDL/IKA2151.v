@@ -350,7 +350,7 @@ IKA2151_op OP (
     .i_CYCLE_12                 (cycle_12                   ),
     .i_CYCLE_04_12_20_28        (cycle_04_12_20_28          ),
 
-    .i_ALG                      (alg                        ),
+    .i_ALG                      (3'b111                        ),
     .i_FL                       (3'b100                     ),
     .i_TEST                     (test                       ),
 
@@ -375,8 +375,8 @@ IKA2151_acc ACC (
     .i_CYCLE_06_22              (cycle_06_22                ),
     .i_CYCLE_01_TO_16           (cycle_01_to_16             ),
 
-    .i_NE                       (ne                         ),
-    .i_RL                       (rl                         ),
+    .i_NE                       (1'b1                       ),
+    .i_RL                       (2'b11                      ),
 
     .i_ACC_SNDADD               (acc_snd_add                ),
     .i_ACC_OPDATA               (acc_opdata                 ),

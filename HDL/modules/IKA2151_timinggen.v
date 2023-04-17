@@ -58,14 +58,14 @@ wire            mrst_n = o_MRST_n;
 
 //2 stage SR for synchronization
 reg     [1:0]   ic_n_internal = 2'b00;
-always @(posedge i_EMUCLK) if(!phi1pcen_n) begin 
+always @(posedge i_EMUCLK) if(!i_phiM_PCEN_n) begin 
     ic_n_internal[0] <= i_IC_n; 
     ic_n_internal[1] <= ic_n_internal[0]; //shift
 end
 
 //ICn falling edge detector for phi1 phase initialization
 reg             phi1_init = 1'b1;
-always @(posedge i_EMUCLK) if(!phi1pcen_n) begin
+always @(posedge i_EMUCLK) if(!i_phiM_PCEN_n) begin
     phi1_init <= ~ic_n_internal[0] & ic_n_internal[1];
 end
 
@@ -132,8 +132,13 @@ assign  o_phi1_NCEN_n = phi1n | i_phiM_PCEN_n | phi1_init;
 
 reg     [4:0]   timinggen_cntr = 5'h0;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
-    if(!mrst_n) timinggen_cntr <= 5'h0;
-    else        timinggen_cntr <= (timinggen_cntr == 5'h1F) ? 5'h0 : timinggen_cntr <= timinggen_cntr + 5'h1;
+    if(!mrst_n) begin
+        timinggen_cntr <= 5'h0;
+    end
+    else begin
+        if(timinggen_cntr == 5'h1F) timinggen_cntr <= 5'h0;
+        else                        timinggen_cntr <= timinggen_cntr + 5'h1;
+    end
 end
 
 
