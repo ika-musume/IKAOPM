@@ -1,4 +1,4 @@
-module IKA2151_eg (
+module IKAOPM_eg (
     //master clock
     input   wire            i_EMUCLK, //emulator master clock
 
@@ -26,7 +26,8 @@ module IKA2151_eg (
     input   wire    [6:0]   i_TL,  //total level
     input   wire    [1:0]   i_AMS, //amplitude modulation sensitivity
     input   wire    [7:0]   i_LFA, //amplitude modulation from LFO
-    input   wire    [7:0]   i_TEST, //test register
+    input   wire            i_TEST_D0, //test register
+    input   wire            i_TEST_D5,
 
     //input data
     input   wire    [4:0]   i_EG_PDELTA_SHIFT_AMOUNT,
@@ -67,7 +68,7 @@ end
 ////
 
 reg     [1:0]   samplecntr;
-wire            third_sample = samplecntr[1] | i_TEST[0];
+wire            third_sample = samplecntr[1] | i_TEST_D0;
 
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     if(!i_MRST_n) begin
@@ -105,7 +106,6 @@ end
 reg             mrst_z;
 reg     [1:0]   timecntr_adder;
 reg     [14:0]  timecntr_sr; //this sr can hold 15-bit integer
-reg     [15:0]  debug_timecntr;
 
 reg             onebit_det, mrst_dlyd;
 reg     [3:0]   conseczerobitcntr;
@@ -138,10 +138,15 @@ always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
             end
         end
     end
-
-    //timecounter parallel output
-    if(cycle_01_17) debug_timecntr <= {timecntr_adder[0], timecntr_sr};
 end
+
+`ifdef IKAOPM_DEBUG
+reg     [15:0]  debug_timecntr;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    if(cycle_01_17) debug_timecntr <= {timecntr_adder[0], timecntr_sr}; //timecounter parallel output
+end
+`endif
+
 
 reg     [1:0]   envcntr;
 reg     [3:0]   attenrate;
@@ -512,7 +517,7 @@ always @(*) begin
     endcase
 end
 
-wire    [5:0]   cyc10c_egparam_rateapplied = cyc9r_egparam_scaled + {attenrate, 2'b00}; //discard carry
+wire    [5:0]   cyc10c_egparam_rateapplied = cyc9r_egparam_scaled + {cyc9r_attenrate, 2'b00}; //discard carry
 
 //first decay end, compare cyc9r_attenlevel_previous[9:4] with {(cyc9r_d1l == 4'd15), cyc9r_d1l, 1'b0} <- idk why
 assign  cyc10c_first_decay_end =  cyc9r_attenlevel_previous[9:4] == {(cyc9r_d1l == 4'd15), cyc9r_d1l, 1'b0}; //==? {(cyc9r_d1l == 4'd15), cyc9r_d1l, 1'b0, 4'bXXXX};
@@ -711,7 +716,7 @@ always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
         2'd3: cyc40r_lfa_shifted <= {i_LFA, 2'b00};
     endcase
 
-    cyc40r_force_no_atten <= i_TEST[5];
+    cyc40r_force_no_atten <= i_TEST_D5;
     cyc40r_tl <= i_TL;
 end
 
@@ -808,7 +813,7 @@ end
 //////  STATIC STORAGE FOR DEBUG
 ////
 
-`ifdef IKA2151_SIM_STATIC_STORAGE
+`ifdef IKAOPM_DEBUG
 
 reg     [4:0]   sim_attenlevel_static_storage_addr_cntr = 5'd0;
 reg     [4:0]   sim_envstate_static_storage_addr_cntr = 5'd0;

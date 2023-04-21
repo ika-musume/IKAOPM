@@ -1,4 +1,4 @@
-module IKA2151_op (
+module IKAOPM_op (
     //master clock
     input   wire            i_EMUCLK, //emulator master clock
 
@@ -16,9 +16,9 @@ module IKA2151_op (
 
     input   wire    [2:0]   i_ALG,
     input   wire    [2:0]   i_FL,
-    input   wire    [7:0]   i_TEST, //test register
+    input   wire            i_TEST_D4, //test register
 
-    input   wire    [9:0]   i_OP_ORIGINAL_PHASE,
+    input   wire    [9:0]   i_OP_PHASEDATA,
     input   wire    [9:0]   i_OP_ATTENLEVEL,
     output  wire            o_ACC_SNDADD,
     output  wire    [13:0]  o_ACC_OPDATA
@@ -58,7 +58,7 @@ primitive_counter #(.WIDTH(2)) u_op_algst_cntr (
 //
 
 reg     [9:0]   cyc56r_phasemod_value; //get value from the end of the pipeline
-wire    [10:0]  cyc41c_modded_phase_adder = !mrst_n ? 10'd0 : i_OP_ORIGINAL_PHASE + cyc56r_phasemod_value;
+wire    [10:0]  cyc41c_modded_phase_adder = !mrst_n ? 10'd0 : i_OP_PHASEDATA + cyc56r_phasemod_value;
 
 
 //
@@ -173,7 +173,7 @@ end
 reg     [11:0]  cyc45r_logsin_saturated;
 reg             cyc45r_level_fp_sign;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
-    cyc45r_logsin_saturated <= cyc44r_logsin_attenuated[12] ? 12'd4095 : cyc44r_logsin_attenuated;
+    cyc45r_logsin_saturated <= cyc44r_logsin_attenuated[12] ? 12'd4095 : cyc44r_logsin_attenuated[11:0]; //discard carry
     cyc45r_level_fp_sign <= cyc44r_level_fp_sign;
 end
 
@@ -248,7 +248,7 @@ always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     cyc47r_level_fp_mant <= cyc47c_exprom_addend0 + cyc47c_exprom_addend1; //discard carry
     cyc47r_level_fp_exp <= cyc46r_level_fp_exp;
     cyc47r_level_fp_sign <= cyc46r_level_fp_sign;
-    cyc47r_level_negate <= i_TEST[4];
+    cyc47r_level_negate <= i_TEST_D4;
 end
 
 
@@ -518,7 +518,7 @@ end
 
 reg             cyc55r_self_fdbk_en;
 reg     [2:0]   cyc55r_fl;
-reg     [15:0]  cyc55r_op_sum;
+reg     [14:0]  cyc55r_op_sum;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     cyc55r_self_fdbk_en <= cyc54r_self_fdbk_en;
     cyc55r_fl <= cyc54r_self_fdbk_en ? i_FL : 3'd0;
@@ -544,8 +544,8 @@ always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
             3'd3: cyc56r_phasemod_value <= {{2{cyc55r_op_sum[14]}}, cyc55r_op_sum[14:7]};
             3'd4: cyc56r_phasemod_value <= {{1{cyc55r_op_sum[14]}}, cyc55r_op_sum[14:6]};
             3'd5: cyc56r_phasemod_value <= cyc55r_op_sum[14:5];
-            3'd6: cyc56r_phasemod_value <= cyc55r_op_sum[14:4];
-            3'd7: cyc56r_phasemod_value <= cyc55r_op_sum[14:3];
+            3'd6: cyc56r_phasemod_value <= cyc55r_op_sum[13:4];
+            3'd7: cyc56r_phasemod_value <= cyc55r_op_sum[12:3];
         endcase
     end
     else cyc56r_phasemod_value <= cyc55r_op_sum[10:1];

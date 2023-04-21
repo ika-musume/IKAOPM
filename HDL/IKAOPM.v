@@ -1,4 +1,4 @@
-module IKA2151 (
+module IKAOPM (
     //chip clock
     input   wire            i_EMUCLK, //emulator master clock
     input   wire            i_phiM_PCEN_n, //phiM clock enable
@@ -20,17 +20,22 @@ module IKA2151 (
     output  wire    [7:0]   o_D,
 
     //output driver enable
-    output  wire            o_CTRL_OE_n,
+    output  wire            o_CTRL_OE,
 
     //ct
-    output  wire    [1:0]   o_CT,
+    output  wire            o_CT2,
+    output  wire            o_CT1,
 
     //interrupt
     output  wire            o_IRQ_n,
 
     //sh
     output  wire            o_SH1,
-    output  wire            o_SH2
+    output  wire            o_SH2,
+
+    //output
+    output  wire            o_SO,
+    output  wire    [15:0]  o_EMU_R_PO, o_EMU_L_PO
 );
 
 
@@ -55,9 +60,6 @@ wire            cycle_03, cycle_00_16, cycle_01_to_16;  //to EG
 wire            cycle_04_12_20_28;                      //to OP(algorithm state counter)
 wire            cycle_29, cycle_06_22;                  //to ACC
 wire            cycle_12, cycle_15_31;                  //to NOISE
-
-//global
-wire    [7:0]   test;
 
 //NOISE
 wire    [4:0]   nfrq;
@@ -93,7 +95,7 @@ wire    [6:0]   tl;
 wire    [1:0]   ams;
 
 //OP
-wire    [9:0]   op_attenlevel, original_phase;
+wire    [9:0]   op_attenlevel, op_phasedata;
 wire    [2:0]   alg, fl;
 
 //ACC
@@ -109,9 +111,17 @@ wire    [1:0]   clka2;
 wire    [5:0]   timerctrl;
 wire            timera_flag, timerb_flag, timera_ovfl;
 
+//TEST
+wire    [7:0]   test;
+wire            reg_phase_ch6_c2, reg_attenlevel_ch8_c2, reg_lfo_clk;
 
 
-IKA2151_timinggen TIMINGGEN (
+
+///////////////////////////////////////////////////////////
+//////  Modules
+////
+
+IKAOPM_timinggen TIMINGGEN (
     .i_EMUCLK                   (i_EMUCLK                   ),
 
     .i_IC_n                     (i_IC_n                     ),
@@ -149,7 +159,9 @@ IKA2151_timinggen TIMINGGEN (
     .o_CYCLE_06_22              (cycle_06_22                )
 );
 
-IKA2151_reg #(
+
+
+IKAOPM_reg #(
     .USE_BRAM_FOR_D32REG        (0                          )
 ) REG (
     .i_EMUCLK                   (i_EMUCLK                   ),
@@ -168,8 +180,7 @@ IKA2151_reg #(
 
     .i_D                        (i_D                        ),
     .o_D                        (o_D                        ),
-
-    .o_CTRL_OE_n                (o_CTRL_OE_n                ),
+    .o_CTRL_OE                  (o_CTRL_OE                  ),
 
     .i_TIMERA_OVFL              (timera_ovfl                ),
     .i_TIMERA_FLAG              (timera_flag                ),
@@ -177,7 +188,8 @@ IKA2151_reg #(
 
     .o_TEST                     (test                       ),
 
-    .o_CT                       (o_CT                       ),
+    .o_CT1                      (o_CT1                      ),
+    .o_CT2                      (o_CT2                      ),
 
     .o_NE                       (ne                         ),
     .o_NFRQ                     (nfrq                       ),
@@ -220,12 +232,16 @@ IKA2151_reg #(
 
     .o_RL                       (rl                         ),
 
-    .i_REG_LFO_CLK              (                           )
+    .i_REG_LFO_CLK              (reg_lfo_clk                ),
+
+    .i_REG_PHASE_CH6_C2         (reg_phase_ch6_c2           ),
+    .i_REG_ATTENLEVEL_CH8_C2    (reg_attenlevel_ch8_c2      ),
+    .i_REG_OPDATA               (acc_opdata                 )
 );
 
 
 
-IKA2151_noise NOISE (
+IKAOPM_noise NOISE (
     .i_EMUCLK                   (i_EMUCLK                   ),
 
     .i_MRST_n                   (mrst_n                     ),
@@ -246,8 +262,7 @@ IKA2151_noise NOISE (
 
 
 
-
-IKA2151_lfo LFO (
+IKAOPM_lfo LFO (
     .i_EMUCLK                   (i_EMUCLK                   ),
 
     .i_MRST_n                   (mrst_n                     ),
@@ -260,21 +275,25 @@ IKA2151_lfo LFO (
     .i_CYCLE_BYTE               (cycle_byte                 ),
     
     .i_LFRQ                     (lfrq                       ),
-    .i_PMD                      (7'd127                     ),
-    .i_AMD                      (7'd127                     ),
+    .i_PMD                      (pmd                        ),
+    .i_AMD                      (amd                        ),
     .i_W                        (w                          ),
-    .i_TEST                     (test                       ),
+    .i_TEST_D1                  (test[1]                    ),
+    .i_TEST_D2                  (test[2]                    ),
+    .i_TEST_D3                  (test[3]                    ),
 
     .i_LFRQ_UPDATE              (lfrq_update                ),
 
     .i_LFO_NOISE                (lfo_noise                  ),
 
     .o_LFA                      (lfa                        ),
-    .o_LFP                      (lfp                        )
+    .o_LFP                      (lfp                        ),
+    .o_REG_LFO_CLK              (reg_lfo_clk                )
 );
 
 
-IKA2151_pg #(
+
+IKAOPM_pg #(
     .USE_BRAM_FOR_PHASEREG      (0                          )
 ) PG (
     .i_EMUCLK                   (i_EMUCLK                   ),
@@ -293,18 +312,19 @@ IKA2151_pg #(
     .i_DT2                      (dt2                        ),
     .i_DT1                      (dt1                        ),
     .i_MUL                      (mul                        ),
-    .i_TEST                     (test                       ),
+    .i_TEST_D3                  (test[3]                    ),
 
     .i_LFP                      (lfp                        ),
 
     .i_PG_PHASE_RST             (phase_rst                  ),
     .o_EG_PDELTA_SHIFT_AMOUNT   (pdelta_shamt               ),
-    .o_OP_ORIGINAL_PHASE        (original_phase             ),
-    .o_REG_PHASE_CH6_C2         (                           )
+    .o_OP_PHASEDATA             (op_phasedata               ),
+    .o_REG_PHASE_CH6_C2         (reg_phase_ch6_c2           )
 );
 
 
-IKA2151_eg EG (
+
+IKAOPM_eg EG (
     .i_EMUCLK                   (i_EMUCLK                   ),
 
     .i_MRST_n                   (mrst_n                     ),
@@ -327,18 +347,20 @@ IKA2151_eg EG (
     .i_TL                       (tl                         ),
     .i_AMS                      (ams                        ),
     .i_LFA                      (lfa                        ),
-    .i_TEST                     (test                       ),
+    .i_TEST_D0                  (test[0]                    ),
+    .i_TEST_D5                  (test[5]                    ),
 
     .i_EG_PDELTA_SHIFT_AMOUNT   (pdelta_shamt               ),
 
     .o_PG_PHASE_RST             (phase_rst                  ),
     .o_OP_ATTENLEVEL            (op_attenlevel              ),
     .o_NOISE_ATTENLEVEL         (noise_attenlevel           ),
-    .o_REG_ATTENLEVEL_CH8_C2    (                           )
+    .o_REG_ATTENLEVEL_CH8_C2    (reg_attenlevel_ch8_c2      )
 );
 
 
-IKA2151_op OP (
+
+IKAOPM_op OP (
     .i_EMUCLK                   (i_EMUCLK                   ),
 
     .i_MRST_n                   (mrst_n                     ),
@@ -350,18 +372,19 @@ IKA2151_op OP (
     .i_CYCLE_12                 (cycle_12                   ),
     .i_CYCLE_04_12_20_28        (cycle_04_12_20_28          ),
 
-    .i_ALG                      (3'b111                        ),
-    .i_FL                       (3'b100                     ),
-    .i_TEST                     (test                       ),
+    .i_ALG                      (alg                        ),
+    .i_FL                       (fl                         ),
+    .i_TEST_D4                  (test[4]                    ),
 
-    .i_OP_ORIGINAL_PHASE        (original_phase             ),
+    .i_OP_PHASEDATA             (op_phasedata               ),
     .i_OP_ATTENLEVEL            (op_attenlevel              ),
     .o_ACC_SNDADD               (acc_snd_add                ),
     .o_ACC_OPDATA               (acc_opdata                 )
 );
 
 
-IKA2151_acc ACC (
+
+IKAOPM_acc ACC (
     .i_EMUCLK                   (i_EMUCLK                   ),
 
     .i_MRST_n                   (mrst_n                     ),
@@ -375,17 +398,22 @@ IKA2151_acc ACC (
     .i_CYCLE_06_22              (cycle_06_22                ),
     .i_CYCLE_01_TO_16           (cycle_01_to_16             ),
 
-    .i_NE                       (1'b1                       ),
-    .i_RL                       (2'b11                      ),
+    .i_NE                       (ne                         ),
+    .i_RL                       (rl                         ),
 
     .i_ACC_SNDADD               (acc_snd_add                ),
     .i_ACC_OPDATA               (acc_opdata                 ),
     .i_ACC_NOISE                (acc_noise                  ),
-    .o_SO                       (o_SO                       )
+
+    .o_SO                       (o_SO                       ),
+
+    .o_EMU_R_PO                 (o_EMU_R_PO                 ),
+    .o_EMU_L_PO                 (o_EMU_L_PO                 )
 );
 
 
-IKA2151_timer TIMER (
+
+IKAOPM_timer TIMER (
     .i_EMUCLK                   (i_EMUCLK                   ),
 
     .i_MRST_n                   (mrst_n                     ),
@@ -404,13 +432,12 @@ IKA2151_timer TIMER (
     .i_TIMERB_IRQ_EN            (timerctrl[3]               ),
     .i_TIMERA_FRST              (timerctrl[4]               ),
     .i_TIMERB_FRST              (timerctrl[5]               ),
-    .i_TEST                     (test                       ),
+    .i_TEST_D2                  (test[2]                    ),
 
     .o_TIMERA_OVFL              (timera_ovfl                ),
     .o_TIMERA_FLAG              (timera_flag                ),
     .o_TIMERB_FLAG              (timerb_flag                ),
     .o_IRQ_n                    (o_IRQ_n                    )
 );
-
 
 endmodule 

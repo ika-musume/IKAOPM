@@ -1,4 +1,4 @@
-module IKA2151_acc (
+module IKAOPM_acc (
     //master clock
     input   wire            i_EMUCLK, //emulator master clock
 
@@ -24,6 +24,7 @@ module IKA2151_acc (
     input   wire    [13:0]  i_ACC_OPDATA,
     input   wire    [13:0]  i_ACC_NOISE,
 
+    output  reg     [15:0]  o_EMU_R_PO, o_EMU_L_PO,
     output  reg             o_SO
 );
 
@@ -33,7 +34,6 @@ module IKA2151_acc (
 //////  Clock and reset
 ////
 
-wire            phi1pcen_n = i_phi1_PCEN_n;
 wire            phi1ncen_n = i_phi1_NCEN_n;
 wire            mrst_n = i_MRST_n;
 
@@ -103,7 +103,6 @@ end
 
 reg     [15:0]  mcyc14_r_piso, mcyc30_l_piso;
 reg     [2:0]   mcyc14_r_saturation_ctrl, mcyc30_l_saturation_ctrl;
-reg     [15:0]  debug_mcyc14_r_piso, debug_mcyc30_l_piso;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     if(cycle_13) begin
         mcyc14_r_piso <= {~r_accumulator[17], r_accumulator[14:0]}; //FLIP THE SIGN BIT!!
@@ -121,8 +120,8 @@ always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
         mcyc30_l_piso[14:0] <= mcyc30_l_piso[15:1]; //shift
     end
 
-    if(cycle_13) debug_mcyc14_r_piso <= {r_accumulator[17], r_accumulator[14:0]};
-    if(i_CYCLE_29) debug_mcyc30_l_piso <= {l_accumulator[17], l_accumulator[14:0]};
+    if(cycle_13) o_EMU_R_PO <= {r_accumulator[17], r_accumulator[14:0]};
+    if(i_CYCLE_29) o_EMU_L_PO <= {l_accumulator[17], l_accumulator[14:0]};
 end
 
 
@@ -212,21 +211,21 @@ end
 wire    [5:0]   sound_data_magnitude = sound_data_bit_15_9[6] ? sound_data_bit_15_9[5:0] : ~sound_data_bit_15_9[5:0];
 reg             sound_data_sign;
 reg     [2:0]   sound_data_shift_amount;
-reg     [2:0]   sound_data_output_tap;
+reg     [4:0]   sound_data_output_tap;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     if(i_CYCLE_06_22) begin
         sound_data_sign <= sound_data_bit_15_9[6];
 
         casez(sound_data_magnitude)
-            6'b000000: begin sound_data_output_tap <= 3'd6; sound_data_shift_amount <= 3'd1; end //small number
-            6'b000001: begin sound_data_output_tap <= 3'd5; sound_data_shift_amount <= 3'd2; end
-            6'b00001?: begin sound_data_output_tap <= 3'd4; sound_data_shift_amount <= 3'd3; end
-            6'b0001??: begin sound_data_output_tap <= 3'd3; sound_data_shift_amount <= 3'd4; end
-            6'b001???: begin sound_data_output_tap <= 3'd2; sound_data_shift_amount <= 3'd5; end
-            6'b01????: begin sound_data_output_tap <= 3'd1; sound_data_shift_amount <= 3'd6; end
-            6'b1?????: begin sound_data_output_tap <= 3'd0; sound_data_shift_amount <= 3'd7; end //large number
+            6'b000000: begin sound_data_output_tap <= 5'd6; sound_data_shift_amount <= 3'd1; end //small number
+            6'b000001: begin sound_data_output_tap <= 5'd5; sound_data_shift_amount <= 3'd2; end
+            6'b00001?: begin sound_data_output_tap <= 5'd4; sound_data_shift_amount <= 3'd3; end
+            6'b0001??: begin sound_data_output_tap <= 5'd3; sound_data_shift_amount <= 3'd4; end
+            6'b001???: begin sound_data_output_tap <= 5'd2; sound_data_shift_amount <= 3'd5; end
+            6'b01????: begin sound_data_output_tap <= 5'd1; sound_data_shift_amount <= 3'd6; end
+            6'b1?????: begin sound_data_output_tap <= 5'd0; sound_data_shift_amount <= 3'd7; end //large number
             
-            default:   begin sound_data_output_tap <= 3'd6; sound_data_shift_amount <= 3'd1; end
+            default:   begin sound_data_output_tap <= 5'd6; sound_data_shift_amount <= 3'd1; end
         endcase
     end
 end

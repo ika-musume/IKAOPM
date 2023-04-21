@@ -85,12 +85,12 @@ reg                     counter_full;
 
 always @(posedge i_EMUCLK) begin
     if(!i_PCEN_n) begin
-        if(i_RST) counter <= 0;
+        if(i_RST) counter <= {WIDTH{1'b0}};
         else begin
             if(i_LD) counter <= i_D;
             else begin
                 if(i_CNT) begin
-                    counter <= (counter == COUNTER_MAX) ? 0 : counter + 1;
+                    counter <= (counter == COUNTER_MAX) ? {WIDTH{1'b0}} : counter + {{(WIDTH - 1){1'b0}}, 1'b1};
                 end
             end
         end

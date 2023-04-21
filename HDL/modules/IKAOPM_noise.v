@@ -1,4 +1,4 @@
-module IKA2151_noise
+module IKAOPM_noise
 (
     //master clock
     input   wire            i_EMUCLK, //emulator master clock

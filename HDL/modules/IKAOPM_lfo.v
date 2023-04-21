@@ -1,4 +1,4 @@
-module IKA2151_lfo (
+module IKAOPM_lfo (
     //master clock
     input   wire            i_EMUCLK, //emulator master clock
 
@@ -15,11 +15,13 @@ module IKA2151_lfo (
     input   wire            i_CYCLE_BYTE,
 
     //register data
-    input   wire    [7:0]   i_LFRQ , //LFO frequency
-    input   wire    [6:0]   i_AMD, //amplitude modulation depth
-    input   wire    [6:0]   i_PMD, //phase modulation depth
-    input   wire    [1:0]   i_W, //waveform select
-    input   wire    [7:0]   i_TEST, //test register
+    input   wire    [7:0]   i_LFRQ, //LFO frequency
+    input   wire    [6:0]   i_AMD,  //amplitude modulation depth
+    input   wire    [6:0]   i_PMD,  //phase modulation depth
+    input   wire    [1:0]   i_W,    //waveform select
+    input   wire            i_TEST_D1, //test register
+    input   wire            i_TEST_D2,
+    input   wire            i_TEST_D3,
 
     //control signal
     input   wire            i_LFRQ_UPDATE,
@@ -28,7 +30,9 @@ module IKA2151_lfo (
     input   wire            i_LFO_NOISE,
 
     output  wire    [7:0]   o_LFP,
-    output  wire    [7:0]   o_LFA
+    output  wire    [7:0]   o_LFA,
+
+    output  wire            o_REG_LFO_CLK
 );
 
 
@@ -48,16 +52,20 @@ wire            mrst_n = i_MRST_n;
 
 //additional cycle bits
 reg             cycle_06_22, cycle_13_29, cycle_14_30, cycle_15_31;
-reg             debug_cycle_07_23;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     cycle_06_22 <= i_CYCLE_05_21;
 
     cycle_13_29 <= i_CYCLE_12_28;
     cycle_14_30 <= cycle_13_29;
     cycle_15_31 <= cycle_14_30;
+end
 
+`ifdef IKAOPM_DEBUG
+reg             debug_cycle_07_23;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     debug_cycle_07_23 <= cycle_06_22;
 end
+`endif
 
 
 
@@ -129,7 +137,7 @@ end
 //locntr cnt up signal
 reg             locntr_cnt;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
-    locntr_cnt <= prescaler_cout_z | i_TEST[3]; //de morgan
+    locntr_cnt <= prescaler_cout_z | i_TEST_D3; //de morgan
 end
 
 //locntr preload signal
@@ -200,8 +208,9 @@ end
 ////
 
 reg             lfo_clk;
+assign  o_REG_LFO_CLK = lfo_clk;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
-    lfo_clk <= |{locntr_cout, hicntr_complete, i_TEST[2]};
+    lfo_clk <= |{locntr_cout, hicntr_complete, i_TEST_D2};
 end
 
 
@@ -214,7 +223,7 @@ end
 //I reused the signal above to eliminate a latch.
 reg             lfo_clk_latched = 1'b0; //dynamic d latch
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
-    if(cycle_14_30) lfo_clk_latched <= |{locntr_cout, hicntr_complete, i_TEST[2]};
+    if(cycle_14_30) lfo_clk_latched <= |{locntr_cout, hicntr_complete, i_TEST_D2};
 end
 
 
@@ -226,7 +235,7 @@ end
 reg     [1:0]   wfsel;
 wire            wfsel_noise = (wfsel == 2'd3);
 wire            wfsel_tri   = (wfsel == 2'd2);
-wire            wfsel_sq    = (wfsel == 2'd1);
+//wire            wfsel_sq    = (wfsel == 2'd1);
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     wfsel <= i_W;
 end
@@ -240,7 +249,7 @@ end
 //test bit 1 latch
 reg             tst_bit1_latched;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
-    tst_bit1_latched <= i_TEST[1];
+    tst_bit1_latched <= i_TEST_D1;
 end
 
 //phase accumulator
@@ -296,11 +305,12 @@ always @(posedge i_EMUCLK or negedge mrst_n) begin //async reset
 end
 
 //for debug
-reg     [15:0]      phase_acc_debug;
+`ifdef IKAOPM_DEBUG
+reg     [15:0]      debug_phase_acc;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
-    if(cycle_15_31) phase_acc_debug <= phase_acc;
+    if(cycle_15_31) debug_phase_acc <= phase_acc;
 end
-
+`endif
 
 
 ///////////////////////////////////////////////////////////
@@ -399,13 +409,15 @@ always @(posedge i_EMUCLK or negedge mrst_n) begin
 end
 
 //debug
-reg     [6:0]   base_value_am_debug, base_value_pm_debug;
+`ifdef IKAOPM_DEBUG
+reg     [6:0]   debug_base_value_am, debug_base_value_pm;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     if(debug_cycle_07_23) begin
-        if(a_np_sel_latched) base_value_am_debug <= base_value_sr;
-        else base_value_pm_debug <= base_value_sr;
+        if(a_np_sel_latched) debug_base_value_am <= base_value_sr;
+        else debug_base_value_pm <= base_value_sr;
     end
 end
+`endif
 
 
 
@@ -533,18 +545,20 @@ always @(posedge i_EMUCLK) begin
 end
 
 //lfp debug(2's complement)
-reg     [7:0]   lfp_reg_pitchmod_debug, lfa_reg_attenlevel_debug;
+`ifdef IKAOPM_DEBUG
+reg     [7:0]   debug_lfp_reg_pitchmod, debug_lfa_reg_attenlevel;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) 
         if(lfa_reg_ld) begin 
-            lfa_reg_attenlevel_debug <= multiplier_sr[15:8]; 
+            debug_lfa_reg_attenlevel <= multiplier_sr[15:8]; 
         end
     if(!phi1pcen_n) begin
         if(lfp_reg_ld) 
-            lfp_reg_pitchmod_debug <= (pmd_zero == 1'b1) ? 8'h80 : 
+            debug_lfp_reg_pitchmod <= (pmd_zero == 1'b1) ? 8'h80 : 
                                       (~(multiplier_sr[15] ^ ~lfp_sign_ctrl) == 1'b1) ? (~multiplier_sr[14:8] + 7'h1) : multiplier_sr[14:8];
     end
 end
+`endif
 
 
 endmodule

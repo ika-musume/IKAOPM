@@ -1,4 +1,4 @@
-module IKA2151_reg #(parameter USE_BRAM_FOR_D32REG = 0) (
+module IKAOPM_reg #(parameter USE_BRAM_FOR_D32REG = 0) (
     //master clock
     input   wire            i_EMUCLK, //emulator master clock
 
@@ -21,10 +21,8 @@ module IKA2151_reg #(parameter USE_BRAM_FOR_D32REG = 0) (
 
     //bus data io
     input   wire    [7:0]   i_D,
-    output  wire    [7:0]   o_D,
-
-    //output driver enable
-    output  wire            o_CTRL_OE_n,
+    output  wire    [7:0]   o_D,   
+    output  wire            o_CTRL_OE,  //output driver enable
 
     //timer input
     input   wire            i_TIMERA_OVFL,
@@ -34,7 +32,8 @@ module IKA2151_reg #(parameter USE_BRAM_FOR_D32REG = 0) (
     //register output
     output  reg     [7:0]   o_TEST,     //0x01      TEST register
 
-    output  wire    [1:0]   o_CT,       //0x1B[7:6] CT2/CT1
+    output  wire            o_CT1,
+    output  reg             o_CT2,
 
     output  reg             o_NE,       //0x0F[7]   Noise Enable
     output  reg     [4:0]   o_NFRQ,     //0x0F[4:0] Noise Frequency
@@ -81,8 +80,13 @@ module IKA2151_reg #(parameter USE_BRAM_FOR_D32REG = 0) (
     //ACC
     output  wire    [1:0]   o_RL,
 
-    //input data for test registers
-    input   wire            i_REG_LFO_CLK
+    //input data for LSI test via CT pin
+    input   wire            i_REG_LFO_CLK,
+
+    //input data for LSI test via bus registers
+    input   wire            i_REG_PHASE_CH6_C2,
+    input   wire            i_REG_ATTENLEVEL_CH8_C2,
+    input   wire    [13:0]  i_REG_OPDATA
 );
 
 
@@ -114,18 +118,16 @@ reg             dreg_rq_synced0, dreg_rq_synced1, dreg_rq_synced2;
 reg             areg_rq_synced0, areg_rq_synced1, areg_rq_synced2;
 wire            data_ld = dreg_rq_synced2;
 wire            addr_ld = areg_rq_synced2;
-always @(posedge i_EMUCLK or negedge mrst_n) begin
-    if(!mrst_n) begin
-        dreg_rq_synced0 <= 1'b0;
-        dreg_rq_synced1 <= 1'b0;
-        dreg_rq_synced2 <= 1'b0;
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        if(!mrst_n) begin
+            dreg_rq_synced0 <= 1'b0;
+            dreg_rq_synced2 <= 1'b0;
 
-        areg_rq_synced0 <= 1'b0;
-        areg_rq_synced1 <= 1'b0;
-        areg_rq_synced2 <= 1'b0;
-    end
-    else begin
-        if(!phi1ncen_n) begin
+            areg_rq_synced0 <= 1'b0;
+            areg_rq_synced2 <= 1'b0;
+        end
+        else begin
             //data load
             dreg_rq_synced0 <= dreg_rq_inlatch;
             dreg_rq_synced2 <= dreg_rq_synced1;
@@ -134,8 +136,15 @@ always @(posedge i_EMUCLK or negedge mrst_n) begin
             areg_rq_synced0 <= areg_rq_inlatch;
             areg_rq_synced2 <= areg_rq_synced1;
         end
+    end
 
-        if(!phi1pcen_n) begin
+    if(!phi1pcen_n) begin
+        if(!mrst_n) begin
+            dreg_rq_synced1 <= 1'b0;
+
+            areg_rq_synced1 <= 1'b0;
+        end
+        else begin
             //data load
             dreg_rq_synced1 <= dreg_rq_synced0;
 
@@ -344,9 +353,12 @@ end
 //
 
 //CT reg output
-reg     [1:0]   ct_reg;
-assign  o_CT[0] = ct_reg[0];
-assign  o_CT[1] = o_TEST[3] ? i_REG_LFO_CLK : ct_reg[1]; //LSI test purpose
+reg     [1:0]   ct_reg; //define CT reg
+
+assign  o_CT1 = ct_reg[0];
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    o_CT2 <= o_TEST[3] ? i_REG_LFO_CLK : ct_reg[1]; //LSI test purpose
+end
 
 //reg for KON
 reg             csm_reg;
@@ -651,8 +663,37 @@ endgenerate
 
 
 ///////////////////////////////////////////////////////////
+//////  Write busy flag timer
+////
+
+//write busy timer
+reg             busycntr_cnt;
+wire            busycntr_ovfl;
+primitive_counter #(.WIDTH(5)) u_busycntr (
+    .i_EMUCLK(i_EMUCLK), .i_PCEN_n(phi1pcen_n), .i_NCEN_n(phi1ncen_n),
+    .i_CNT(busycntr_cnt), .i_LD(1'b0), .i_RST(~mrst_n),
+    .i_D(5'd0), .o_Q(), .o_CO(busycntr_ovfl)
+);
+
+//write busy flag
+reg             write_busy;
+always @(posedge i_EMUCLK) begin
+    if(!phi1pcen_n) write_busy <= (write_busy & ~(~mrst_n | busycntr_ovfl)) | data_ld;
+    if(!phi1ncen_n) busycntr_cnt <= write_busy;
+end
+
+
+
+
+
+///////////////////////////////////////////////////////////
 //////  Read-only register multiplexer
 ////
+
+wire        [7:0]   internal_data = o_TEST[7] ? {i_REG_PHASE_CH6_C2, i_REG_ATTENLEVEL_CH8_C2, i_REG_OPDATA[13:8]} : i_REG_OPDATA[7:0];
+assign  o_D = o_TEST[6] ? internal_data : {write_busy, 5'b00000, i_TIMERA_FLAG, i_TIMERB_FLAG};
+
+assign  o_CTRL_OE = ~|{~mrst_n, i_A0, i_RD_n, i_CS_n};
 
 
 endmodule

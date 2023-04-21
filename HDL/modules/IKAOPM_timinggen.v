@@ -1,4 +1,4 @@
-module IKA2151_timinggen (
+module IKAOPM_timinggen (
     //chip clock
     input   wire            i_EMUCLK, //emulator master clock
 
@@ -45,7 +45,6 @@ module IKA2151_timinggen (
 //////  Clock and reset
 ////
 
-wire            phi1pcen_n = o_phi1_PCEN_n;
 wire            phi1ncen_n = o_phi1_NCEN_n;
 wire            mrst_n = o_MRST_n;
 

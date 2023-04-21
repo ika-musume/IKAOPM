@@ -1,4 +1,4 @@
-module IKA2151_pg #(parameter USE_BRAM_FOR_PHASEREG = 0) (
+module IKAOPM_pg #(parameter USE_BRAM_FOR_PHASEREG = 0) (
     //master clock
     input   wire            i_EMUCLK, //emulator master clock
 
@@ -20,7 +20,7 @@ module IKA2151_pg #(parameter USE_BRAM_FOR_PHASEREG = 0) (
     input   wire    [1:0]   i_DT2, //Detune 2
     input   wire    [2:0]   i_DT1, //Detune 1
     input   wire    [3:0]   i_MUL,
-    input   wire    [7:0]   i_TEST, //test register
+    input   wire            i_TEST_D3, //test register
 
     //Vibrato
     input   wire    [7:0]   i_LFP,
@@ -28,7 +28,7 @@ module IKA2151_pg #(parameter USE_BRAM_FOR_PHASEREG = 0) (
     //send signals to other modules
     input   wire            i_PG_PHASE_RST, //phase reset request signal from PG
     output  wire    [4:0]   o_EG_PDELTA_SHIFT_AMOUNT, //send shift amount to EG
-    output  wire    [9:0]   o_OP_ORIGINAL_PHASE, //send phase data to OP
+    output  wire    [9:0]   o_OP_PHASEDATA, //send phase data to OP
     output  wire            o_REG_PHASE_CH6_C2 //send Ch6, Carrier2 phase data to REG serially
 );
 
@@ -38,7 +38,6 @@ module IKA2151_pg #(parameter USE_BRAM_FOR_PHASEREG = 0) (
 //////  Clock and reset
 ////
 
-wire            phi1pcen_n = i_phi1_PCEN_n;
 wire            phi1ncen_n = i_phi1_NCEN_n;
 wire            mrst_n = i_MRST_n;
 
@@ -101,7 +100,6 @@ end
 //
 
 reg     [12:0]  cyc1c_lfp_deviance;
-wire    [13:0]  debug_cyc1c_lfp_deviance = (cyc0r_ex_lfp_sign == 1'b1) ? (~cyc1c_lfp_deviance + 7'h1) : cyc1c_lfp_deviance;
 always @(*) begin
     case(cyc0r_pms_level)
         3'd0: cyc1c_lfp_deviance <= 13'b0;
@@ -213,9 +211,11 @@ always @(posedge i_EMUCLK) begin
     end
 end
 
+`ifdef IKAOPM_DEBUG
+wire    [13:0]  debug_cyc1c_lfp_deviance = (cyc0r_ex_lfp_sign == 1'b1) ? (~cyc1c_lfp_deviance + 7'h1) : cyc1c_lfp_deviance;
 wire            debug_cyc1r_notrgroup_violation = cyc1r_modded_pitchval[7:6] == 2'd3;
 wire            debug_cyc2r_notrgroup_violation = cyc2r_rearranged_pitchval[7:6] == 2'd3;
-
+`endif
 
 
 ///////////////////////////////////////////////////////////
@@ -381,71 +381,19 @@ wire   [12:0]  cyc6c_final_pitchval = (cyc5r_int_detuned_pitchval[7] == 1'b1) ? 
 //
 
 reg     [4:0]   cyc6r_pdelta_shift_amount;
-reg     [11:0]  cyc6r_pdelta_base;
-reg     [3:0]   cyc6r_pdelta_increment_multiplicand;
+wire    [11:0]  cyc6r_pdelta_base;
+wire    [3:0]   cyc6r_pdelta_increment_multiplicand;
 reg     [3:0]   cyc6r_pdelta_increment_multiplier;
-reg             cyc6r_pdelta_calcmode;
+wire            cyc6r_pdelta_calcmode;
+
+pg_submdl_fnumrom u_cyc6r_fnumrom (
+    .i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_ADDR(cyc6c_final_pitchval[9:4]),
+    .o_DATA({cyc6r_pdelta_base, cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode})
+    //The original chip's output bit order is scrambled!
+);
 
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-
-        //The original chip's bit order is scrambled! 
-        case(cyc6c_final_pitchval[9:4])
-            6'h00: begin cyc6r_pdelta_base <= 12'b010100_010011; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b10011; end
-            6'h01: begin cyc6r_pdelta_base <= 12'b010100_100110; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b10011; end
-            6'h02: begin cyc6r_pdelta_base <= 12'b010100_111001; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b10011; end
-            6'h03: begin cyc6r_pdelta_base <= 12'b010101_001100; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b00101; end
-            6'h04: begin cyc6r_pdelta_base <= 12'b010101_100000; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b00101; end
-            6'h05: begin cyc6r_pdelta_base <= 12'b010101_110100; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b00101; end
-            6'h06: begin cyc6r_pdelta_base <= 12'b010110_001000; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b10101; end
-            6'h07: begin cyc6r_pdelta_base <= 12'b010110_011101; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b00101; end
-            6'h08: begin cyc6r_pdelta_base <= 12'b010110_110010; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b10101; end
-            6'h09: begin cyc6r_pdelta_base <= 12'b010111_000111; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b10101; end
-            6'h0A: begin cyc6r_pdelta_base <= 12'b010111_011101; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b00111; end
-            6'h0B: begin cyc6r_pdelta_base <= 12'b010111_110011; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b00111; end
-
-            6'h10: begin cyc6r_pdelta_base <= 12'b011000_001001; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b00111; end
-            6'h11: begin cyc6r_pdelta_base <= 12'b011000_011111; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b00111; end
-            6'h12: begin cyc6r_pdelta_base <= 12'b011000_110110; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b10111; end
-            6'h13: begin cyc6r_pdelta_base <= 12'b011001_001101; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b10111; end
-            6'h14: begin cyc6r_pdelta_base <= 12'b011001_100101; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b10111; end
-            6'h15: begin cyc6r_pdelta_base <= 12'b011001_111100; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b01001; end
-            6'h16: begin cyc6r_pdelta_base <= 12'b011010_010101; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b01001; end
-            6'h17: begin cyc6r_pdelta_base <= 12'b011010_101101; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b01001; end
-            6'h18: begin cyc6r_pdelta_base <= 12'b011011_000110; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b11001; end
-            6'h19: begin cyc6r_pdelta_base <= 12'b011011_011111; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b11001; end
-            6'h1A: begin cyc6r_pdelta_base <= 12'b011011_111001; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b01011; end
-            6'h1B: begin cyc6r_pdelta_base <= 12'b011100_010011; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b01011; end
-
-            6'h20: begin cyc6r_pdelta_base <= 12'b011100_101101; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b01011; end
-            6'h21: begin cyc6r_pdelta_base <= 12'b011101_001000; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b11011; end
-            6'h22: begin cyc6r_pdelta_base <= 12'b011101_100011; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b11011; end
-            6'h23: begin cyc6r_pdelta_base <= 12'b011101_111110; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b01101; end
-            6'h24: begin cyc6r_pdelta_base <= 12'b011110_011010; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b01101; end
-            6'h25: begin cyc6r_pdelta_base <= 12'b011110_110111; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b01101; end
-            6'h26: begin cyc6r_pdelta_base <= 12'b011111_010011; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b11101; end
-            6'h27: begin cyc6r_pdelta_base <= 12'b011111_110000; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b01111; end
-            6'h28: begin cyc6r_pdelta_base <= 12'b100000_001110; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b01111; end
-            6'h29: begin cyc6r_pdelta_base <= 12'b100000_101100; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b01111; end
-            6'h2A: begin cyc6r_pdelta_base <= 12'b100001_001010; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b11111; end
-            6'h2B: begin cyc6r_pdelta_base <= 12'b100001_101001; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b11111; end
-            
-            6'h30: begin cyc6r_pdelta_base <= 12'b100010_001001; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b11111; end
-            6'h31: begin cyc6r_pdelta_base <= 12'b100010_101000; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b11110; end
-            6'h32: begin cyc6r_pdelta_base <= 12'b100011_001001; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b11110; end
-            6'h33: begin cyc6r_pdelta_base <= 12'b100011_101001; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b11110; end
-            6'h34: begin cyc6r_pdelta_base <= 12'b100100_001011; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b11110; end
-            6'h35: begin cyc6r_pdelta_base <= 12'b100100_101100; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b11110; end
-            6'h36: begin cyc6r_pdelta_base <= 12'b100101_001110; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b01110; end
-            6'h37: begin cyc6r_pdelta_base <= 12'b100101_110001; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b01110; end
-            6'h38: begin cyc6r_pdelta_base <= 12'b100110_010100; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b01110; end
-            6'h39: begin cyc6r_pdelta_base <= 12'b100110_111000; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b01110; end
-            6'h3A: begin cyc6r_pdelta_base <= 12'b100111_011100; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b01110; end
-            6'h3B: begin cyc6r_pdelta_base <= 12'b101000_000001; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b01110; end
-
-            default: begin cyc6r_pdelta_base <= 12'b000000_000000; {cyc6r_pdelta_increment_multiplicand[0], cyc6r_pdelta_increment_multiplicand[3:1], cyc6r_pdelta_calcmode} <= 5'b00000; end
-        endcase
-
         cyc6r_pdelta_shift_amount <= cyc6c_final_pitchval[12:8];
         cyc6r_pdelta_increment_multiplier <= cyc6c_final_pitchval[3:0];
     end
@@ -681,11 +629,11 @@ end
 //
 
 reg     [19:0]  cyc12r_previous_phase;
-reg     [20:0]  cyc12r_multiplied_pdelta; //131071*15 = 1_1101_1111_1111_1111_0001, max 21 bits
+reg     [20:0]  cyc12r_multiplied_pdelta; //131071*15 = 1_1101_1111_1111_1111_0001, max 21 bits, but discard MSB anyway
 reg             cyc12r_phase_rst;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
-        if(cyc11r_mul == 4'b0) cyc12r_multiplied_pdelta <= cyc11r_detuned_pdelta / 4'd2;
+        if(cyc11r_mul == 4'b0) cyc12r_multiplied_pdelta <= {5'b00000, cyc11r_detuned_pdelta[16:1]}; // divide by 2
         else begin
             cyc12r_multiplied_pdelta <= cyc11r_detuned_pdelta * cyc11r_mul;
         end
@@ -773,7 +721,7 @@ reg     [19:0]  cyc16r_previous_phase;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         cyc16r_final_pdelta <= cyc15r_final_pdelta;
-        cyc16r_previous_phase <= (cyc15r_phase_rst | i_TEST[3]) ? 20'd0 : cyc15r_previous_phase;
+        cyc16r_previous_phase <= (cyc15r_phase_rst | i_TEST_D3) ? 20'd0 : cyc15r_previous_phase;
     end
 end
 
@@ -843,7 +791,23 @@ end
 endgenerate
 
 //last stage
-assign  o_OP_ORIGINAL_PHASE = cyc40r_phase_sr_out[19:10];
+assign  o_OP_PHASEDATA = cyc40r_phase_sr_out[19:10];
+
+
+
+///////////////////////////////////////////////////////////
+//////  Phase serialization(send to test reg)
+////
+
+reg     [8:0]   phase_ch6_c2;
+assign  o_REG_PHASE_CH6_C2 = phase_ch6_c2[0];
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    if(i_CYCLE_05) phase_ch6_c2 <= cyc15r_previous_phase[8:0];
+    else begin 
+        phase_ch6_c2[7:0] <= phase_ch6_c2[8:1];
+        phase_ch6_c2[8] <= 1'b0;
+    end
+end
 
 
 
@@ -851,7 +815,7 @@ assign  o_OP_ORIGINAL_PHASE = cyc40r_phase_sr_out[19:10];
 //////  STATIC STORAGE FOR DEBUG
 ////
 
-`ifdef IKA2151_SIM_STATIC_STORAGE
+`ifdef IKAOPM_DEBUG
 
 reg     [4:0]   sim_pg_static_storage_addr_cntr = 5'd0;
 always @(posedge i_EMUCLK) begin
@@ -870,5 +834,91 @@ end
 
 `endif
 
+
+endmodule
+
+
+module pg_submdl_fnumrom (
+    //master clock
+    input   wire            i_EMUCLK, //emulator master clock
+
+    //clock enable
+    input   wire            i_CEN_n, //positive edge clock enable for emulation
+
+    input   wire    [5:0]   i_ADDR,
+    output  reg     [16:0]  o_DATA
+);
+
+always @(posedge i_EMUCLK) if(!i_CEN_n) begin
+    case(i_ADDR)
+        6'h00: o_DATA <= 17'b010100_010011_1001_1;
+        6'h01: o_DATA <= 17'b010100_100110_1001_1;
+        6'h02: o_DATA <= 17'b010100_111001_1001_1;
+        6'h03: o_DATA <= 17'b010101_001100_0010_1;
+        6'h04: o_DATA <= 17'b010101_100000_0010_1;
+        6'h05: o_DATA <= 17'b010101_110100_0010_1;
+        6'h06: o_DATA <= 17'b010110_001000_1010_1;
+        6'h07: o_DATA <= 17'b010110_011101_0010_1;
+        6'h08: o_DATA <= 17'b010110_110010_1010_1;
+        6'h09: o_DATA <= 17'b010111_000111_1010_1;
+        6'h0A: o_DATA <= 17'b010111_011101_0011_1;
+        6'h0B: o_DATA <= 17'b010111_110011_0011_1;
+        6'h0C: o_DATA <= 17'b000000_000000_0000_0;
+        6'h0D: o_DATA <= 17'b000000_000000_0000_0;
+        6'h0E: o_DATA <= 17'b000000_000000_0000_0;
+        6'h0F: o_DATA <= 17'b000000_000000_0000_0;
+
+        6'h10: o_DATA <= 17'b011000_001001_0011_1;
+        6'h11: o_DATA <= 17'b011000_011111_0011_1;
+        6'h12: o_DATA <= 17'b011000_110110_1011_1;
+        6'h13: o_DATA <= 17'b011001_001101_1011_1;
+        6'h14: o_DATA <= 17'b011001_100101_1011_1;
+        6'h15: o_DATA <= 17'b011001_111100_0100_1;
+        6'h16: o_DATA <= 17'b011010_010101_0100_1;
+        6'h17: o_DATA <= 17'b011010_101101_0100_1;
+        6'h18: o_DATA <= 17'b011011_000110_1100_1;
+        6'h19: o_DATA <= 17'b011011_011111_1100_1;
+        6'h1A: o_DATA <= 17'b011011_111001_0101_1;
+        6'h1B: o_DATA <= 17'b011100_010011_0101_1;
+        6'h1C: o_DATA <= 17'b000000_000000_0000_0;
+        6'h1D: o_DATA <= 17'b000000_000000_0000_0;
+        6'h1E: o_DATA <= 17'b000000_000000_0000_0;
+        6'h1F: o_DATA <= 17'b000000_000000_0000_0;
+
+        6'h20: o_DATA <= 17'b011100_101101_0101_1;
+        6'h21: o_DATA <= 17'b011101_001000_1101_1;
+        6'h22: o_DATA <= 17'b011101_100011_1101_1;
+        6'h23: o_DATA <= 17'b011101_111110_0110_1;
+        6'h24: o_DATA <= 17'b011110_011010_0110_1;
+        6'h25: o_DATA <= 17'b011110_110111_0110_1;
+        6'h26: o_DATA <= 17'b011111_010011_1110_1;
+        6'h27: o_DATA <= 17'b011111_110000_0111_1;
+        6'h28: o_DATA <= 17'b100000_001110_0111_1;
+        6'h29: o_DATA <= 17'b100000_101100_0111_1;
+        6'h2A: o_DATA <= 17'b100001_001010_1111_1;
+        6'h2B: o_DATA <= 17'b100001_101001_1111_1;
+        6'h2C: o_DATA <= 17'b000000_000000_0000_0;
+        6'h2D: o_DATA <= 17'b000000_000000_0000_0;
+        6'h2E: o_DATA <= 17'b000000_000000_0000_0;
+        6'h2F: o_DATA <= 17'b000000_000000_0000_0;
+
+        6'h30: o_DATA <= 17'b100010_001001_1111_1;
+        6'h31: o_DATA <= 17'b100010_101000_1111_0;
+        6'h32: o_DATA <= 17'b100011_001001_1111_0;
+        6'h33: o_DATA <= 17'b100011_101001_1111_0;
+        6'h34: o_DATA <= 17'b100100_001011_1111_0;
+        6'h35: o_DATA <= 17'b100100_101100_1111_0;
+        6'h36: o_DATA <= 17'b100101_001110_0111_0;
+        6'h37: o_DATA <= 17'b100101_110001_0111_0;
+        6'h38: o_DATA <= 17'b100110_010100_0111_0;
+        6'h39: o_DATA <= 17'b100110_111000_0111_0;
+        6'h3A: o_DATA <= 17'b100111_011100_0111_0;
+        6'h3B: o_DATA <= 17'b101000_000001_0111_0;
+        6'h3C: o_DATA <= 17'b000000_000000_0000_0;
+        6'h3D: o_DATA <= 17'b000000_000000_0000_0;
+        6'h3E: o_DATA <= 17'b000000_000000_0000_0;
+        6'h3F: o_DATA <= 17'b000000_000000_0000_0;
+    endcase
+end
 
 endmodule
