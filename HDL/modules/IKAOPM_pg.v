@@ -72,16 +72,14 @@ reg     [2:0]   cyc0r_pms_level;
 reg     [7:0]   cyc0r_ex_lfp;
 reg             cyc0r_ex_lfp_sign;
 
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc0r_pms_level <= i_PMS;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc0r_pms_level <= i_PMS;
 
-        if(i_PMS == 3'd7) cyc0r_ex_lfp <= {cyc0c_ex_lfp_weightsum,      i_LFP[3:0]};
-        else              cyc0r_ex_lfp <= {cyc0c_ex_lfp_weightsum[2:0], i_LFP[4:0]};
+    if(i_PMS == 3'd7) cyc0r_ex_lfp <= {cyc0c_ex_lfp_weightsum,      i_LFP[3:0]};
+    else              cyc0r_ex_lfp <= {cyc0c_ex_lfp_weightsum[2:0], i_LFP[4:0]};
 
-        //lfp_sign becomes 1 when PMS > 0 and LFP sign is negative to convert lfp_ex to 2's complement
-        cyc0r_ex_lfp_sign <= (i_PMS > 3'd0) & i_LFP[7];
-    end
+    //lfp_sign becomes 1 when PMS > 0 and LFP sign is negative to convert lfp_ex to 2's complement
+    cyc0r_ex_lfp_sign <= (i_PMS > 3'd0) & i_LFP[7];
 end
 
 
@@ -129,17 +127,15 @@ reg             cyc1r_notegroup_nopitchmod; //this flag set when no "LFP" addend
 reg             cyc1r_notegroup_ovfl; //note group overflow, e.g. 6(3'b1_10) + 2(3'b0_10)
 reg             cyc1r_lfp_sign;
 
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc1r_modded_pitchval      <= {cyc1c_int_adder[6:0], cyc1c_frac_adder[5:0]};
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc1r_modded_pitchval      <= {cyc1c_int_adder[6:0], cyc1c_frac_adder[5:0]};
 
-        cyc1r_modded_pitchval_ovfl <= cyc1c_int_adder[7];
-        cyc1r_notegroup_nopitchmod <= (cyc1c_lfp_deviance[7:6] ^ {2{cyc0r_ex_lfp_sign}}) == 2'b00;
-        cyc1r_notegroup_ovfl <= cyc1c_notegroup_adder[2];
+    cyc1r_modded_pitchval_ovfl <= cyc1c_int_adder[7];
+    cyc1r_notegroup_nopitchmod <= (cyc1c_lfp_deviance[7:6] ^ {2{cyc0r_ex_lfp_sign}}) == 2'b00;
+    cyc1r_notegroup_ovfl <= cyc1c_notegroup_adder[2];
 
-        //bypass
-        cyc1r_lfp_sign <= cyc0r_ex_lfp_sign; 
-    end
+    //bypass
+    cyc1r_lfp_sign <= cyc0r_ex_lfp_sign; 
 end
 
 
@@ -199,16 +195,14 @@ reg             cyc2r_modded_pitchval_ovfl;
 reg             cyc2r_int_sub1;
 reg             cyc2r_lfp_sign;
 
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc2r_rearranged_pitchval <= {cyc2c_int_adder[6:0], cyc1r_modded_pitchval[5:0]};
-        cyc2r_rearranged_pitchval_ovfl <= cyc2c_int_adder[7];
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc2r_rearranged_pitchval <= {cyc2c_int_adder[6:0], cyc1r_modded_pitchval[5:0]};
+    cyc2r_rearranged_pitchval_ovfl <= cyc2c_int_adder[7];
 
-        cyc2r_int_sub1 <= ~(cyc1r_notegroup_nopitchmod | cyc1r_notegroup_ovfl | ~cyc1r_lfp_sign);
+    cyc2r_int_sub1 <= ~(cyc1r_notegroup_nopitchmod | cyc1r_notegroup_ovfl | ~cyc1r_lfp_sign);
 
-        cyc2r_modded_pitchval_ovfl <= cyc1r_modded_pitchval_ovfl;
-        cyc2r_lfp_sign <= cyc1r_lfp_sign;
-    end
+    cyc2r_modded_pitchval_ovfl <= cyc1r_modded_pitchval_ovfl;
+    cyc2r_lfp_sign <= cyc1r_lfp_sign;
 end
 
 `ifdef IKAOPM_DEBUG
@@ -232,29 +226,27 @@ wire            debug_cyc2r_notrgroup_violation = cyc2r_rearranged_pitchval[7:6]
 reg     [12:0]  cyc3r_saturated_pitchval;
 reg     [1:0]   cyc3r_dt2; //just delays, the original chip decodes DT2 input here, we don't have to do.
 
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        casez({cyc2r_lfp_sign, cyc2r_modded_pitchval_ovfl, cyc2r_int_sub1, cyc2r_rearranged_pitchval_ovfl})
-            //lfp = positive
-            4'b0000: cyc3r_saturated_pitchval <= cyc2r_rearranged_pitchval;
-            4'b00?1: cyc3r_saturated_pitchval <= 13'b111_1110_111111; //max
-            4'b01?0: cyc3r_saturated_pitchval <= 13'b111_1110_111111;
-            4'b01?1: cyc3r_saturated_pitchval <= 13'b111_1110_111111;
-            4'b0010: cyc3r_saturated_pitchval <= 13'b000_0000_000000; //will never happen
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    casez({cyc2r_lfp_sign, cyc2r_modded_pitchval_ovfl, cyc2r_int_sub1, cyc2r_rearranged_pitchval_ovfl})
+        //lfp = positive
+        4'b0000: cyc3r_saturated_pitchval <= cyc2r_rearranged_pitchval;
+        4'b00?1: cyc3r_saturated_pitchval <= 13'b111_1110_111111; //max
+        4'b01?0: cyc3r_saturated_pitchval <= 13'b111_1110_111111;
+        4'b01?1: cyc3r_saturated_pitchval <= 13'b111_1110_111111;
+        4'b0010: cyc3r_saturated_pitchval <= 13'b000_0000_000000; //will never happen
 
-            //lfp = negative
-            4'b1000: cyc3r_saturated_pitchval <= 13'b000_0000_000000; //min
-            4'b1001: cyc3r_saturated_pitchval <= 13'b000_0000_000000;
-            4'b1010: cyc3r_saturated_pitchval <= 13'b000_0000_000000;
-            4'b1011: cyc3r_saturated_pitchval <= 13'b000_0000_000000;
-            4'b1100: cyc3r_saturated_pitchval <= cyc2r_rearranged_pitchval;
-            4'b1101: cyc3r_saturated_pitchval <= cyc2r_rearranged_pitchval;
-            4'b1110: cyc3r_saturated_pitchval <= 13'b000_0000_000000;
-            4'b1111: cyc3r_saturated_pitchval <= cyc2r_rearranged_pitchval;
-        endcase
+        //lfp = negative
+        4'b1000: cyc3r_saturated_pitchval <= 13'b000_0000_000000; //min
+        4'b1001: cyc3r_saturated_pitchval <= 13'b000_0000_000000;
+        4'b1010: cyc3r_saturated_pitchval <= 13'b000_0000_000000;
+        4'b1011: cyc3r_saturated_pitchval <= 13'b000_0000_000000;
+        4'b1100: cyc3r_saturated_pitchval <= cyc2r_rearranged_pitchval;
+        4'b1101: cyc3r_saturated_pitchval <= cyc2r_rearranged_pitchval;
+        4'b1110: cyc3r_saturated_pitchval <= 13'b000_0000_000000;
+        4'b1111: cyc3r_saturated_pitchval <= cyc2r_rearranged_pitchval;
+    endcase
 
-        cyc3r_dt2 <= i_DT2;
-    end
+    cyc3r_dt2 <= i_DT2;
 end
 
 
@@ -275,19 +267,17 @@ reg     [6:0]   cyc4r_frac_detuned_pitchval; //carry + 6bit value
 reg     [6:0]   cyc4r_int_pitchval;
 reg     [1:0]   cyc4r_dt2;
 
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        case(cyc3r_dt2)
-            2'd0: cyc4r_frac_detuned_pitchval <= cyc3r_saturated_pitchval[5:0] + 6'd0  + 1'd0;
-            2'd1: cyc4r_frac_detuned_pitchval <= cyc3r_saturated_pitchval[5:0] + 6'd0  + 1'd0;
-            2'd2: cyc4r_frac_detuned_pitchval <= cyc3r_saturated_pitchval[5:0] + 6'd52 + 1'd0; //fractional part +0.8125
-            2'd3: cyc4r_frac_detuned_pitchval <= cyc3r_saturated_pitchval[5:0] + 6'd32 + 1'd0; //fractional part +0.5
-        endcase
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    case(cyc3r_dt2)
+        2'd0: cyc4r_frac_detuned_pitchval <= cyc3r_saturated_pitchval[5:0] + 6'd0  + 1'd0;
+        2'd1: cyc4r_frac_detuned_pitchval <= cyc3r_saturated_pitchval[5:0] + 6'd0  + 1'd0;
+        2'd2: cyc4r_frac_detuned_pitchval <= cyc3r_saturated_pitchval[5:0] + 6'd52 + 1'd0; //fractional part +0.8125
+        2'd3: cyc4r_frac_detuned_pitchval <= cyc3r_saturated_pitchval[5:0] + 6'd32 + 1'd0; //fractional part +0.5
+    endcase
 
-        cyc4r_int_pitchval <= cyc3r_saturated_pitchval[12:6];
+    cyc4r_int_pitchval <= cyc3r_saturated_pitchval[12:6];
 
-        cyc4r_dt2 <= cyc3r_dt2;
-    end
+    cyc4r_dt2 <= cyc3r_dt2;
 end
 
 
@@ -306,53 +296,51 @@ end
 reg     [5:0]   cyc5r_frac_detuned_pitchval; //no carry here
 reg     [7:0]   cyc5r_int_detuned_pitchval; //carry + 7bit value
 
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        casez({cyc4r_dt2, cyc4r_frac_detuned_pitchval[6], cyc4r_int_pitchval[1:0]})
-            //dt2 = 0
-            5'b00_0_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0;
-            5'b00_0_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0;
-            5'b00_0_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0;
-            5'b00_0_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0;
-            5'b00_1_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0 + 7'd1;
-            5'b00_1_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0 + 7'd1;
-            5'b00_1_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0 + 7'd2;
-            5'b00_1_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0 + 7'd2;
-            //                                        |---base value---| +  dt2 + carry(avoids notegroup violation)
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    casez({cyc4r_dt2, cyc4r_frac_detuned_pitchval[6], cyc4r_int_pitchval[1:0]})
+        //dt2 = 0
+        5'b00_0_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0;
+        5'b00_0_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0;
+        5'b00_0_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0;
+        5'b00_0_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0;
+        5'b00_1_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0 + 7'd1;
+        5'b00_1_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0 + 7'd1;
+        5'b00_1_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0 + 7'd2;
+        5'b00_1_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd0 + 7'd2;
+        //                                        |---base value---| +  dt2 + carry(avoids notegroup violation)
 
-            //dt2 = 1
-            5'b01_0_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8;
-            5'b01_0_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8;
-            5'b01_0_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8;
-            5'b01_0_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8;
-            5'b01_1_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8 + 7'd1;
-            5'b01_1_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8 + 7'd1;
-            5'b01_1_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8 + 7'd2;
-            5'b01_1_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8 + 7'd2;
+        //dt2 = 1
+        5'b01_0_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8;
+        5'b01_0_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8;
+        5'b01_0_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8;
+        5'b01_0_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8;
+        5'b01_1_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8 + 7'd1;
+        5'b01_1_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8 + 7'd1;
+        5'b01_1_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8 + 7'd2;
+        5'b01_1_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd8 + 7'd2;
 
-            //dt2 = 2
-            5'b10_0_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9;
-            5'b10_0_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9;
-            5'b10_0_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9 + 7'd1;
-            5'b10_0_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9 + 7'd1;
-            5'b10_1_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9 + 7'd1;
-            5'b10_1_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9 + 7'd2;
-            5'b10_1_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9 + 7'd2;
-            5'b10_1_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9 + 7'd2;
+        //dt2 = 2
+        5'b10_0_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9;
+        5'b10_0_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9;
+        5'b10_0_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9 + 7'd1;
+        5'b10_0_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9 + 7'd1;
+        5'b10_1_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9 + 7'd1;
+        5'b10_1_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9 + 7'd2;
+        5'b10_1_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9 + 7'd2;
+        5'b10_1_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd9 + 7'd2;
 
-            //dt2 = 3
-            5'b11_0_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12;
-            5'b11_0_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12;
-            5'b11_0_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12;
-            5'b11_0_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12;
-            5'b11_1_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12 + 7'd1;
-            5'b11_1_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12 + 7'd1;
-            5'b11_1_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12 + 7'd2;
-            5'b11_1_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12 + 7'd2;
-        endcase
+        //dt2 = 3
+        5'b11_0_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12;
+        5'b11_0_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12;
+        5'b11_0_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12;
+        5'b11_0_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12;
+        5'b11_1_00: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12 + 7'd1;
+        5'b11_1_01: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12 + 7'd1;
+        5'b11_1_10: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12 + 7'd2;
+        5'b11_1_11: cyc5r_int_detuned_pitchval <= cyc4r_int_pitchval + 7'd12 + 7'd2;
+    endcase
 
-        cyc5r_frac_detuned_pitchval <= cyc4r_frac_detuned_pitchval[5:0]; //discard carry
-    end
+    cyc5r_frac_detuned_pitchval <= cyc4r_frac_detuned_pitchval[5:0]; //discard carry
 end
 
 
@@ -392,11 +380,9 @@ pg_submdl_fnumrom u_cyc6r_fnumrom (
     //The original chip's output bit order is scrambled!
 );
 
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc6r_pdelta_shift_amount <= cyc6c_final_pitchval[12:8];
-        cyc6r_pdelta_increment_multiplier <= cyc6c_final_pitchval[3:0];
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc6r_pdelta_shift_amount <= cyc6c_final_pitchval[12:8];
+    cyc6r_pdelta_increment_multiplier <= cyc6c_final_pitchval[3:0];
 end
 
 
@@ -424,27 +410,25 @@ reg     [11:0]  cyc7r_pdelta_base;
 reg     [6:0]   cyc7r_multiplied_increment;
 assign  o_EG_PDELTA_SHIFT_AMOUNT = cyc7r_pdelta_shift_amount;
 
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc7r_pdelta_shift_amount <= cyc6r_pdelta_shift_amount;
-        cyc7r_pdelta_base <= cyc6r_pdelta_base;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc7r_pdelta_shift_amount <= cyc6r_pdelta_shift_amount;
+    cyc7r_pdelta_base <= cyc6r_pdelta_base;
 
-        if(cyc6r_pdelta_calcmode) begin
-            cyc7r_multiplied_increment <= ({{1'b1, cyc6r_pdelta_increment_multiplicand} >> 0} & {5{cyc6r_pdelta_increment_multiplier[3]}}) +
-                                          ({{1'b1, cyc6r_pdelta_increment_multiplicand} >> 1} & {5{cyc6r_pdelta_increment_multiplier[2]}}) +
-                                          ({{1'b1, cyc6r_pdelta_increment_multiplicand} >> 2} & {5{cyc6r_pdelta_increment_multiplier[1]}}) +
-                                          ({{1'b1, cyc6r_pdelta_increment_multiplicand} >> 3} & {5{cyc6r_pdelta_increment_multiplier[0]}});
-        end
-        else begin
-            cyc7r_multiplied_increment <= ({{1'b1, cyc6r_pdelta_increment_multiplicand[3:1], 1'b1} >> 0} & {5{cyc6r_pdelta_increment_multiplier[3]}}) +
-                                          ({{1'b1, cyc6r_pdelta_increment_multiplicand[3:1], 1'b1} >> 1} & {5{cyc6r_pdelta_increment_multiplier[2]}}) +
-                                          ({{1'b1, cyc6r_pdelta_increment_multiplicand[3:1], 1'b1} >> 3} & {5{cyc6r_pdelta_increment_multiplier[0]}}) +
+    if(cyc6r_pdelta_calcmode) begin
+        cyc7r_multiplied_increment <= ({{1'b1, cyc6r_pdelta_increment_multiplicand} >> 0} & {5{cyc6r_pdelta_increment_multiplier[3]}}) +
+                                        ({{1'b1, cyc6r_pdelta_increment_multiplicand} >> 1} & {5{cyc6r_pdelta_increment_multiplier[2]}}) +
+                                        ({{1'b1, cyc6r_pdelta_increment_multiplicand} >> 2} & {5{cyc6r_pdelta_increment_multiplier[1]}}) +
+                                        ({{1'b1, cyc6r_pdelta_increment_multiplicand} >> 3} & {5{cyc6r_pdelta_increment_multiplier[0]}});
+    end
+    else begin
+        cyc7r_multiplied_increment <= ({{1'b1, cyc6r_pdelta_increment_multiplicand[3:1], 1'b1} >> 0} & {5{cyc6r_pdelta_increment_multiplier[3]}}) +
+                                        ({{1'b1, cyc6r_pdelta_increment_multiplicand[3:1], 1'b1} >> 1} & {5{cyc6r_pdelta_increment_multiplier[2]}}) +
+                                        ({{1'b1, cyc6r_pdelta_increment_multiplicand[3:1], 1'b1} >> 3} & {5{cyc6r_pdelta_increment_multiplier[0]}}) +
 
-                                          (5'd4 & {5{&{cyc6r_pdelta_increment_multiplier[3:2], ~cyc6r_pdelta_increment_multiplicand[0]}}}) + 
-                                          (5'd1 & {5{cyc6r_pdelta_increment_multiplier[3]}}) + 
-                                          (5'd8 & {5{cyc6r_pdelta_increment_multiplier[1]}}) + 
-                                          (5'd2 & {5{cyc6r_pdelta_increment_multiplier[0]}});
-        end
+                                        (5'd4 & {5{&{cyc6r_pdelta_increment_multiplier[3:2], ~cyc6r_pdelta_increment_multiplicand[0]}}}) + 
+                                        (5'd1 & {5{cyc6r_pdelta_increment_multiplier[3]}}) + 
+                                        (5'd8 & {5{cyc6r_pdelta_increment_multiplier[1]}}) + 
+                                        (5'd2 & {5{cyc6r_pdelta_increment_multiplier[0]}});
     end
 end
 
@@ -467,13 +451,11 @@ reg     [4:0]   cyc8r_pdelta_shift_amount;
 reg     [11:0]  cyc8r_pdelta_base;
 reg     [2:0]   cyc8r_dt1;
 reg     [3:0]   cyc8r_mul;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc8r_pdelta_shift_amount <= cyc7r_pdelta_shift_amount;
-        cyc8r_pdelta_base <= cyc7r_pdelta_base + {6'b0, cyc7r_multiplied_increment[6:1]};
-        cyc8r_dt1 <= i_DT1;
-        cyc8r_mul <= i_MUL;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc8r_pdelta_shift_amount <= cyc7r_pdelta_shift_amount;
+    cyc8r_pdelta_base <= cyc7r_pdelta_base + {6'b0, cyc7r_multiplied_increment[6:1]};
+    cyc8r_dt1 <= i_DT1;
+    cyc8r_mul <= i_MUL;
 end
 
 
@@ -531,35 +513,33 @@ reg     [19:0]  cyc9r_previous_phase;
 reg     [16:0]  cyc9r_shifted_pdelta;
 reg     [16:0]  cyc9r_pdelta_detuning_value;
 reg     [3:0]   cyc9r_mul;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        case(cyc8r_pdelta_shift_amount[4:2])
-            3'd0: cyc9r_shifted_pdelta <= {7'b0000000, cyc8r_pdelta_base[11:2]}; //>>4
-            3'd1: cyc9r_shifted_pdelta <= {6'b000000, cyc8r_pdelta_base[11:1] }; //>>3
-            3'd2: cyc9r_shifted_pdelta <= {5'b00000, cyc8r_pdelta_base        }; //>>2
-            3'd3: cyc9r_shifted_pdelta <= {4'b0000, cyc8r_pdelta_base, 1'b0   }; //>>1
-            3'd4: cyc9r_shifted_pdelta <= {3'b000, cyc8r_pdelta_base, 2'b00   }; //zero
-            3'd5: cyc9r_shifted_pdelta <= {2'b00, cyc8r_pdelta_base, 3'b000   }; //<<1
-            3'd6: cyc9r_shifted_pdelta <= {1'b0, cyc8r_pdelta_base, 4'b0000   }; //<<2
-            3'd7: cyc9r_shifted_pdelta <= {     cyc8r_pdelta_base, 5'b00000   }; //<<3
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    case(cyc8r_pdelta_shift_amount[4:2])
+        3'd0: cyc9r_shifted_pdelta <= {7'b0000000, cyc8r_pdelta_base[11:2]}; //>>4
+        3'd1: cyc9r_shifted_pdelta <= {6'b000000, cyc8r_pdelta_base[11:1] }; //>>3
+        3'd2: cyc9r_shifted_pdelta <= {5'b00000, cyc8r_pdelta_base        }; //>>2
+        3'd3: cyc9r_shifted_pdelta <= {4'b0000, cyc8r_pdelta_base, 1'b0   }; //>>1
+        3'd4: cyc9r_shifted_pdelta <= {3'b000, cyc8r_pdelta_base, 2'b00   }; //zero
+        3'd5: cyc9r_shifted_pdelta <= {2'b00, cyc8r_pdelta_base, 3'b000   }; //<<1
+        3'd6: cyc9r_shifted_pdelta <= {1'b0, cyc8r_pdelta_base, 4'b0000   }; //<<2
+        3'd7: cyc9r_shifted_pdelta <= {     cyc8r_pdelta_base, 5'b00000   }; //<<3
+    endcase
+
+    if(cyc8r_dt1 == 1'b0) cyc9r_pdelta_detuning_value <= 17'd0; //dt1 is zero
+    else begin
+        case(cyc9c_dt1_intensity[4:1])
+            //                                                      DT1 is ? |-------- positive --------|   |------------- negative -----------|  intensity
+            4'b0101: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {16'b0, cyc9c_dt1_base[4]}   : ~{16'b0, cyc9c_dt1_base[4]}   + 1'd1; //10, 11
+            4'b0110: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {15'b0, cyc9c_dt1_base[4:3]} : ~{15'b0, cyc9c_dt1_base[4:3]} + 1'd1; //12, 13
+            4'b0111: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {14'b0, cyc9c_dt1_base[4:2]} : ~{14'b0, cyc9c_dt1_base[4:2]} + 1'd1; //14, 15
+            4'b1000: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {13'b0, cyc9c_dt1_base[4:1]} : ~{13'b0, cyc9c_dt1_base[4:1]} + 1'd1; //16, 17
+            4'b1001: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {12'b0, cyc9c_dt1_base}      : ~{12'b0, cyc9c_dt1_base}      + 1'd1; //18, 19
+            default: cyc9r_pdelta_detuning_value <= 17'd0; //else
         endcase
-
-        if(cyc8r_dt1 == 1'b0) cyc9r_pdelta_detuning_value <= 17'd0; //dt1 is zero
-        else begin
-            case(cyc9c_dt1_intensity[4:1])
-                //                                                      DT1 is ? |-------- positive --------|   |------------- negative -----------|  intensity
-                4'b0101: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {16'b0, cyc9c_dt1_base[4]}   : ~{16'b0, cyc9c_dt1_base[4]}   + 1'd1; //10, 11
-                4'b0110: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {15'b0, cyc9c_dt1_base[4:3]} : ~{15'b0, cyc9c_dt1_base[4:3]} + 1'd1; //12, 13
-                4'b0111: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {14'b0, cyc9c_dt1_base[4:2]} : ~{14'b0, cyc9c_dt1_base[4:2]} + 1'd1; //14, 15
-                4'b1000: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {13'b0, cyc9c_dt1_base[4:1]} : ~{13'b0, cyc9c_dt1_base[4:1]} + 1'd1; //16, 17
-                4'b1001: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {12'b0, cyc9c_dt1_base}      : ~{12'b0, cyc9c_dt1_base}      + 1'd1; //18, 19
-                default: cyc9r_pdelta_detuning_value <= 17'd0; //else
-            endcase
-        end
-
-        cyc9r_mul <= cyc8r_mul;
-        cyc9r_previous_phase <= cyc40r_phase_sr_out;
     end
+
+    cyc9r_mul <= cyc8r_mul;
+    cyc9r_previous_phase <= cyc40r_phase_sr_out;
 end
 
 
@@ -581,13 +561,11 @@ reg     [19:0]  cyc10r_previous_phase;
 reg     [16:0]  cyc10r_detuned_pdelta; //ignore carry
 reg     [3:0]   cyc10r_mul;
 reg             cyc10r_phase_rst;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc10r_detuned_pdelta <= cyc9r_shifted_pdelta + cyc9r_pdelta_detuning_value;
-        cyc10r_mul <= cyc9r_mul;
-        cyc10r_previous_phase <= cyc9r_previous_phase;
-        cyc10r_phase_rst <= i_PG_PHASE_RST;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc10r_detuned_pdelta <= cyc9r_shifted_pdelta + cyc9r_pdelta_detuning_value;
+    cyc10r_mul <= cyc9r_mul;
+    cyc10r_previous_phase <= cyc9r_previous_phase;
+    cyc10r_phase_rst <= i_PG_PHASE_RST;
 end
 
 
@@ -609,13 +587,11 @@ reg     [19:0]  cyc11r_previous_phase;
 reg     [16:0]  cyc11r_detuned_pdelta;
 reg     [3:0]   cyc11r_mul;
 reg             cyc11r_phase_rst;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc11r_detuned_pdelta <= cyc10r_detuned_pdelta;
-        cyc11r_mul <= cyc10r_mul;
-        cyc11r_previous_phase <= cyc10r_previous_phase;
-        cyc11r_phase_rst <= cyc10r_phase_rst;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc11r_detuned_pdelta <= cyc10r_detuned_pdelta;
+    cyc11r_mul <= cyc10r_mul;
+    cyc11r_previous_phase <= cyc10r_previous_phase;
+    cyc11r_phase_rst <= cyc10r_phase_rst;
 end
 
 
@@ -631,16 +607,14 @@ end
 reg     [19:0]  cyc12r_previous_phase;
 reg     [20:0]  cyc12r_multiplied_pdelta; //131071*15 = 1_1101_1111_1111_1111_0001, max 21 bits, but discard MSB anyway
 reg             cyc12r_phase_rst;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        if(cyc11r_mul == 4'b0) cyc12r_multiplied_pdelta <= {5'b00000, cyc11r_detuned_pdelta[16:1]}; // divide by 2
-        else begin
-            cyc12r_multiplied_pdelta <= cyc11r_detuned_pdelta * cyc11r_mul;
-        end
-
-        cyc12r_previous_phase <= cyc11r_previous_phase;
-        cyc12r_phase_rst <= cyc11r_phase_rst;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    if(cyc11r_mul == 4'b0) cyc12r_multiplied_pdelta <= {5'b00000, cyc11r_detuned_pdelta[16:1]}; // divide by 2
+    else begin
+        cyc12r_multiplied_pdelta <= cyc11r_detuned_pdelta * cyc11r_mul;
     end
+
+    cyc12r_previous_phase <= cyc11r_previous_phase;
+    cyc12r_phase_rst <= cyc11r_phase_rst;
 end
 
 
@@ -656,12 +630,10 @@ end
 reg     [19:0]  cyc13r_previous_phase;
 reg     [19:0]  cyc13r_multiplied_pdelta; //ignore carry
 reg             cyc13r_phase_rst;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc13r_multiplied_pdelta <= cyc12r_multiplied_pdelta[19:0];
-        cyc13r_previous_phase <= cyc12r_previous_phase;
-        cyc13r_phase_rst <= cyc12r_phase_rst;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc13r_multiplied_pdelta <= cyc12r_multiplied_pdelta[19:0];
+    cyc13r_previous_phase <= cyc12r_previous_phase;
+    cyc13r_phase_rst <= cyc12r_phase_rst;
 end
 
 
@@ -677,12 +649,10 @@ end
 reg     [19:0]  cyc14r_previous_phase;
 reg     [19:0]  cyc14r_final_pdelta; 
 reg             cyc14r_phase_rst;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc14r_final_pdelta <= (cyc13r_phase_rst) ? 20'd0 : cyc13r_multiplied_pdelta;
-        cyc14r_previous_phase <= cyc13r_previous_phase;
-        cyc14r_phase_rst <= cyc13r_phase_rst;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc14r_final_pdelta <= (cyc13r_phase_rst) ? 20'd0 : cyc13r_multiplied_pdelta;
+    cyc14r_previous_phase <= cyc13r_previous_phase;
+    cyc14r_phase_rst <= cyc13r_phase_rst;
 end
 
 
@@ -698,12 +668,10 @@ end
 reg     [19:0]  cyc15r_previous_phase;
 reg     [19:0]  cyc15r_final_pdelta; 
 reg             cyc15r_phase_rst;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc15r_final_pdelta <= cyc14r_final_pdelta;
-        cyc15r_previous_phase <= cyc14r_previous_phase;
-        cyc15r_phase_rst <= cyc14r_phase_rst;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc15r_final_pdelta <= cyc14r_final_pdelta;
+    cyc15r_previous_phase <= cyc14r_previous_phase;
+    cyc15r_phase_rst <= cyc14r_phase_rst;
 end
 
 
@@ -718,11 +686,9 @@ end
 
 reg     [19:0]  cyc16r_final_pdelta; 
 reg     [19:0]  cyc16r_previous_phase;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc16r_final_pdelta <= cyc15r_final_pdelta;
-        cyc16r_previous_phase <= (cyc15r_phase_rst | i_TEST_D3) ? 20'd0 : cyc15r_previous_phase;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc16r_final_pdelta <= cyc15r_final_pdelta;
+    cyc16r_previous_phase <= (cyc15r_phase_rst | i_TEST_D3) ? 20'd0 : cyc15r_previous_phase;
 end
 
 
@@ -739,10 +705,8 @@ end
 //
 
 reg     [19:0]  cyc17r_current_phase; //ignore carry
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc17r_current_phase <= cyc16r_previous_phase + cyc16r_final_pdelta;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc17r_current_phase <= cyc16r_previous_phase + cyc16r_final_pdelta;
 end
 
 
@@ -759,10 +723,8 @@ end
 //
 
 reg     [19:0]  cyc18r_current_phase;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        cyc18r_current_phase <= mrst_n ? cyc17r_current_phase : 20'd0; //force reset added
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cyc18r_current_phase <= mrst_n ? cyc17r_current_phase : 20'd0; //force reset added
 end
 
 
@@ -818,18 +780,14 @@ end
 `ifdef IKAOPM_DEBUG
 
 reg     [4:0]   sim_pg_static_storage_addr_cntr = 5'd0;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        if(i_CYCLE_10) sim_pg_static_storage_addr_cntr <= 5'd0;
-        else sim_pg_static_storage_addr_cntr <= sim_pg_static_storage_addr_cntr == 5'd31 ? 5'd0 : sim_pg_static_storage_addr_cntr + 5'd1;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    if(i_CYCLE_10) sim_pg_static_storage_addr_cntr <= 5'd0;
+    else sim_pg_static_storage_addr_cntr <= sim_pg_static_storage_addr_cntr == 5'd31 ? 5'd0 : sim_pg_static_storage_addr_cntr + 5'd1;
 end
 
 reg     [19:0]  sim_pg_static_storage[0:31];
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        sim_pg_static_storage[sim_pg_static_storage_addr_cntr] <= mrst_n ? cyc18r_current_phase : 20'd0;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    sim_pg_static_storage[sim_pg_static_storage_addr_cntr] <= mrst_n ? cyc18r_current_phase : 20'd0;
 end
 
 `endif

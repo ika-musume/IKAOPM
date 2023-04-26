@@ -1,5 +1,4 @@
-module IKAOPM_noise
-(
+module IKAOPM_noise (
     //master clock
     input   wire            i_EMUCLK, //emulator master clock
 
@@ -43,11 +42,9 @@ wire            mrst_n = i_MRST_n;
 
 wire    [4:0]   noise_freqgen_value;
 reg             noise_update, noise_update_z;
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        noise_update <= (noise_freqgen_value == ~i_NFRQ);
-        noise_update_z <= noise_update;
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    noise_update <= (noise_freqgen_value == ~i_NFRQ);
+    noise_update_z <= noise_update;
 end
 
 primitive_counter #(.WIDTH(5)) u_noise_freqgen (
@@ -65,15 +62,13 @@ primitive_counter #(.WIDTH(5)) u_noise_freqgen (
 reg     [15:0]  noise_lfsr;
 reg             xor_flag;
 wire            xor_fdbk = (xor_flag ^ noise_lfsr[2]) | (noise_lfsr == 16'h0000 && xor_flag == 1'b0);
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        noise_lfsr[15] <= !mrst_n ? 1'b0 : 
-                          noise_update_z ? xor_fdbk : noise_lfsr[0];
-        noise_lfsr[14:0] <= noise_lfsr[15:1];
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    noise_lfsr[15] <= !mrst_n ? 1'b0 : 
+                                noise_update_z ? xor_fdbk : noise_lfsr[0];
+    noise_lfsr[14:0] <= noise_lfsr[15:1];
 
-        xor_flag  <= !mrst_n ? noise_lfsr[0] :
-                                noise_update_z ? noise_lfsr[0] : xor_flag;
-    end
+    xor_flag  <= !mrst_n ? noise_lfsr[0] :
+                           noise_update_z ? noise_lfsr[0] : xor_flag;
 end
 
 wire            noise_serial = noise_lfsr[1];
@@ -86,10 +81,8 @@ assign  o_LFO_NOISE = noise_serial;
 ////
 
 reg             is_attenlevel_max; //zero detected = attenlevel is not max
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        is_attenlevel_max <= i_CYCLE_12 ? 1'b1 : (i_NOISE_ATTENLEVEL & is_attenlevel_max);
-    end
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    is_attenlevel_max <= i_CYCLE_12 ? 1'b1 : (i_NOISE_ATTENLEVEL & is_attenlevel_max);
 end
 
 

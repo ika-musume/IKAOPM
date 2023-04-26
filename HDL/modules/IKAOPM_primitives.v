@@ -129,10 +129,8 @@ end
 genvar stage;
 generate
 for(stage = 0; stage < LENGTH-1; stage = stage + 1) begin : primitive_sr
-    always @(posedge i_EMUCLK) begin
-        if(!i_CEN_n) begin
-            sr[stage + 1] <= sr[stage];
-        end
+    always @(posedge i_EMUCLK) if(!i_CEN_n) begin
+        sr[stage + 1] <= sr[stage];
     end
 end
 endgenerate
@@ -174,16 +172,14 @@ localparam  RDCNTR_INIT = {LENGTH - (TAP - 1)};
 //write and read counter
 reg     [LENGTH_BIN-1:0]    wrcntr;
 reg     [LENGTH_BIN-1:0]    rdcntr;
-always @(posedge i_EMUCLK) begin
-    if(!i_CEN_n) begin
-        if(i_CNTRRST) begin
-            wrcntr <= WRCNTR_INIT[LENGTH_BIN-1:0];
-            rdcntr <= RDCNTR_INIT[LENGTH_BIN-1:0];
-        end
-        else begin
-            wrcntr <= (wrcntr < LENGTH - 1) ? wrcntr + {{(LENGTH_BIN - 1){1'b0}}, 1'b1} : {LENGTH_BIN{1'b0}}; // +1 or reset
-            rdcntr <= (rdcntr < LENGTH - 1) ? rdcntr + {{(LENGTH_BIN - 1){1'b0}}, 1'b1} : {LENGTH_BIN{1'b0}};
-        end
+always @(posedge i_EMUCLK) if(!i_CEN_n) begin
+    if(i_CNTRRST) begin
+        wrcntr <= WRCNTR_INIT[LENGTH_BIN-1:0];
+        rdcntr <= RDCNTR_INIT[LENGTH_BIN-1:0];
+    end
+    else begin
+        wrcntr <= (wrcntr < LENGTH - 1) ? wrcntr + {{(LENGTH_BIN - 1){1'b0}}, 1'b1} : {LENGTH_BIN{1'b0}}; // +1 or reset
+        rdcntr <= (rdcntr < LENGTH - 1) ? rdcntr + {{(LENGTH_BIN - 1){1'b0}}, 1'b1} : {LENGTH_BIN{1'b0}};
     end
 end
 
@@ -196,17 +192,13 @@ initial begin
 end
 
 //BRAM write
-always @(posedge i_EMUCLK) begin
-    if(!i_CEN_n) begin
-        if(i_WR) sr_bram[wrcntr] <= i_D;
-    end
+always @(posedge i_EMUCLK) if(!i_CEN_n) begin
+    if(i_WR) sr_bram[wrcntr] <= i_D;
 end
 
 //BRAM read
-always @(posedge i_EMUCLK) begin
-    if(!i_CEN_n) begin
-        o_Q_TAP <= sr_bram[rdcntr];
-    end
+always @(posedge i_EMUCLK) if(!i_CEN_n) begin
+    o_Q_TAP <= sr_bram[rdcntr];
 end
 
 
