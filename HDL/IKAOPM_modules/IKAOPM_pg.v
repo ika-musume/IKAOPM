@@ -7,7 +7,7 @@ module IKAOPM_pg #(parameter USE_BRAM_FOR_PHASEREG = 0) (
 
     //internal clock
     input   wire            i_phi1_PCEN_n, //positive edge clock enable for emulation
-    input   wire            i_phi1_NCEN_n, //engative edge clock enable for emulation
+    input   wire            i_phi1_NCEN_n, //negative edge clock enable for emulation
 
     //timings
     input   wire            i_CYCLE_05, //ch6 c2 phase piso sr parallel load

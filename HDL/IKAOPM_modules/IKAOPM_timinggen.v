@@ -11,7 +11,7 @@ module IKAOPM_timinggen (
     //phiM/2
     output  wire            o_phi1, //phi1 output
     output  wire            o_phi1_PCEN_n, //positive edge clock enable for emulation
-    output  wire            o_phi1_NCEN_n, //engative edge clock enable for emulation
+    output  wire            o_phi1_NCEN_n, //negative edge clock enable for emulation
 
     //SH1 and 2
     output  reg             o_SH1,

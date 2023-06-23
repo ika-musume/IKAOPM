@@ -7,7 +7,7 @@ module IKAOPM_reg #(parameter USE_BRAM_FOR_D32REG = 0) (
 
     //internal clock
     input   wire            i_phi1_PCEN_n, //positive edge clock enable for emulation
-    input   wire            i_phi1_NCEN_n, //engative edge clock enable for emulation
+    input   wire            i_phi1_NCEN_n, //negative edge clock enable for emulation
 
     //timings
     input   wire            i_CYCLE_01,
@@ -703,7 +703,7 @@ module reg_submdl_loreg_decoder #(parameter TARGET_ADDR = 8'h00 ) (
     input   wire            i_EMUCLK, //emulator master clock
 
     //internal clock
-    input   wire            i_phi1_NCEN_n, //engative edge clock enable for emulation
+    input   wire            i_phi1_NCEN_n, //negative edge clock enable for emulation
 
     //address to be decoded
     input   wire    [7:0]   i_ADDR,
