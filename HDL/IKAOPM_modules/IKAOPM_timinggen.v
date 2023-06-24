@@ -104,11 +104,10 @@ end
 */
 
 //actual phi1 output is phi1p(positive), and the inverted phi1 is phi1n(negative)
-reg             phi1p = 1'b1; //for FPGA
-reg             phi1n = 1'b0;
+reg             phi1p, phi1n;
 always @(posedge i_EMUCLK) if(!i_phiM_PCEN_n) begin
-    if(phi1_init)   begin phi1p <= 1'b1;   phi1n <= 1'b0;   end //reset
-    else            begin phi1p <= ~phi1p; phi1n <= ~phi1n; end //toggle
+    if(phi1_init)   begin phi1p <= 1'b1;   phi1n <= 1'b1;   end //reset
+    else            begin phi1p <= ~phi1p; phi1n <= phi1p; end //toggle
 end
 
 //phi1 output(for reference)
@@ -116,7 +115,7 @@ assign  o_phi1 = phi1p;
 
 //phi1 cen(internal)
 assign  o_phi1_PCEN_n = phi1p | i_phiM_PCEN_n; //ORed signal
-assign  o_phi1_NCEN_n = phi1n | i_phiM_PCEN_n | phi1_init;
+assign  o_phi1_NCEN_n = phi1n | i_phiM_PCEN_n;
 
 
 
