@@ -177,14 +177,14 @@ end
 //////  SIPO/SO register
 ////
 
-reg     [20:0]  sound_data_lookaround_register;
+reg     [21:0]  sound_data_lookaround_register;
 reg     [6:0]   sound_data_bit_15_9;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
-    //Serial sound data is placed on the MSB register at master cycle == 17. It flows in from the LSB.
-    sound_data_lookaround_register[20] <= i_CYCLE_01_TO_16 ? mcyc01_l_stream_zz : mcyc17_r_stream_zz; //sound data LSB is latched at master cycle 18
-    sound_data_lookaround_register[19:0] <= sound_data_lookaround_register[20:1];
+    //The LSB of serial sound data is placed on the MSB of lookaround register if(master cycle == 17 || 1). It flows in from the LSB.
+    sound_data_lookaround_register[21] <= i_CYCLE_01_TO_16 ? mcyc01_l_stream_zz : mcyc17_r_stream_zz; //sound data LSB is latched at master cycle 18
+    sound_data_lookaround_register[20:0] <= sound_data_lookaround_register[21:1];
 
-    if(cycle_01_17) sound_data_bit_15_9 <= sound_data_lookaround_register[20:14];
+    if(cycle_01_17) sound_data_bit_15_9 <= sound_data_lookaround_register[21:15];
 end
 
 
