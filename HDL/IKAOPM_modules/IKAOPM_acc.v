@@ -44,10 +44,11 @@ wire            mrst_n = i_MRST_n;
 ////
 
 //additional cycle bits
-reg             cycle_13, cycle_01_17;
+reg             cycle_13, cycle_01_17, cycle_02_to_17;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     cycle_13 <= i_CYCLE_12;
     cycle_01_17 <= i_CYCLE_00_16;
+    cycle_02_to_17 <= i_CYCLE_01_TO_16;
 end
 
 
@@ -161,14 +162,16 @@ end
 //////  Delays
 ////
 
-reg             mcyc16_r_stream_z, mcyc17_r_stream_zz;
-reg             mcyc00_l_stream_z, mcyc01_l_stream_zz;
+reg             mcyc16_r_stream_z, mcyc17_r_stream_zz, mcyc18_r_stream_zzz;
+reg             mcyc00_l_stream_z, mcyc01_l_stream_zz, mcyc02_l_stream_zzz;
 
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     mcyc16_r_stream_z <= mcyc15_r_stream;
     mcyc00_l_stream_z <= mcyc31_l_stream;
     mcyc17_r_stream_zz <= mcyc16_r_stream_z;
     mcyc01_l_stream_zz <= mcyc00_l_stream_z;
+    mcyc18_r_stream_zzz <= mcyc17_r_stream_zz;
+    mcyc02_l_stream_zzz <= mcyc01_l_stream_zz;
 end
 
 
@@ -177,14 +180,15 @@ end
 //////  SIPO/SO register
 ////
 
-reg     [21:0]  sound_data_lookaround_register;
+wire            sound_data_lookaround_register_input_stream = cycle_02_to_17 ? mcyc02_l_stream_zzz : mcyc18_r_stream_zzz;
+reg     [20:0]  sound_data_lookaround_register;
 reg     [6:0]   sound_data_bit_15_9;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     //The LSB of serial sound data is placed on the MSB of lookaround register if(master cycle == 17 || 1). It flows in from the LSB.
-    sound_data_lookaround_register[21] <= i_CYCLE_01_TO_16 ? mcyc01_l_stream_zz : mcyc17_r_stream_zz; //sound data LSB is latched at master cycle 18
-    sound_data_lookaround_register[20:0] <= sound_data_lookaround_register[21:1];
+    sound_data_lookaround_register[20] <= sound_data_lookaround_register_input_stream; //sound data LSB is latched at (master cycle == 18)
+    sound_data_lookaround_register[19:0] <= sound_data_lookaround_register[20:1];
 
-    if(cycle_01_17) sound_data_bit_15_9 <= sound_data_lookaround_register[21:15];
+    if(cycle_01_17) sound_data_bit_15_9 <= {sound_data_lookaround_register_input_stream, sound_data_lookaround_register[20:15]};
 end
 
 
