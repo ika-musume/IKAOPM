@@ -1,4 +1,4 @@
-module IKAOPM_timinggen #(parameter FULLY_SYNCHRONOUS = 1) (
+module IKAOPM_timinggen #(parameter FULLY_SYNCHRONOUS = 1, parameter FAST_RESET = 0) (
     //chip clock
     input   wire            i_EMUCLK, //emulator master clock
 
@@ -137,11 +137,18 @@ end
 //phi1 output(for reference)
 assign  o_phi1 = phi1p;
 
-//phi1 cen(internal)
-assign  o_phi1_PCEN_n = phi1p | i_phiM_PCEN_n; //ORed signal
-assign  o_phi1_NCEN_n = phi1n | i_phiM_PCEN_n;
-
-
+generate
+if(FAST_RESET == 0) begin
+    //phi1 cen(internal)
+    assign  o_phi1_PCEN_n = phi1p | i_phiM_PCEN_n; //ORed signal
+    assign  o_phi1_NCEN_n = phi1n | i_phiM_PCEN_n;
+end
+else begin
+    //phi1 cen(internal)
+    assign  o_phi1_PCEN_n = (phi1p | i_phiM_PCEN_n) & i_IC_n; //ORed signal
+    assign  o_phi1_NCEN_n = (phi1n | i_phiM_PCEN_n) & i_IC_n;
+end
+endgenerate
 
 
 ///////////////////////////////////////////////////////////
