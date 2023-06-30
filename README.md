@@ -6,7 +6,7 @@ An YM2151 Verilog core for FPGA implementation. It was reverse engineered with o
 Copyrighted work. Permitted to be used as the header image. Painted by [SEONGSU](https://twitter.com/seongsu_twit).
 
 ## Features
-* A **cycle-accurate, die shot based, BSD2 lincensed** core.
+* A **cycle-accurate, die shot based, BSD2 licensed** core.
 * FPGA proven.
 * Accurately emulates most signals of the actual chip.
 * Emulates uneven mixing behavior of the actual chip's accumulator.
