@@ -1,4 +1,4 @@
-module IKAOPM (
+module IKAOPM #(parameter FULLY_SYNCHRONOUS = 1) (
     //chip clock
     input   wire            i_EMUCLK, //emulator master clock
     input   wire            i_phiM_PCEN_n, //phiM clock enable
@@ -20,7 +20,7 @@ module IKAOPM (
     output  wire    [7:0]   o_D,
 
     //output driver enable
-    output  wire            o_CTRL_OE,
+    output  wire            o_D_OE,
 
     //ct
     output  wire            o_CT2,
@@ -121,7 +121,9 @@ wire            reg_phase_ch6_c2, reg_attenlevel_ch8_c2, reg_lfo_clk;
 //////  Modules
 ////
 
-IKAOPM_timinggen TIMINGGEN (
+IKAOPM_timinggen #(
+    .FULLY_SYNCHRONOUS          (FULLY_SYNCHRONOUS          )
+) TIMINGGEN (
     .i_EMUCLK                   (i_EMUCLK                   ),
 
     .i_IC_n                     (i_IC_n                     ),
@@ -162,7 +164,8 @@ IKAOPM_timinggen TIMINGGEN (
 
 
 IKAOPM_reg #(
-    .USE_BRAM_FOR_D32REG        (0                          )
+    .USE_BRAM_FOR_D32REG        (0                          ),
+    .FULLY_SYNCHRONOUS          (FULLY_SYNCHRONOUS          )
 ) REG (
     .i_EMUCLK                   (i_EMUCLK                   ),
     .i_MRST_n                   (mrst_n                     ),
@@ -180,7 +183,7 @@ IKAOPM_reg #(
 
     .i_D                        (i_D                        ),
     .o_D                        (o_D                        ),
-    .o_CTRL_OE                  (o_CTRL_OE                  ),
+    .o_D_OE                     (o_D_OE                     ),
 
     .i_TIMERA_OVFL              (timera_ovfl                ),
     .i_TIMERA_FLAG              (timera_flag                ),
