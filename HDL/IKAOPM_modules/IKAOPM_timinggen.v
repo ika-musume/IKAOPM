@@ -1,4 +1,4 @@
-module IKAOPM_timinggen (
+module IKAOPM_timinggen #(parameter FULLY_SYNCHRONOUS = 1) (
     //chip clock
     input   wire            i_EMUCLK, //emulator master clock
 
@@ -55,24 +55,48 @@ wire            mrst_n = o_MRST_n;
 //////  Reset generator
 ////
 
-//2 stage SR for synchronization
-reg     [1:0]   ic_n_internal = 2'b00;
-always @(posedge i_EMUCLK) if(!i_phiM_PCEN_n) begin 
-    ic_n_internal[0] <= i_IC_n; 
-    ic_n_internal[1] <= ic_n_internal[0]; //shift
-end
-
-//ICn falling edge detector for phi1 phase initialization
 reg             phi1_init = 1'b1;
-always @(posedge i_EMUCLK) if(!i_phiM_PCEN_n) begin
-    phi1_init <= ~ic_n_internal[0] & ic_n_internal[1];
-end
 
-//internal master reset
-always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
-    o_MRST_n <= ic_n_internal[0];
-end
+generate
+if(FULLY_SYNCHRONOUS == 0) begin
+    //2 stage SR for synchronization
+    reg     [1:0]   ic_n_internal = 2'b00;
+    always @(posedge i_EMUCLK) if(!i_phiM_PCEN_n) begin 
+        ic_n_internal[0] <= i_IC_n; 
+        ic_n_internal[1] <= ic_n_internal[0]; //shift
+    end
 
+    //ICn falling edge detector for phi1 phase initialization
+    always @(posedge i_EMUCLK) if(!i_phiM_PCEN_n) begin
+        phi1_init <= ~ic_n_internal[0] & ic_n_internal[1];
+    end
+
+    //internal master reset
+    always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+        o_MRST_n <= ic_n_internal[0];
+    end
+end
+else begin
+    //add two stage SR
+
+    //4 stage SR for synchronization
+    reg     [3:0]   ic_n_internal = 4'b0000;
+    always @(posedge i_EMUCLK) if(!i_phiM_PCEN_n) begin 
+        ic_n_internal[0] <= i_IC_n; 
+        ic_n_internal[3:1] <= ic_n_internal[2:0]; //shift
+    end
+
+    //ICn falling edge detector for phi1 phase initialization
+    always @(posedge i_EMUCLK) if(!i_phiM_PCEN_n) begin
+        phi1_init <= ~ic_n_internal[2] & ic_n_internal[3];
+    end
+
+    //internal master reset
+    always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+        o_MRST_n <= ic_n_internal[2];
+    end
+end
+endgenerate
 
 
 

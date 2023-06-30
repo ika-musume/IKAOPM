@@ -1,4 +1,4 @@
-module IKAOPM_reg #(parameter USE_BRAM_FOR_D32REG = 0) (
+module IKAOPM_reg #(parameter USE_BRAM_FOR_D32REG = 0, parameter FULLY_SYNCHRONOUS = 1) (
     //master clock
     input   wire            i_EMUCLK, //emulator master clock
 
@@ -22,7 +22,7 @@ module IKAOPM_reg #(parameter USE_BRAM_FOR_D32REG = 0) (
     //bus data io
     input   wire    [7:0]   i_D,
     output  wire    [7:0]   o_D,   
-    output  wire            o_CTRL_OE,  //output driver enable
+    output  wire            o_D_OE,  //output driver enable
 
     //timer input
     input   wire            i_TIMERA_OVFL,
@@ -154,19 +154,78 @@ always @(posedge i_EMUCLK) begin
     end
 end
 
-//D latch
-primitive_dlatch #(.WIDTH(8)) u_bus_inlatch (
-    .i_EN(~|{i_CS_n, i_WR_n}), .i_D(i_D), .o_Q(bus_inlatch)
-);
 
-//SR latch
-primitive_srlatch u_dreg_req_inlatch (
-    .i_S(~(|{i_CS_n, i_WR_n, ~i_A0, ~mrst_n} | dreg_rq_synced1)), .i_R(dreg_rq_synced1 | ~mrst_n), .o_Q(dreg_rq_inlatch)
-);
-primitive_srlatch u_areg_req_inlatch (
-    .i_S(~(|{i_CS_n, i_WR_n,  i_A0, ~mrst_n} | areg_rq_synced1)), .i_R(areg_rq_synced1 | ~mrst_n), .o_Q(areg_rq_inlatch)
-);
+generate
+if(FULLY_SYNCHRONOUS == 0) begin: async_rw
+    wire            bus_inlatch_en = ~|{i_CS_n, i_WR_n};
+    wire            dreg_req_inlatch_set = ~(|{i_CS_n, i_WR_n, ~i_A0, ~mrst_n} | dreg_rq_synced1);
+    wire            dreg_req_inlatch_rst = dreg_rq_synced1 | ~mrst_n;
+    wire            areg_req_inlatch_set = ~(|{i_CS_n, i_WR_n,  i_A0, ~mrst_n} | areg_rq_synced1);
+    wire            areg_req_inlatch_rst = areg_rq_synced1 | ~mrst_n;
 
+    //D latch
+    primitive_dlatch #(.WIDTH(8)) u_bus_inlatch (
+        .i_EN(bus_inlatch_en), .i_D(i_D), .o_Q(bus_inlatch)
+    );
+
+    //SR latch
+    primitive_srlatch u_dreg_req_inlatch (
+        .i_S(dreg_req_inlatch_set), .i_R(dreg_req_inlatch_rst), .o_Q(dreg_rq_inlatch)
+    );
+    primitive_srlatch u_areg_req_inlatch (
+        .i_S(areg_req_inlatch_set), .i_R(areg_req_inlatch_rst), .o_Q(areg_rq_inlatch)
+    );
+end
+else begin: sync_rw
+    reg     [7:0]   din_syncchain[0:1];
+    reg     [1:0]   cs_n_syncchain, rd_n_syncchain, wr_n_syncchain, a0_syncchain;
+    always @(posedge i_EMUCLK) begin
+        din_syncchain[0] <= i_D;
+        din_syncchain[1] <= din_syncchain[0];
+
+        cs_n_syncchain[0] <= i_CS_n;
+        cs_n_syncchain[1] <= cs_n_syncchain[0];
+
+        rd_n_syncchain[0] <= i_RD_n;
+        rd_n_syncchain[1] <= rd_n_syncchain[0];
+
+        wr_n_syncchain[0] <= i_WR_n;
+        wr_n_syncchain[1] <= wr_n_syncchain[0];
+
+        a0_syncchain[0] <= i_A0;
+        a0_syncchain[1] <= a0_syncchain[0];
+    end
+
+    //make alias signals
+    wire            cs_n = cs_n_syncchain[1];
+    wire            rd_n = rd_n_syncchain[1];
+    wire            wr_n = wr_n_syncchain[1];
+    wire            a0 = a0_syncchain[1];
+    wire    [7:0]   din = din_syncchain[1];
+
+    wire            bus_inlatch_en = ~|{cs_n, wr_n};
+    wire            dreg_req_inlatch_set = ~(|{cs_n, wr_n, ~a0, ~mrst_n} | dreg_rq_synced1);
+    wire            dreg_req_inlatch_rst = dreg_rq_synced1 | ~mrst_n;
+    wire            areg_req_inlatch_set = ~(|{cs_n, wr_n, a0, ~mrst_n} | areg_rq_synced1);
+    wire            areg_req_inlatch_rst = areg_rq_synced1 | ~mrst_n;
+
+    //D latch
+    primitive_syncdlatch #(.WIDTH(8)) u_bus_inlatch (
+        .i_EMUCLK(i_EMUCLK), .i_RST_n(i_MRST_n),
+        .i_EN(bus_inlatch_en), .i_D(din), .o_Q(bus_inlatch)
+    );
+
+    //SR latch
+    primitive_syncsrlatch u_dreg_req_inlatch (
+        .i_EMUCLK(i_EMUCLK), .i_RST_n(i_MRST_n),
+        .i_S(dreg_req_inlatch_set), .i_R(dreg_req_inlatch_rst), .o_Q(dreg_rq_inlatch)
+    );
+    primitive_syncsrlatch u_areg_req_inlatch (
+        .i_EMUCLK(i_EMUCLK), .i_RST_n(i_MRST_n),
+        .i_S(areg_req_inlatch_set), .i_R(areg_req_inlatch_rst), .o_Q(areg_rq_inlatch)
+    );
+end
+endgenerate
 
 
 ///////////////////////////////////////////////////////////
@@ -693,7 +752,7 @@ end
 wire        [7:0]   internal_data = o_TEST[7] ? {i_REG_PHASE_CH6_C2, i_REG_ATTENLEVEL_CH8_C2, i_REG_OPDATA[13:8]} : i_REG_OPDATA[7:0];
 assign  o_D = o_TEST[6] ? internal_data : {write_busy, 5'b00000, i_TIMERA_FLAG, i_TIMERB_FLAG};
 
-assign  o_CTRL_OE = ~|{~mrst_n, i_A0, i_RD_n, i_CS_n};
+assign  o_D_OE = ~|{~mrst_n, i_A0, i_RD_n, i_CS_n};
 
 
 endmodule

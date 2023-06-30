@@ -18,7 +18,6 @@ endmodule
 
 //primitive : D latch
 module primitive_dlatch #(parameter WIDTH = 8 ) (
-    //master clock
     input   wire                    i_EN,
     input   wire    [WIDTH-1:0]     i_D,
     output  reg     [WIDTH-1:0]     o_Q
@@ -27,6 +26,50 @@ module primitive_dlatch #(parameter WIDTH = 8 ) (
 always @(*) begin
     if(i_EN) o_Q <= i_D;
     else o_Q <= o_Q;
+end
+
+endmodule
+
+//primitive : synchronous SR latch
+module primitive_syncsrlatch (
+    input   wire            i_EMUCLK,
+    input   wire            i_RST_n,
+
+    input   wire            i_S,
+    input   wire            i_R,
+    output  reg             o_Q
+);
+
+always @(posedge i_EMUCLK) begin
+    if(!i_RST_n) o_Q <= 1'b0;
+    else begin
+        case({i_S, i_R})
+            2'b00: o_Q <= o_Q;
+            2'b01: o_Q <= 1'b0;
+            2'b10: o_Q <= 1'b1;
+            2'b11: o_Q <= 1'b0; //invalid
+        endcase
+    end
+end
+
+endmodule
+
+//primitive : synchronous D latch
+module primitive_syncdlatch #(parameter WIDTH = 8 ) (
+    input   wire                    i_EMUCLK,
+    input   wire                    i_RST_n,
+
+    input   wire                    i_EN,
+    input   wire    [WIDTH-1:0]     i_D,
+    output  reg     [WIDTH-1:0]     o_Q
+);
+
+always @(posedge i_EMUCLK) begin
+    if(!i_RST_n) o_Q <= {WIDTH{1'b0}};
+    else begin
+        if(i_EN) o_Q <= i_D;
+        else o_Q <= o_Q;
+    end
 end
 
 endmodule
