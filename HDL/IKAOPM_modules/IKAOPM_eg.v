@@ -689,7 +689,7 @@ end
 
 //total 32 stages to store all levels, SR 28 stages and the remaining 4 stages from cyc9r to cyc12r
 
-primitive_sr #(.WIDTH(10), .LENGTH(28), .TAP(28)) u_cyc13r_cyc40r_phase_sr
+primitive_sr #(.WIDTH(10), .LENGTH(28), .TAP(28)) u_cyc13r_cyc40r_attenlevel_sr
 (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_D(cyc12r_attenlevel_current), .o_Q_TAP(), .o_Q_LAST(cyc40r_attenlevel_previous));
 
 

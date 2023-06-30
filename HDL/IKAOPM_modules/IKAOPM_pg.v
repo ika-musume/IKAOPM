@@ -539,7 +539,7 @@ always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     end
 
     cyc9r_mul <= cyc8r_mul;
-    cyc9r_previous_phase <= cyc40r_phase_sr_out;
+    cyc9r_previous_phase <= mrst_n ? cyc40r_phase_sr_out : 20'd0; //force reset added
 end
 
 
