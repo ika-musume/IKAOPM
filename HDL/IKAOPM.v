@@ -23,8 +23,8 @@ module IKAOPM #(parameter FULLY_SYNCHRONOUS = 1, parameter FAST_RESET = 0) (
     output  wire            o_D_OE,
 
     //ct
-    output  wire            o_CT2,
-    output  wire            o_CT1,
+    output  wire            o_CT2, //BIT7 of register 0x1B
+    output  wire            o_CT1, //BIT6 of register 0x1B
 
     //interrupt
     output  wire            o_IRQ_n,
