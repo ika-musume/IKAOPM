@@ -551,34 +551,6 @@ always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     else cyc56r_phasemod_value <= cyc55r_op_sum[10:1];
 end
 
-
-
-
-
-
-reg     [6:0]   debug_cycdly;
-reg     [11:0]  debug_logsin;
-reg             debug_logsin_sign;
-reg     [9:0]   debug_level_fp_mant;
-reg     [3:0]   debug_level_fp_exp;
-reg             debug_level_fp_sign;
-reg     [13:0]  debug_val;
-
-always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
-        debug_cycdly[6:1] <= debug_cycdly[5:0];
-        debug_cycdly[0] <= i_CYCLE_03;
-
-        if(debug_cycdly[2]) begin debug_logsin <= cyc45r_logsin_saturated; debug_logsin_sign <= cyc45r_level_fp_sign; end
-        if(debug_cycdly[4]) begin debug_level_fp_mant <= cyc47r_level_fp_mant; debug_level_fp_exp <= cyc47r_level_fp_exp; debug_level_fp_sign <= cyc47r_level_fp_sign; end
-        if(debug_cycdly[6]) debug_val <= cyc49r_level_signed;
-    end
-end
-
-
-
-
-
 endmodule
 
 

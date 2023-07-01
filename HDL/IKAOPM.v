@@ -1,4 +1,5 @@
-module IKAOPM #(parameter FULLY_SYNCHRONOUS = 1) (
+module IKAOPM #(parameter FULLY_SYNCHRONOUS = 1, parameter FAST_RESET = 0) (
+
     //chip clock
     input   wire            i_EMUCLK, //emulator master clock
     input   wire            i_phiM_PCEN_n, //phiM clock enable
@@ -34,8 +35,12 @@ module IKAOPM #(parameter FULLY_SYNCHRONOUS = 1) (
     output  wire            o_SH2,
 
     //output
-    output  wire            o_SO,
+    output  wire            o_SO,    
     output  wire    [15:0]  o_EMU_R_PO, o_EMU_L_PO
+
+    `ifdef IKAOPM_BUSY_FLAG_ENABLE
+    , output  wire            o_EMU_BUSY_FLAG
+    `endif 
 );
 
 
@@ -115,6 +120,11 @@ wire            timera_flag, timerb_flag, timera_ovfl;
 wire    [7:0]   test;
 wire            reg_phase_ch6_c2, reg_attenlevel_ch8_c2, reg_lfo_clk;
 
+//write busy flag(especially for external asynchronous fifo)
+`ifdef IKAOPM_BUSY_FLAG_ENABLE
+assign  o_EMU_BUSY_FLAG = o_D[7];
+`endif
+
 
 
 ///////////////////////////////////////////////////////////
@@ -122,7 +132,8 @@ wire            reg_phase_ch6_c2, reg_attenlevel_ch8_c2, reg_lfo_clk;
 ////
 
 IKAOPM_timinggen #(
-    .FULLY_SYNCHRONOUS          (FULLY_SYNCHRONOUS          )
+    .FULLY_SYNCHRONOUS          (FULLY_SYNCHRONOUS          ),
+    .FAST_RESET                 (FAST_RESET                 )
 ) TIMINGGEN (
     .i_EMUCLK                   (i_EMUCLK                   ),
 
