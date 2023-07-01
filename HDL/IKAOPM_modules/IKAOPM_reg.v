@@ -102,6 +102,18 @@ wire            mrst_n = i_MRST_n;
 
 
 ///////////////////////////////////////////////////////////
+//////  Cycle number
+////
+
+//additional cycle bits
+reg             cycle_02;
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    cycle_02 <= i_CYCLE_01;
+end
+
+
+
+///////////////////////////////////////////////////////////
 //////  Bus/control data inlatch and synchronizer
 ////
 
@@ -483,14 +495,13 @@ end
 //  DYNAMIC REGISTERS FOR KON
 //
 
-reg             ch_equal, force_kon, force_kon_z;
+reg             ch_equal, force_kon;
 always @(posedge i_EMUCLK) begin
     if(!phi1ncen_n) begin
         ch_equal <= hireg_addrcntr == {2'b00, kon_temp_reg[2:0]}; //channel number
-
+    
         if(!mrst_n) force_kon <= 1'b0;
-        else begin if(i_CYCLE_01) force_kon <= i_TIMERA_OVFL & csm_reg; end
-        force_kon_z <= force_kon;
+        else begin if(cycle_02) force_kon <= i_TIMERA_OVFL & csm_reg; end
     end
 end
 
@@ -526,7 +537,7 @@ always @(posedge i_EMUCLK) begin
     end
 end
 
-assign  o_KON = kon_sr_24_31[5] | force_kon_z;
+assign  o_KON = kon_sr_24_31[5] | force_kon;
 
 
 
