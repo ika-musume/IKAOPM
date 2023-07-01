@@ -4,7 +4,7 @@ module IKAOPM_timinggen #(parameter FULLY_SYNCHRONOUS = 1, parameter FAST_RESET 
 
     //chip reset
     input   wire            i_IC_n,
-    output  reg             o_MRST_n = 1'b0, //core internal reset
+    output  wire            o_MRST_n, //core internal reset
 
     input   wire            i_phiM_PCEN_n, //phiM clock enable
 
@@ -55,10 +55,23 @@ wire            mrst_n = o_MRST_n;
 //////  Reset generator
 ////
 
-reg             phi1_init = 1'b1;
+reg             ic_n_negedge = 1'b1; //IC_n negedge detector
+reg             synced_mrst_n = 1'b0; //synchronized master reset
+wire            phi1_init;
 
 generate
-if(FULLY_SYNCHRONOUS == 0) begin
+if(FAST_RESET == 0) begin : FAST_RESET_0_clock_and_global_rst
+    assign  o_MRST_n = synced_mrst_n;
+    assign  phi1_init = ic_n_negedge;
+end
+else begin : FAST_RESET_1_clock_and_global_rst
+    assign  o_MRST_n = synced_mrst_n & i_IC_n;
+    assign  phi1_init = ic_n_negedge | ~i_IC_n;
+end
+endgenerate
+
+generate
+if(FULLY_SYNCHRONOUS == 0) begin : FULLY_SYNCHRONOUS_0_reset_syncchain
     //2 stage SR for synchronization
     reg     [1:0]   ic_n_internal = 2'b00;
     always @(posedge i_EMUCLK) if(!i_phiM_PCEN_n) begin 
@@ -68,15 +81,15 @@ if(FULLY_SYNCHRONOUS == 0) begin
 
     //ICn falling edge detector for phi1 phase initialization
     always @(posedge i_EMUCLK) if(!i_phiM_PCEN_n) begin
-        phi1_init <= ~ic_n_internal[0] & ic_n_internal[1];
+        ic_n_negedge <= ~ic_n_internal[0] & ic_n_internal[1];
     end
 
     //internal master reset
     always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
-        o_MRST_n <= ic_n_internal[0];
+        synced_mrst_n <= ic_n_internal[0];
     end
 end
-else begin
+else begin : FULLY_SYNCHRONOUS_1_reset_syncchain
     //add two stage SR
 
     //4 stage SR for synchronization
@@ -88,12 +101,12 @@ else begin
 
     //ICn falling edge detector for phi1 phase initialization
     always @(posedge i_EMUCLK) if(!i_phiM_PCEN_n) begin
-        phi1_init <= ~ic_n_internal[2] & ic_n_internal[3];
+        ic_n_negedge <= ~ic_n_internal[2] & ic_n_internal[3];
     end
 
     //internal master reset
     always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
-        o_MRST_n <= ic_n_internal[2];
+        synced_mrst_n <= ic_n_internal[2];
     end
 end
 endgenerate
@@ -129,21 +142,31 @@ endgenerate
 
 //actual phi1 output is phi1p(positive), and the inverted phi1 is phi1n(negative)
 reg             phi1p, phi1n;
-always @(posedge i_EMUCLK) if(!i_phiM_PCEN_n) begin
-    if(phi1_init)   begin phi1p <= 1'b1;   phi1n <= 1'b1;   end //reset
-    else            begin phi1p <= ~phi1p; phi1n <= phi1p; end //toggle
+generate
+if(FAST_RESET == 0) begin : FAST_RESET_0_phi1gen
+    always @(posedge i_EMUCLK) if(!i_phiM_PCEN_n) begin
+        if(phi1_init)   begin phi1p <= 1'b1;   phi1n <= 1'b1;  end //reset
+        else            begin phi1p <= ~phi1p; phi1n <= phi1p; end //toggle
+    end
 end
+else begin : FAST_RESET_1_phi1gen
+    always @(posedge i_EMUCLK) if(!(i_phiM_PCEN_n & i_IC_n)) begin
+        if(phi1_init)   begin phi1p <= 1'b1;   phi1n <= 1'b1;  end //reset
+        else            begin phi1p <= ~phi1p; phi1n <= phi1p; end //toggle
+    end
+end
+endgenerate
 
 //phi1 output(for reference)
 assign  o_phi1 = phi1p;
 
 generate
-if(FAST_RESET == 0) begin
+if(FAST_RESET == 0) begin : FAST_RESET_0_cenout
     //phi1 cen(internal)
     assign  o_phi1_PCEN_n = phi1p | i_phiM_PCEN_n; //ORed signal
     assign  o_phi1_NCEN_n = phi1n | i_phiM_PCEN_n;
 end
-else begin
+else begin : FAST_RESET_1_cenout
     //phi1 cen(internal)
     assign  o_phi1_PCEN_n = (phi1p | i_phiM_PCEN_n) & i_IC_n; //ORed signal
     assign  o_phi1_NCEN_n = (phi1n | i_phiM_PCEN_n) & i_IC_n;

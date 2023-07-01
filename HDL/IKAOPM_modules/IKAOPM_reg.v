@@ -156,7 +156,7 @@ end
 
 
 generate
-if(FULLY_SYNCHRONOUS == 0) begin: async_rw
+if(FULLY_SYNCHRONOUS == 0) begin : FULLY_SYNCHRONOUS_0_busctrl
     wire            bus_inlatch_en = ~|{i_CS_n, i_WR_n};
     wire            dreg_req_inlatch_set = ~(|{i_CS_n, i_WR_n, ~i_A0, ~mrst_n} | dreg_rq_synced1);
     wire            dreg_req_inlatch_rst = dreg_rq_synced1 | ~mrst_n;
@@ -176,7 +176,7 @@ if(FULLY_SYNCHRONOUS == 0) begin: async_rw
         .i_S(areg_req_inlatch_set), .i_R(areg_req_inlatch_rst), .o_Q(areg_rq_inlatch)
     );
 end
-else begin: sync_rw
+else begin : FULLY_SYNCHRONOUS_1_busctrl
     reg     [7:0]   din_syncchain[0:1];
     reg     [1:0]   cs_n_syncchain, rd_n_syncchain, wr_n_syncchain, a0_syncchain;
     always @(posedge i_EMUCLK) begin
@@ -185,9 +185,6 @@ else begin: sync_rw
 
         cs_n_syncchain[0] <= i_CS_n;
         cs_n_syncchain[1] <= cs_n_syncchain[0];
-
-        rd_n_syncchain[0] <= i_RD_n;
-        rd_n_syncchain[1] <= rd_n_syncchain[0];
 
         wr_n_syncchain[0] <= i_WR_n;
         wr_n_syncchain[1] <= wr_n_syncchain[0];
@@ -198,7 +195,6 @@ else begin: sync_rw
 
     //make alias signals
     wire            cs_n = cs_n_syncchain[1];
-    wire            rd_n = rd_n_syncchain[1];
     wire            wr_n = wr_n_syncchain[1];
     wire            a0 = a0_syncchain[1];
     wire    [7:0]   din = din_syncchain[1];
