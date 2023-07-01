@@ -1,5 +1,5 @@
 # IKAOPM
-An YM2151 Verilog core for FPGA implementation. It was reverse engineered with only Yamaha's datasheet and the [die shot](https://siliconpr0n.org/archive/doku.php?id=mcmaster:yamaha:ym2151) from siliconpr0n. **This core does not reference any existing hard/soft core.** © 2023 Sehyeon Kim(Raki)
+An YM2151 Verilog core for FPGA implementation. It was reverse-engineered with only Yamaha's datasheet and the [die shot](https://siliconpr0n.org/archive/doku.php?id=mcmaster:yamaha:ym2151) from siliconpr0n. **This core does not reference any existing hard/soft core.** © 2023 Sehyeon Kim(Raki)
 
 <p align=center><img alt="header image" src="./resources/ikamusume_dx7.jpg" height="auto" width="640"></p>
 
@@ -7,13 +7,13 @@ Copyrighted work. Permitted to be used as the header image. Painted by [SEONGSU]
 
 ## Features
 * A **cycle-accurate, die shot based, BSD2 licensed** core.
-* FPGA proven.
+* FPGA proven. Special thanks go to [@kunichiko]( https://github.com/kunichiko ).
 * Accurately emulates most signals of the actual chip.
 * Emulates uneven mixing behavior of the actual chip's accumulator.
 * All LSI test bits are implemented.
 
 ## Module instantiation
-The steps below show how to instantiate the IKAOPM module in verilog:
+The steps below show how to instantiate the IKAOPM module in Verilog:
 
 1. Download this repository or add it as a submodule to your project.
 2. You can use the Verilog snippet below to instantiate the module.
@@ -56,21 +56,19 @@ IKAOPM #(
 3. Attach your signals to the port. The direction and the polarity of the signals are described in the port names. The section below explains what the signals mean.
 
 
-* `FULLY_SYNCHRONOUS` **1** makes the entire module synchronized(default, recommended). A 2-stage synchronizer is added to all asynchronous control signal inputs. Hence, `i_EMUCLK` at 3.58 MHz, all write operations are delayed by 2 clocks. If it is **0**, 10 latches are used. There are two unsafe D-latches to emulate an SR-latch for a write request, and an 8-bit D-latch to temporarily store a data bus write value. When using the latches, you must ensure that the enable signals are given the appropriate clock or global attribute. Quartus displays several warnings and treats these signals as GCLK. Because the latch enable signals are considered clocks, the timing analyzer will complain that additional constraints should be added to the bus control signals. I have verified that this asynchronous circuits work on an actual chip, but timing issues may exist.
+* `FULLY_SYNCHRONOUS` **1** makes the entire module synchronized(default, recommended). A 2-stage synchronizer is added to all asynchronous control signal inputs. Hence, `i_EMUCLK` at 3.58 MHz, all write operations are delayed by 2 clocks. If **0**, 10 latches are used. There are two unsafe D-latches to emulate an SR-latch for a write request, and an 8-bit D-latch to temporarily store a data bus write value. When using the latches, you must ensure that the enable signals are given the appropriate clock or global attribute. Quartus displays several warnings and treats these signals as GCLK. Because the latch enable signals are considered clocks, the timing analyzer will complain that additional constraints should be added to the bus control signals. I have verified that these asynchronous circuits work on an actual chip, but timing issues may exist.
 * `FAST_RESET` When set to **0**, assertion of the `i_IC_n` for at least 64 cycles of phiM **should be guaranteed during the operation of `i_EMUCLK` and `i_phiM_PCEN_n`** to ensure reset of all pipelines in the IKAOPM. If it is **1**, then if `i_IC_n` is logic low, it forces phi1_cen, the internal divided clock enable, to be enabled so that the pipelines reset at the same rate as the `i_EMUCLK`. Therefore, `i_phiM_PCEN_n` does not need to operate at this time. 
 * `i_EMUCLK` is your system clock.
-* `i_phiM_PCEN_n` is the clock enable(negative logic) for positive edge of the phiM.
-* `i_IC_n` is the synchronous reset. To flush the every pipelines in the module, IC_n must be kept at zero for at least 64 phiM cycles.
-* `o_D_OE` is the output enable for FPGA's tri-state I/O driver.
-* `o_SO` is the YM3012-type serial audio output.
-* `o_EMU_R_PO` and `o_EMU_L_PO` is the 16-bit signed full range audio outputs.
+*  `i_phiM_PCEN_n` is the clock enable(negative logic) for positive edge of the phiM.
+*  `i_IC_n` is the synchronous reset. To flush every pipelines in the module, IC_n must be kept at zero for at least 64 phiM cycles. Note that while the `i_IC_n` is asserted, the `i_phiM_PCEN_n` must be operating.
+*  `o_D_OE` is the output enable for FPGA's tri-state I/O driver.
+*  `o_SO` is the YM3012-type serial lossy audio output.
+*  `o_EMU_R_PO` and `o_EMU_L_PO` are the 16-bit signed full-range audio outputs.
 
 ## Compilation options
 * ``define IKAOPM_DEBUG` You can view the values inside like a static storage.
 * ``define IKAOPM_BUSY_FLAG_ENABLE` Busy flag for an asynchronous FIFO will be added on the IKAOPM top module. This signal is equal to `o_D[7]`.
 
-
 ## FPGA resource usage
 * Altera EP4CE6E22C8: 2232LEs, BRAM 6608 bits, fmax=76.48MHz(slow 85C)
-
 
