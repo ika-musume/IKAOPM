@@ -66,8 +66,8 @@ IKAOPM #(
 *  `o_EMU_R_PO` and `o_EMU_L_PO` are the 16-bit signed full-range audio outputs.
 
 ## Compilation options
-* ``define IKAOPM_DEBUG` You can view the values inside like a static storage.
-* ``define IKAOPM_BUSY_FLAG_ENABLE` Busy flag for an asynchronous FIFO will be added on the IKAOPM top module. This signal is equal to `o_D[7]`.
+* `IKAOPM_DEBUG` You can view the values inside like a static storage.
+* `IKAOPM_BUSY_FLAG_ENABLE` Busy flag for an asynchronous FIFO will be added on the IKAOPM top module. This signal is equal to `o_D[7]`.
 
 ## FPGA resource usage
 * Altera EP4CE6E22C8: 2232LEs, BRAM 6608 bits, fmax=76.48MHz(slow 85C)
