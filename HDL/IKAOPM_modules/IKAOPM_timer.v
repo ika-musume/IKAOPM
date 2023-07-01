@@ -114,7 +114,7 @@ always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
         o_TIMERA_FLAG <= 1'b0;
     end
     else begin
-        if(i_TIMERA_IRQ_EN) o_TIMERA_FLAG <= timera_ld | o_TIMERA_FLAG;
+        if(i_TIMERA_IRQ_EN) o_TIMERA_FLAG <= timera_ovfl_z | o_TIMERA_FLAG;
         else o_TIMERA_FLAG <= 1'b0;
     end
 
@@ -122,7 +122,7 @@ always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
         o_TIMERB_FLAG <= 1'b0;
     end
     else begin
-        if(i_TIMERB_IRQ_EN) o_TIMERB_FLAG <= timerb_ld | o_TIMERB_FLAG;
+        if(i_TIMERB_IRQ_EN) o_TIMERB_FLAG <= timerb_ovfl_z | o_TIMERB_FLAG;
         else o_TIMERB_FLAG <= 1'b0;
     end
 
