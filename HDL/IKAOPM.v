@@ -1,5 +1,4 @@
 module IKAOPM #(parameter FULLY_SYNCHRONOUS = 1, parameter FAST_RESET = 0) (
-
     //chip clock
     input   wire            i_EMUCLK, //emulator master clock
     input   wire            i_phiM_PCEN_n, //phiM clock enable

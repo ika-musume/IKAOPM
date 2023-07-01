@@ -67,20 +67,21 @@ end
 //////  Third sample flag
 ////
 
-reg     [1:0]   samplecntr;
-wire            third_sample = samplecntr[1] | i_TEST_D0;
+reg             samplecntr_rst;
+wire    [1:0]   samplecntr_q;
+reg             third_sample;
 
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
-    if(!i_MRST_n) begin
-        samplecntr <= 2'd0;
-    end
-    else begin
-        if(i_CYCLE_31) begin
-            if(samplecntr == 2'd2) samplecntr <= 2'd0;
-            else samplecntr <= samplecntr + 2'd1;
-        end
-    end
+    samplecntr_rst <= samplecntr_q[1];
+
+    third_sample <= samplecntr_q[1] | i_TEST_D0;
 end
+
+primitive_counter #(.WIDTH(2)) u_samplecntr (
+    .i_EMUCLK(i_EMUCLK), .i_PCEN_n(phi1pcen_n), .i_NCEN_n(phi1ncen_n),
+    .i_CNT(i_CYCLE_31), .i_LD(1'b0), .i_RST((samplecntr_rst & i_CYCLE_31) | ~mrst_n),
+    .i_D(2'd0), .o_Q(samplecntr_q), .o_CO()
+);
 
 
 
