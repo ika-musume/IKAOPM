@@ -32,7 +32,7 @@ module IKAOPM_reg #(parameter USE_BRAM_FOR_D32REG = 0, parameter FULLY_SYNCHRONO
     //register output
     output  reg     [7:0]   o_TEST,     //0x01      TEST register
 
-    output  wire            o_CT1,
+    output  reg             o_CT1,
     output  reg             o_CT2,
 
     output  reg             o_NE,       //0x0F[7]   Noise Enable
@@ -410,9 +410,9 @@ end
 //CT reg output
 reg     [1:0]   ct_reg; //define CT reg
 
-assign  o_CT1 = ct_reg[0];
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
-    o_CT2 <= o_TEST[3] ? i_REG_LFO_CLK : ct_reg[1]; //LSI test purpose
+    o_CT1 <= o_TEST[3] ? i_REG_LFO_CLK : ct_reg[0];  //LSI test purpose
+    o_CT2 <= ct_reg[1];
 end
 
 //reg for KON
