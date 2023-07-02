@@ -51,6 +51,8 @@ IKAOPM #(
     .o_SO                       (                           ),
     .o_EMU_R_PO                 (                           ),
     .o_EMU_L_PO                 (                           )
+
+    //, .o_EMU_BUSY_FLAG                 (                           )
 );
 ```
 3. Attach your signals to the port. The direction and the polarity of the signals are described in the port names. The section below explains what the signals mean.
@@ -59,16 +61,20 @@ IKAOPM #(
 * `FULLY_SYNCHRONOUS` **1** makes the entire module synchronized(default, recommended). A 2-stage synchronizer is added to all asynchronous control signal inputs. Hence, `i_EMUCLK` at 3.58 MHz, all write operations are delayed by 2 clocks. If **0**, 10 latches are used. There are two unsafe D-latches to emulate an SR-latch for a write request, and an 8-bit D-latch to temporarily store a data bus write value. When using the latches, you must ensure that the enable signals are given the appropriate clock or global attribute. Quartus displays several warnings and treats these signals as GCLK. Because the latch enable signals are considered clocks, the timing analyzer will complain that additional constraints should be added to the bus control signals. I have verified that these asynchronous circuits work on an actual chip, but timing issues may exist.
 * `FAST_RESET` When set to **0**, assertion of the `i_IC_n` for at least 64 cycles of phiM **should be guaranteed during the operation of `i_EMUCLK` and `i_phiM_PCEN_n`** to ensure reset of all pipelines in the IKAOPM. If it is **1**, then if `i_IC_n` is logic low, it forces phi1_cen, the internal divided clock enable, to be enabled so that the pipelines reset at the same rate as the `i_EMUCLK`. Therefore, `i_phiM_PCEN_n` does not need to operate at this time. 
 * `i_EMUCLK` is your system clock.
-*  `i_phiM_PCEN_n` is the clock enable(negative logic) for positive edge of the phiM.
-*  `i_IC_n` is the synchronous reset. To flush every pipelines in the module, IC_n must be kept at zero for at least 64 phiM cycles. Note that while the `i_IC_n` is asserted, the `i_phiM_PCEN_n` must be operating.
-*  `o_D_OE` is the output enable for FPGA's tri-state I/O driver.
-*  `o_SO` is the YM3012-type serial lossy audio output.
-*  `o_EMU_R_PO` and `o_EMU_L_PO` are the 16-bit signed full-range audio outputs.
+* `i_phiM_PCEN_n` is the clock enable(negative logic) for positive edge of the phiM.
+* `i_IC_n` is the synchronous reset. To flush every pipelines in the module, IC_n must be kept at zero for at least 64 phiM cycles. Note that while the `i_IC_n` is asserted, the `i_phiM_PCEN_n` must be operating.
+* `o_D_OE` is the output enable for FPGA's tri-state I/O driver.
+* `o_SO` is the YM3012-type serial lossy audio output.
+* `o_EMU_R_PO` and `o_EMU_L_PO` are the 16-bit signed full-range audio outputs.
+
+## CT2 and CT1 port description
+Pin number 8 and 9 of the YM2151 are used as GPO ports. They are referred to as CT2 and CT1 respectively, but unfortunately Yamaha doesn't seem to have taken the naming of them seriously. There are datasheets that have CT2 and CT1 reversed in order. Looking at the die shot, bit 7 of the 0x1B register is connected to the pin 8, and bit 6 is connected to the pin 9. I assume that in this core, **bit 7 of the 0x1B register = CT2 = pin 8, bit 6 of the same register = CT1 = pin 9**. In addition, **the pin that the internal data `lfo_clk` flows out of when test mode is turned on is CT1 = pin 9**.
+
 
 ## Compilation options
 * `IKAOPM_DEBUG` You can view the values inside like a static storage.
-* `IKAOPM_BUSY_FLAG_ENABLE` Busy flag for an asynchronous FIFO will be added on the IKAOPM top module. This signal is equal to `o_D[7]`.
+* `IKAOPM_BUSY_FLAG_ENABLE` A busy flag for an asynchronous FIFO that performs delayed write for a faster CPU bus. This signal is equal to `o_D[7]`.
 
 ## FPGA resource usage
-* Altera EP4CE6E22C8: 2232LEs, BRAM 6608 bits, fmax=76.48MHz(slow 85C)
+* Altera EP4CE6E22C8: 2226LEs, BRAM 6608 bits, fmax=74.5MHz(slow 85C)
 
