@@ -100,14 +100,14 @@ end
 reg     [12:0]  cyc1c_lfp_deviance;
 always @(*) begin
     case(cyc0r_pms_level)
-        3'd0: cyc1c_lfp_deviance <= 13'b0;
-        3'd1: cyc1c_lfp_deviance <= {11'b0, cyc0r_ex_lfp[6:5]      };
-        3'd2: cyc1c_lfp_deviance <= {10'b0, cyc0r_ex_lfp[6:4]      };
-        3'd3: cyc1c_lfp_deviance <= {9'b0,  cyc0r_ex_lfp[6:3]      };
-        3'd4: cyc1c_lfp_deviance <= {8'b0,  cyc0r_ex_lfp[6:2]      };
-        3'd5: cyc1c_lfp_deviance <= {7'b0,  cyc0r_ex_lfp[6:1]      };
-        3'd6: cyc1c_lfp_deviance <= {4'b0,  cyc0r_ex_lfp[7:0], 1'b0};
-        3'd7: cyc1c_lfp_deviance <= {3'b0,  cyc0r_ex_lfp[7:0], 2'b0};
+        3'd0: cyc1c_lfp_deviance = 13'b0;
+        3'd1: cyc1c_lfp_deviance = {11'b0, cyc0r_ex_lfp[6:5]      };
+        3'd2: cyc1c_lfp_deviance = {10'b0, cyc0r_ex_lfp[6:4]      };
+        3'd3: cyc1c_lfp_deviance = {9'b0,  cyc0r_ex_lfp[6:3]      };
+        3'd4: cyc1c_lfp_deviance = {8'b0,  cyc0r_ex_lfp[6:2]      };
+        3'd5: cyc1c_lfp_deviance = {7'b0,  cyc0r_ex_lfp[6:1]      };
+        3'd6: cyc1c_lfp_deviance = {4'b0,  cyc0r_ex_lfp[7:0], 1'b0};
+        3'd7: cyc1c_lfp_deviance = {3'b0,  cyc0r_ex_lfp[7:0], 2'b0};
     endcase
 end
 
@@ -161,26 +161,26 @@ reg     [7:0]   cyc2c_int_adder;
 always @(*) begin
     case({(cyc1r_modded_pitchval[7:6] == 2'd3), cyc1r_notegroup_nopitchmod, cyc1r_notegroup_ovfl, cyc1r_lfp_sign})
         //valid notegroup value
-        4'b0_0_0_0: cyc2c_int_adder <= cyc1r_modded_pitchval[12:6]        ; //
-        4'b0_0_0_1: cyc2c_int_adder <= cyc1r_modded_pitchval[12:6] + 7'h7F; //
-        4'b0_0_1_0: cyc2c_int_adder <= cyc1r_modded_pitchval[12:6] + 7'h01; //
-        4'b0_0_1_1: cyc2c_int_adder <= cyc1r_modded_pitchval[12:6]        ; //
+        4'b0_0_0_0: cyc2c_int_adder = cyc1r_modded_pitchval[12:6]        ; //
+        4'b0_0_0_1: cyc2c_int_adder = cyc1r_modded_pitchval[12:6] + 7'h7F; //
+        4'b0_0_1_0: cyc2c_int_adder = cyc1r_modded_pitchval[12:6] + 7'h01; //
+        4'b0_0_1_1: cyc2c_int_adder = cyc1r_modded_pitchval[12:6]        ; //
 
-        4'b0_1_0_0: cyc2c_int_adder <= cyc1r_modded_pitchval[12:6]        ; //
-        4'b0_1_0_1: cyc2c_int_adder <= cyc1r_modded_pitchval[12:6]        ; //
-        4'b0_1_1_0: cyc2c_int_adder <= cyc1r_modded_pitchval[12:6] + 7'h01; //
-        4'b0_1_1_1: cyc2c_int_adder <= cyc1r_modded_pitchval[12:6]        ; //
+        4'b0_1_0_0: cyc2c_int_adder = cyc1r_modded_pitchval[12:6]        ; //
+        4'b0_1_0_1: cyc2c_int_adder = cyc1r_modded_pitchval[12:6]        ; //
+        4'b0_1_1_0: cyc2c_int_adder = cyc1r_modded_pitchval[12:6] + 7'h01; //
+        4'b0_1_1_1: cyc2c_int_adder = cyc1r_modded_pitchval[12:6]        ; //
 
         //invalid notegroup value
-        4'b1_0_0_0: cyc2c_int_adder <= cyc1r_modded_pitchval[12:6] + 7'h01; //
-        4'b1_0_0_1: cyc2c_int_adder <= cyc1r_modded_pitchval[12:6] + 7'h7F; //
-        4'b1_0_1_0: cyc2c_int_adder <= cyc1r_modded_pitchval[12:6] + 7'h01; //
-        4'b1_0_1_1: cyc2c_int_adder <= cyc1r_modded_pitchval[12:6]        ; //
+        4'b1_0_0_0: cyc2c_int_adder = cyc1r_modded_pitchval[12:6] + 7'h01; //
+        4'b1_0_0_1: cyc2c_int_adder = cyc1r_modded_pitchval[12:6] + 7'h7F; //
+        4'b1_0_1_0: cyc2c_int_adder = cyc1r_modded_pitchval[12:6] + 7'h01; //
+        4'b1_0_1_1: cyc2c_int_adder = cyc1r_modded_pitchval[12:6]        ; //
 
-        4'b1_1_0_0: cyc2c_int_adder <= cyc1r_modded_pitchval[12:6] + 7'h01; //
-        4'b1_1_0_1: cyc2c_int_adder <= cyc1r_modded_pitchval[12:6]        ; //
-        4'b1_1_1_0: cyc2c_int_adder <= cyc1r_modded_pitchval[12:6] + 7'h01; //
-        4'b1_1_1_1: cyc2c_int_adder <= cyc1r_modded_pitchval[12:6]        ; //
+        4'b1_1_0_0: cyc2c_int_adder = cyc1r_modded_pitchval[12:6] + 7'h01; //
+        4'b1_1_0_1: cyc2c_int_adder = cyc1r_modded_pitchval[12:6]        ; //
+        4'b1_1_1_0: cyc2c_int_adder = cyc1r_modded_pitchval[12:6] + 7'h01; //
+        4'b1_1_1_1: cyc2c_int_adder = cyc1r_modded_pitchval[12:6]        ; //
     endcase
 end
 
@@ -475,32 +475,32 @@ end
 //
 
 //intensity shifts the base value
-reg     [4:0]   cyc9c_dt1_intensity;
+reg     [4:0]   cyc9c_dt1_intensity; //possible intensity value: from 1 to 19
 always @(*) begin
     case(cyc8r_dt1[1:0])
-        2'd0: cyc9c_dt1_intensity <= {1'b0, cyc8r_pdelta_shift_amount[4:2]} + 4'd0  + 1'd1;
-        2'd1: cyc9c_dt1_intensity <= {1'b0, cyc8r_pdelta_shift_amount[4:2]} + 4'd8  + 1'd1;
-        2'd2: cyc9c_dt1_intensity <= {1'b0, cyc8r_pdelta_shift_amount[4:2]} + 4'd10 + 1'd1;
-        2'd3: cyc9c_dt1_intensity <= {1'b0, cyc8r_pdelta_shift_amount[4:2]} + 4'd11 + 1'd1;
+        2'd0: cyc9c_dt1_intensity = {1'b0, cyc8r_pdelta_shift_amount[4:2]} + 4'd0  + 1'd1; //always +1, confirmed 2023-07-06
+        2'd1: cyc9c_dt1_intensity = {1'b0, cyc8r_pdelta_shift_amount[4:2]} + 4'd8  + 1'd1;
+        2'd2: cyc9c_dt1_intensity = {1'b0, cyc8r_pdelta_shift_amount[4:2]} + 4'd10 + 1'd1;
+        2'd3: cyc9c_dt1_intensity = {1'b0, cyc8r_pdelta_shift_amount[4:2]} + 4'd11 + 1'd1;
     endcase
 end
 
-//generate the base value(PLA)
-wire    [1:0]   cyc9c_dt1_base_sel = (cyc8r_pdelta_shift_amount >= 5'd28) ? 2'd0 : cyc8r_pdelta_shift_amount[1:0];
+//generate the base value(PLA), confirmed 2023-07-06
+wire    [1:0]   cyc9c_dt1_base_sel = (cyc8r_pdelta_shift_amount >= 5'd28) ? 2'd0 : cyc8r_pdelta_shift_amount[1:0]; //confirmed 2023-07-06
 reg     [4:0]   cyc9c_dt1_base;
 always @(*) begin
     case({cyc9c_dt1_intensity[0], cyc9c_dt1_base_sel})
         //dt1 intensity is even
-        3'b0_00: cyc9c_dt1_base <= 5'b10000;
-        3'b0_01: cyc9c_dt1_base <= 5'b10001;
-        3'b0_10: cyc9c_dt1_base <= 5'b10011;
-        3'b0_11: cyc9c_dt1_base <= 5'b10100;
+        3'b0_00: cyc9c_dt1_base = 5'b10000; //1, 0
+        3'b0_01: cyc9c_dt1_base = 5'b10001; //1, 1
+        3'b0_10: cyc9c_dt1_base = 5'b10011; //1, 3
+        3'b0_11: cyc9c_dt1_base = 5'b10100; //1, 4
 
         //dt1 intensity is odd
-        3'b1_00: cyc9c_dt1_base <= 5'b10110;
-        3'b1_01: cyc9c_dt1_base <= 5'b11000;
-        3'b1_10: cyc9c_dt1_base <= 5'b11011;
-        3'b1_11: cyc9c_dt1_base <= 5'b11101;
+        3'b1_00: cyc9c_dt1_base = 5'b10110; //1, 6
+        3'b1_01: cyc9c_dt1_base = 5'b11000; //1, 8
+        3'b1_10: cyc9c_dt1_base = 5'b11011; //1, 11
+        3'b1_11: cyc9c_dt1_base = 5'b11101; //1, 13
     endcase
 end
 
@@ -525,18 +525,16 @@ always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
         3'd7: cyc9r_shifted_pdelta <= {     cyc8r_pdelta_base, 5'b00000   }; //<<3
     endcase
 
-    if(cyc8r_dt1 == 1'b0) cyc9r_pdelta_detuning_value <= 17'd0; //dt1 is zero
-    else begin
-        case(cyc9c_dt1_intensity[4:1])
-            //                                                      DT1 is ? |-------- positive --------|   |------------- negative -----------|  intensity
-            4'b0101: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {16'b0, cyc9c_dt1_base[4]}   : ~{16'b0, cyc9c_dt1_base[4]}   + 1'd1; //10, 11
-            4'b0110: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {15'b0, cyc9c_dt1_base[4:3]} : ~{15'b0, cyc9c_dt1_base[4:3]} + 1'd1; //12, 13
-            4'b0111: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {14'b0, cyc9c_dt1_base[4:2]} : ~{14'b0, cyc9c_dt1_base[4:2]} + 1'd1; //14, 15
-            4'b1000: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {13'b0, cyc9c_dt1_base[4:1]} : ~{13'b0, cyc9c_dt1_base[4:1]} + 1'd1; //16, 17
-            4'b1001: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {12'b0, cyc9c_dt1_base}      : ~{12'b0, cyc9c_dt1_base}      + 1'd1; //18, 19
-            default: cyc9r_pdelta_detuning_value <= 17'd0; //else
-        endcase
-    end
+    case(cyc9c_dt1_intensity[4:1])
+        //                                                      DT1 is ? |-------- positive --------|   |------------- negative -----------|  intensity
+        4'b0101: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {16'd0, cyc9c_dt1_base[4]}   : ~{16'd0, cyc9c_dt1_base[4]}   + 1'd1; //10, 11
+        4'b0110: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {15'd0, cyc9c_dt1_base[4:3]} : ~{15'd0, cyc9c_dt1_base[4:3]} + 1'd1; //12, 13
+        4'b0111: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {14'd0, cyc9c_dt1_base[4:2]} : ~{14'd0, cyc9c_dt1_base[4:2]} + 1'd1; //14, 15
+        4'b1000: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {13'd0, cyc9c_dt1_base[4:1]} : ~{13'd0, cyc9c_dt1_base[4:1]} + 1'd1; //16, 17
+        4'b1001: cyc9r_pdelta_detuning_value <= (cyc8r_dt1[2] == 1'b0) ? {12'd0, cyc9c_dt1_base}      : ~{12'd0, cyc9c_dt1_base}      + 1'd1; //18, 19
+
+        default: cyc9r_pdelta_detuning_value <= 17'd0;                                                                                    //1 to 9
+    endcase
 
     cyc9r_mul <= cyc8r_mul;
     cyc9r_previous_phase <= mrst_n ? cyc40r_phase_sr_out : 20'd0; //force reset added
