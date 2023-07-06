@@ -115,19 +115,19 @@ wire            odd = cyc42r_logsinrom_phase_odd; //alias signal
 reg     [10:0]  cyc43c_logsinrom_addend0, cyc43c_logsinrom_addend1;
 always @(*) begin
     case(cyc42r_logsinrom_bitsel)
-        /*                                    D10      D9      D8      D7      D6      D5      D4      D3      D2      D1      D0  */
-        2'd0: cyc43c_logsinrom_addend0 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0, ls[29], ls[25], ls[18], ls[14],  ls[3]};
-        2'd1: cyc43c_logsinrom_addend0 <= {  1'b0,   1'b0,   1'b0,   1'b0, ls[37], ls[34], ls[28], ls[24], ls[17], ls[13],  ls[2]};
-        2'd2: cyc43c_logsinrom_addend0 <= {  1'b0,   1'b0, ls[43], ls[41], ls[36], ls[33], ls[27], ls[23], ls[16], ls[12],  ls[1]};
-        2'd3: cyc43c_logsinrom_addend0 <= {ls[45], ls[44], ls[42], ls[40], ls[35], ls[32], ls[26], ls[22], ls[15], ls[11],  ls[0]};
+        /*                                   D10      D9      D8      D7      D6      D5      D4      D3      D2      D1      D0  */
+        2'd0: cyc43c_logsinrom_addend0 = {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0, ls[29], ls[25], ls[18], ls[14],  ls[3]};
+        2'd1: cyc43c_logsinrom_addend0 = {  1'b0,   1'b0,   1'b0,   1'b0, ls[37], ls[34], ls[28], ls[24], ls[17], ls[13],  ls[2]};
+        2'd2: cyc43c_logsinrom_addend0 = {  1'b0,   1'b0, ls[43], ls[41], ls[36], ls[33], ls[27], ls[23], ls[16], ls[12],  ls[1]};
+        2'd3: cyc43c_logsinrom_addend0 = {ls[45], ls[44], ls[42], ls[40], ls[35], ls[32], ls[26], ls[22], ls[15], ls[11],  ls[0]};
     endcase
 
     case(cyc42r_logsinrom_bitsel)
-        /*                                    D10      D9      D8      D7      D6      D5      D4      D3      D2      D1      D0  */
-        2'd0: cyc43c_logsinrom_addend1 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,  ls[7]} & {2'b00, {9{odd}}};
-        2'd1: cyc43c_logsinrom_addend1 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0, ls[10],  ls[6]} & {2'b00, {9{odd}}};
-        2'd2: cyc43c_logsinrom_addend1 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0, ls[20],  ls[9],  ls[5]} & {2'b00, {9{odd}}};
-        2'd3: cyc43c_logsinrom_addend1 <= {  1'b0,   1'b0, ls[39], ls[39], ls[38], ls[31], ls[30], ls[21], ls[19],  ls[8],  ls[4]} & {2'b00, {9{odd}}};
+        /*                                   D10      D9      D8      D7      D6      D5      D4      D3      D2      D1      D0  */
+        2'd0: cyc43c_logsinrom_addend1 = {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,  ls[7]} & {2'b00, {9{odd}}};
+        2'd1: cyc43c_logsinrom_addend1 = {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0, ls[10],  ls[6]} & {2'b00, {9{odd}}};
+        2'd2: cyc43c_logsinrom_addend1 = {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0, ls[20],  ls[9],  ls[5]} & {2'b00, {9{odd}}};
+        2'd3: cyc43c_logsinrom_addend1 = {  1'b0,   1'b0, ls[39], ls[39], ls[38], ls[31], ls[30], ls[21], ls[19],  ls[8],  ls[4]} & {2'b00, {9{odd}}};
     endcase 
 end
 
@@ -219,19 +219,19 @@ wire            even = cyc46r_logsin_even; //alias signal
 reg     [9:0]  cyc47c_exprom_addend0, cyc47c_exprom_addend1;
 always @(*) begin
     case(cyc46r_exprom_bitsel)
-        /*                                  D9      D8      D7      D6      D5      D4      D3      D2      D1     D0  */
-        2'd0: cyc47c_exprom_addend0 <= {  1'b1,  e[43],  e[40],  e[36],  e[32],  e[28],  e[24],  e[18],  e[14],   e[3]};
-        2'd1: cyc47c_exprom_addend0 <= { e[44],  e[42],  e[39],  e[35],  e[31],  e[27],  e[23],  e[17],  e[13],   e[2]};
-        2'd2: cyc47c_exprom_addend0 <= {  1'b0,  e[41],  e[38],  e[34],  e[30],  e[26],  e[22],  e[16],  e[12],   e[1]};
-        2'd3: cyc47c_exprom_addend0 <= {  1'b0,   1'b0,  e[37],  e[33],  e[29],  e[25],  e[21],  e[15],  e[11],   e[0]};
+        /*                                 D9      D8      D7      D6      D5      D4      D3      D2      D1     D0  */
+        2'd0: cyc47c_exprom_addend0 = {  1'b1,  e[43],  e[40],  e[36],  e[32],  e[28],  e[24],  e[18],  e[14],   e[3]};
+        2'd1: cyc47c_exprom_addend0 = { e[44],  e[42],  e[39],  e[35],  e[31],  e[27],  e[23],  e[17],  e[13],   e[2]};
+        2'd2: cyc47c_exprom_addend0 = {  1'b0,  e[41],  e[38],  e[34],  e[30],  e[26],  e[22],  e[16],  e[12],   e[1]};
+        2'd3: cyc47c_exprom_addend0 = {  1'b0,   1'b0,  e[37],  e[33],  e[29],  e[25],  e[21],  e[15],  e[11],   e[0]};
     endcase
 
     case(cyc46r_exprom_bitsel)
-        /*                                  D9      D8      D7      D6      D5      D4      D3      D2      D1      D0  */
-        2'd0: cyc47c_exprom_addend1 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b1,  e[10],   e[7]} & {7'b0000000, {3{even}}};
-        2'd1: cyc47c_exprom_addend1 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b1,   1'b0,   e[6]} & {7'b0000000, {3{even}}};
-        2'd2: cyc47c_exprom_addend1 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,  e[19],   e[9],   e[5]} & {7'b0000000, {3{even}}};
-        2'd3: cyc47c_exprom_addend1 <= {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,  e[20],   e[8],   e[4]} & {7'b0000000, {3{even}}};
+        /*                                 D9      D8      D7      D6      D5      D4      D3      D2      D1      D0  */
+        2'd0: cyc47c_exprom_addend1 = {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b1,  e[10],   e[7]} & {7'b0000000, {3{even}}};
+        2'd1: cyc47c_exprom_addend1 = {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b1,   1'b0,   e[6]} & {7'b0000000, {3{even}}};
+        2'd2: cyc47c_exprom_addend1 = {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,  e[19],   e[9],   e[5]} & {7'b0000000, {3{even}}};
+        2'd3: cyc47c_exprom_addend1 = {  1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,   1'b0,  e[20],   e[8],   e[4]} & {7'b0000000, {3{even}}};
     endcase 
 end
 
@@ -264,17 +264,17 @@ end
 reg     [12:0]  cyc48c_shifter0, cyc48c_shifter1;
 always @(*) begin
     case(cyc47r_level_fp_exp[1:0])
-        2'b00: cyc48c_shifter0 <= {3'b000, 1'b1, cyc47r_level_fp_mant[9:1]};
-        2'b01: cyc48c_shifter0 <= {2'b00, 1'b1, cyc47r_level_fp_mant      };
-        2'b10: cyc48c_shifter0 <= {1'b0, 1'b1, cyc47r_level_fp_mant, 1'b0 };
-        2'b11: cyc48c_shifter0 <= {     1'b1, cyc47r_level_fp_mant, 2'b00 };
+        2'b00: cyc48c_shifter0 = {3'b000, 1'b1, cyc47r_level_fp_mant[9:1]};
+        2'b01: cyc48c_shifter0 = {2'b00, 1'b1, cyc47r_level_fp_mant      };
+        2'b10: cyc48c_shifter0 = {1'b0, 1'b1, cyc47r_level_fp_mant, 1'b0 };
+        2'b11: cyc48c_shifter0 = {     1'b1, cyc47r_level_fp_mant, 2'b00 };
     endcase
 
     case(cyc47r_level_fp_exp[3:2])
-        2'b00: cyc48c_shifter1 <= {12'b0, cyc48c_shifter0[12]  };
-        2'b01: cyc48c_shifter1 <= { 8'b0, cyc48c_shifter0[12:8]};
-        2'b10: cyc48c_shifter1 <= { 4'b0, cyc48c_shifter0[12:4]};
-        2'b11: cyc48c_shifter1 <= cyc48c_shifter0;
+        2'b00: cyc48c_shifter1 = {12'b0, cyc48c_shifter0[12]  };
+        2'b01: cyc48c_shifter1 = { 8'b0, cyc48c_shifter0[12:8]};
+        2'b10: cyc48c_shifter1 = { 4'b0, cyc48c_shifter0[12:4]};
+        2'b11: cyc48c_shifter1 = cyc48c_shifter0;
     endcase
 end
 
@@ -372,10 +372,10 @@ reg             cyc53c_accumulation_en;
 assign  o_ACC_SNDADD = cyc53c_accumulation_en;
 always @(*) begin
     case(cyc52r_algst)
-        2'd0: cyc53c_accumulation_en <= cyc52r_algtype == 3'd7; //Add M1?
-        2'd1: cyc53c_accumulation_en <= cyc52r_algtype == 3'd7 || cyc52r_algtype == 3'd6 || cyc52r_algtype == 3'd5; //Add M2?
-        2'd2: cyc53c_accumulation_en <= cyc52r_algtype == 3'd7 || cyc52r_algtype == 3'd6 || cyc52r_algtype == 3'd5 || cyc52r_algtype == 3'd4; //Add C1?
-        2'd3: cyc53c_accumulation_en <= 1'b1; //Add C2?
+        2'd0: cyc53c_accumulation_en = cyc52r_algtype == 3'd7; //Add M1?
+        2'd1: cyc53c_accumulation_en = cyc52r_algtype == 3'd7 || cyc52r_algtype == 3'd6 || cyc52r_algtype == 3'd5; //Add M2?
+        2'd2: cyc53c_accumulation_en = cyc52r_algtype == 3'd7 || cyc52r_algtype == 3'd6 || cyc52r_algtype == 3'd5 || cyc52r_algtype == 3'd4; //Add C1?
+        2'd3: cyc53c_accumulation_en = 1'b1; //Add C2?
     endcase
 end
 

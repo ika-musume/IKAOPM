@@ -70,11 +70,9 @@ IKAOPM #(
 ## CT2 and CT1 port description
 Pin number 8 and 9 of the YM2151 are used as GPO ports. They are referred to as CT2 and CT1 respectively, but unfortunately Yamaha doesn't seem to have taken the naming of them seriously. There are datasheets that have CT2 and CT1 reversed in order. Looking at the die shot, bit 7 of the 0x1B register is connected to the pin 8, and bit 6 is connected to the pin 9. I assume that in this core, **bit 7 of the 0x1B register = CT2 = pin 8, bit 6 of the same register = CT1 = pin 9**. In addition, **the pin that the internal data `lfo_clk` flows out of when test mode is turned on is CT1 = pin 9**.
 
-
 ## Compilation options
 * `IKAOPM_DEBUG` You can view the values inside like a static storage.
 * `IKAOPM_BUSY_FLAG_ENABLE` A busy flag for an asynchronous FIFO that performs delayed write for a faster CPU bus. This signal is equal to `o_D[7]`.
 
 ## FPGA resource usage
-* Altera EP4CE6E22C8: 2226LEs, BRAM 6608 bits, fmax=74.5MHz(slow 85C)
-
+* Altera EP4CE6E22C8: 2231LEs, BRAM 6608 bits, fmax=73.83MHz(slow 85C)

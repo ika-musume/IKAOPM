@@ -337,10 +337,10 @@ always @(*) begin
     end
     else begin
         case(cyc6r_cyc9r_envstate_previous[1])
-            ATTACK:         cyc8c_egparam <= i_AR;
-            FIRST_DECAY:    cyc8c_egparam <= i_D1R;
-            SECOND_DECAY:   cyc8c_egparam <= i_D2R;
-            RELEASE:        cyc8c_egparam <= {i_RR, 1'b0};
+            ATTACK:         cyc8c_egparam = i_AR;
+            FIRST_DECAY:    cyc8c_egparam = i_D1R;
+            SECOND_DECAY:   cyc8c_egparam = i_D2R;
+            RELEASE:        cyc8c_egparam = {i_RR, 1'b0};
         endcase
     end
 end
@@ -496,25 +496,25 @@ end
 reg             cyc10c_envdeltaweight_intensity; //0 = weak, 1 = strong
 always @(*) begin
     case({cyc9r_egparam_scaled[1:0], cyc9r_envcntr})
-        4'b00_00: cyc10c_envdeltaweight_intensity <= 1'b0;
-        4'b00_01: cyc10c_envdeltaweight_intensity <= 1'b0;
-        4'b00_10: cyc10c_envdeltaweight_intensity <= 1'b0;
-        4'b00_11: cyc10c_envdeltaweight_intensity <= 1'b0;
+        4'b00_00: cyc10c_envdeltaweight_intensity = 1'b0;
+        4'b00_01: cyc10c_envdeltaweight_intensity = 1'b0;
+        4'b00_10: cyc10c_envdeltaweight_intensity = 1'b0;
+        4'b00_11: cyc10c_envdeltaweight_intensity = 1'b0;
 
-        4'b01_00: cyc10c_envdeltaweight_intensity <= 1'b1;
-        4'b01_01: cyc10c_envdeltaweight_intensity <= 1'b0;
-        4'b01_10: cyc10c_envdeltaweight_intensity <= 1'b0;
-        4'b01_11: cyc10c_envdeltaweight_intensity <= 1'b0;
+        4'b01_00: cyc10c_envdeltaweight_intensity = 1'b1;
+        4'b01_01: cyc10c_envdeltaweight_intensity = 1'b0;
+        4'b01_10: cyc10c_envdeltaweight_intensity = 1'b0;
+        4'b01_11: cyc10c_envdeltaweight_intensity = 1'b0;
 
-        4'b10_00: cyc10c_envdeltaweight_intensity <= 1'b1;
-        4'b10_01: cyc10c_envdeltaweight_intensity <= 1'b0;
-        4'b10_10: cyc10c_envdeltaweight_intensity <= 1'b1;
-        4'b10_11: cyc10c_envdeltaweight_intensity <= 1'b0;
+        4'b10_00: cyc10c_envdeltaweight_intensity = 1'b1;
+        4'b10_01: cyc10c_envdeltaweight_intensity = 1'b0;
+        4'b10_10: cyc10c_envdeltaweight_intensity = 1'b1;
+        4'b10_11: cyc10c_envdeltaweight_intensity = 1'b0;
 
-        4'b11_00: cyc10c_envdeltaweight_intensity <= 1'b1;
-        4'b11_01: cyc10c_envdeltaweight_intensity <= 1'b1;
-        4'b11_10: cyc10c_envdeltaweight_intensity <= 1'b1;
-        4'b11_11: cyc10c_envdeltaweight_intensity <= 1'b0;
+        4'b11_00: cyc10c_envdeltaweight_intensity = 1'b1;
+        4'b11_01: cyc10c_envdeltaweight_intensity = 1'b1;
+        4'b11_10: cyc10c_envdeltaweight_intensity = 1'b1;
+        4'b11_11: cyc10c_envdeltaweight_intensity = 1'b0;
     endcase
 end
 

@@ -387,10 +387,10 @@ reg             base_value_input;
 always @(*) begin
     if(i_CYCLE_BYTE) begin
         case(wfsel)
-            2'd3: base_value_input <= noise_value_stream;
-            2'd2: base_value_input <= tri_value_stream; //gawr gura
-            2'd1: base_value_input <= sq_value_stream;
-            2'd0: base_value_input <= saw_value_stream;
+            2'd3: base_value_input = noise_value_stream;
+            2'd2: base_value_input = tri_value_stream; //gawr gura
+            2'd1: base_value_input = sq_value_stream;
+            2'd0: base_value_input = saw_value_stream;
         endcase
     end
     else base_value_input <= 1'b0;
@@ -468,14 +468,14 @@ end
 reg             multiplier_fa_b;
 always @(*) begin
     case(multiplier_bitsel)
-        3'b000: multiplier_fa_b <= base_value_sr[0] & ap_muxed[6];
-        3'b001: multiplier_fa_b <= base_value_sr[1] & ap_muxed[5];
-        3'b010: multiplier_fa_b <= base_value_sr[2] & ap_muxed[4];
-        3'b011: multiplier_fa_b <= base_value_sr[3] & ap_muxed[3];
-        3'b100: multiplier_fa_b <= base_value_sr[4] & ap_muxed[2];
-        3'b101: multiplier_fa_b <= base_value_sr[5] & ap_muxed[1];
-        3'b110: multiplier_fa_b <= base_value_sr[6] & ap_muxed[0];
-        3'b111: multiplier_fa_b <= 1'b0;
+        3'b000: multiplier_fa_b = base_value_sr[0] & ap_muxed[6];
+        3'b001: multiplier_fa_b = base_value_sr[1] & ap_muxed[5];
+        3'b010: multiplier_fa_b = base_value_sr[2] & ap_muxed[4];
+        3'b011: multiplier_fa_b = base_value_sr[3] & ap_muxed[3];
+        3'b100: multiplier_fa_b = base_value_sr[4] & ap_muxed[2];
+        3'b101: multiplier_fa_b = base_value_sr[5] & ap_muxed[1];
+        3'b110: multiplier_fa_b = base_value_sr[6] & ap_muxed[0];
+        3'b111: multiplier_fa_b = 1'b0;
     endcase 
 end
 

@@ -7,10 +7,10 @@ module primitive_srlatch (
 
 always @(*) begin
     case({i_S, i_R})
-        2'b00: o_Q <= o_Q;
-        2'b01: o_Q <= 1'b0;
-        2'b10: o_Q <= 1'b1;
-        2'b11: o_Q <= 1'b0; //invalid
+        2'b00: o_Q = o_Q;
+        2'b01: o_Q = 1'b0;
+        2'b10: o_Q = 1'b1;
+        2'b11: o_Q = 1'b0; //invalid
     endcase
 end
 
@@ -24,8 +24,8 @@ module primitive_dlatch #(parameter WIDTH = 8 ) (
 );
 
 always @(*) begin
-    if(i_EN) o_Q <= i_D;
-    else o_Q <= o_Q;
+    if(i_EN) o_Q = i_D;
+    else o_Q = o_Q;
 end
 
 endmodule
