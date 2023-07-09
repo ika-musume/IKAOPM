@@ -1,7 +1,15 @@
 module IKAOPM #(parameter FULLY_SYNCHRONOUS = 1, parameter FAST_RESET = 0) (
     //chip clock
     input   wire            i_EMUCLK, //emulator master clock
-    input   wire            i_phiM_PCEN_n, //phiM clock enable
+
+    //clock endables
+    `ifdef IKAOPM_USER_DEFINED_CLOCK_ENABLES
+    input   wire            i_phiM_PCEN_n, //phiM positive edge clock enable(negative logic)
+    input   wire            i_phi1_PCEN_n, //phi1 positive edge clock enable(negative logic)
+    input   wire            i_phi1_NCEN_n, //phi1 negative edge clock enable(negative logic)
+    `else
+    input   wire            i_phiM_PCEN_n, //phiM positive edge clock enable(negative logic)
+    `endif
 
     //chip reset
     input   wire            i_IC_n,    
@@ -23,8 +31,8 @@ module IKAOPM #(parameter FULLY_SYNCHRONOUS = 1, parameter FAST_RESET = 0) (
     output  wire            o_D_OE,
 
     //ct
-    output  wire            o_CT2, //BIT7 of register 0x1B
-    output  wire            o_CT1, //BIT6 of register 0x1B
+    output  wire            o_CT2, //BIT7 of register 0x1B, pin 8
+    output  wire            o_CT1, //BIT6 of register 0x1B, pin 9
 
     //interrupt
     output  wire            o_IRQ_n,
@@ -41,6 +49,24 @@ module IKAOPM #(parameter FULLY_SYNCHRONOUS = 1, parameter FAST_RESET = 0) (
     , output  wire            o_EMU_BUSY_FLAG
     `endif 
 );
+
+
+
+///////////////////////////////////////////////////////////
+//////  Clock enable information
+////
+
+/*
+    EMUCLK      ¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|¯|_|
+    phiM        _______|¯¯¯¯¯¯¯|_______|¯¯¯¯¯¯¯|_______|¯¯¯¯¯¯¯|_______|¯¯¯¯¯¯¯|_______|¯¯¯¯¯¯¯|_______|¯¯¯¯¯¯¯|_______|¯¯¯¯¯¯¯|
+    phi1        ¯¯¯¯¯¯¯|_______________|¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|_______________|¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|_______________|¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|________
+
+    You should provide 3 enables when `IKAOPM_USER_DEFINED_CLOCK_ENABLES is defined
+    phiM_PCEN   ¯¯¯|___|¯¯¯¯¯¯¯¯¯¯¯|___|¯¯¯¯¯¯¯¯¯¯¯|___|¯¯¯¯¯¯¯¯¯¯¯|___|¯¯¯¯¯¯¯¯¯¯¯|___|¯¯¯¯¯¯¯¯¯¯¯|___|¯¯¯¯¯¯¯¯¯¯¯|___|¯¯¯¯¯¯¯¯
+    phi1_NCEN   ¯¯¯|___|¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|___|¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|___|¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|___|¯¯¯¯¯¯¯¯
+    phi1_PCEN   ¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|___|¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|___|¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|___|¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+*/
+
 
 
 ///////////////////////////////////////////////////////////
@@ -139,7 +165,13 @@ IKAOPM_timinggen #(
     .i_IC_n                     (i_IC_n                     ),
     .o_MRST_n                   (mrst_n                     ),
 
+    `ifdef IKAOPM_USER_DEFINED_CLOCK_ENABLES
     .i_phiM_PCEN_n              (i_phiM_PCEN_n              ),
+    .i_phi1_PCEN_n              (i_phi1_PCEN_n              ),
+    .i_phi1_NCEN_n              (i_phi1_NCEN_n              ),
+    `else
+    .i_phiM_PCEN_n              (i_phiM_PCEN_n              ),
+    `endif
 
     .o_phi1                     (o_phi1                     ),
     .o_phi1_PCEN_n              (phi1pcen_n                 ),
