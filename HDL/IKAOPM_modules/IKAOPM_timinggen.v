@@ -6,7 +6,14 @@ module IKAOPM_timinggen #(parameter FULLY_SYNCHRONOUS = 1, parameter FAST_RESET 
     input   wire            i_IC_n,
     output  wire            o_MRST_n, //core internal reset
 
-    input   wire            i_phiM_PCEN_n, //phiM clock enable
+    //clock endables
+    `ifdef IKAOPM_USER_DEFINED_CLOCK_ENABLES
+    input   wire            i_phiM_PCEN_n, //phiM positive edge clock enable
+    input   wire            i_phi1_PCEN_n, //phi1 positive edge clock enable
+    input   wire            i_phi1_NCEN_n, //phi1 negative edge clock enable
+    `else
+    input   wire            i_phiM_PCEN_n, //phiM positive edge clock enable(negative logic)
+    `endif
 
     //phiM/2
     output  wire            o_phi1, //phi1 output
@@ -140,6 +147,37 @@ endgenerate
     phi1n       _______|¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|_______________________________________________|¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯|_______________|¯¯¯¯¯¯¯¯
 */
 
+
+`ifdef IKAOPM_USER_DEFINED_CLOCK_ENABLES
+
+reg             phi1;
+always @(posedge i_EMUCLK) begin
+    case({i_phi1_PCEN_n, i_phi1_NCEN_n})
+        2'b00: phi1 <= phi1;
+        2'b01: phi1 <= 1'b1;
+        2'b10: phi1 <= 1'b0;
+        2'b11: phi1 <= phi1;
+    endcase
+end
+
+//phi1 output(for reference)
+assign  o_phi1 = phi1;
+
+generate
+if(FAST_RESET == 0) begin : FAST_RESET_0_cenout
+    //phi1 cen(internal)
+    assign  o_phi1_PCEN_n = i_phi1_PCEN_n;
+    assign  o_phi1_NCEN_n = i_phi1_NCEN_n;
+end
+else begin : FAST_RESET_1_cenout
+    //phi1 cen(internal)
+    assign  o_phi1_PCEN_n = i_phi1_PCEN_n & i_IC_n;
+    assign  o_phi1_NCEN_n = i_phi1_NCEN_n & i_IC_n;
+end
+endgenerate
+
+`else
+
 //actual phi1 output is phi1p(positive), and the inverted phi1 is phi1n(negative)
 reg             phi1p, phi1n;
 generate
@@ -172,6 +210,8 @@ else begin : FAST_RESET_1_cenout
     assign  o_phi1_NCEN_n = (phi1n | i_phiM_PCEN_n) & i_IC_n;
 end
 endgenerate
+
+`endif
 
 
 ///////////////////////////////////////////////////////////

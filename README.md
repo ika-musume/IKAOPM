@@ -25,7 +25,10 @@ IKAOPM #(
     .FAST_RESET                 (0                          )
 ) u_ikaopm_0 (
     .i_EMUCLK                   (                           ),
+
     .i_phiM_PCEN_n              (                           ),
+    //.i_phi1_PCEN_n              (                           ), //compilation option
+    //.i_phi1_NCEN_n              (                           ),
 
     .i_IC_n                     (                           ),
 
@@ -52,7 +55,7 @@ IKAOPM #(
     .o_EMU_R_PO                 (                           ),
     .o_EMU_L_PO                 (                           )
 
-    //, .o_EMU_BUSY_FLAG                 (                           )
+    //, .o_EMU_BUSY_FLAG                 (                           ) //compilation option
 );
 ```
 3. Attach your signals to the port. The direction and the polarity of the signals are described in the port names. The section below explains what the signals mean.
@@ -73,6 +76,7 @@ Pin number 8 and 9 of the YM2151 are used as GPO ports. They are referred to as 
 ## Compilation options
 * `IKAOPM_DEBUG` You can view the values inside like a static storage.
 * `IKAOPM_BUSY_FLAG_ENABLE` A busy flag for an asynchronous FIFO that performs delayed write for a faster CPU bus. This signal is equal to `o_D[7]`.
+* `IKAOPM_USER_DEFINED_CLOCK_ENABLES` For efficiency in clocking, you can use the clock enables used by IKAOPM from outside of the module. Read the comments in the IKAOPM.v for recommended timings.
 
 ## FPGA resource usage
 * Altera EP4CE6E22C8: 2231LEs, BRAM 6608 bits, fmax=73.83MHz(slow 85C)
