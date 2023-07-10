@@ -7,12 +7,10 @@ module IKAOPM_timinggen #(parameter FULLY_SYNCHRONOUS = 1, parameter FAST_RESET 
     output  wire            o_MRST_n, //core internal reset
 
     //clock endables
+    input   wire            i_phiM_PCEN_n, //phiM positive edge clock enable(negative logic)
     `ifdef IKAOPM_USER_DEFINED_CLOCK_ENABLES
-    input   wire            i_phiM_PCEN_n, //phiM positive edge clock enable
     input   wire            i_phi1_PCEN_n, //phi1 positive edge clock enable
     input   wire            i_phi1_NCEN_n, //phi1 negative edge clock enable
-    `else
-    input   wire            i_phiM_PCEN_n, //phiM positive edge clock enable(negative logic)
     `endif
 
     //phiM/2

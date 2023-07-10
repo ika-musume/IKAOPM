@@ -3,12 +3,10 @@ module IKAOPM #(parameter FULLY_SYNCHRONOUS = 1, parameter FAST_RESET = 0) (
     input   wire            i_EMUCLK, //emulator master clock
 
     //clock endables
-    `ifdef IKAOPM_USER_DEFINED_CLOCK_ENABLES
     input   wire            i_phiM_PCEN_n, //phiM positive edge clock enable(negative logic)
+    `ifdef IKAOPM_USER_DEFINED_CLOCK_ENABLES
     input   wire            i_phi1_PCEN_n, //phi1 positive edge clock enable(negative logic)
     input   wire            i_phi1_NCEN_n, //phi1 negative edge clock enable(negative logic)
-    `else
-    input   wire            i_phiM_PCEN_n, //phiM positive edge clock enable(negative logic)
     `endif
 
     //chip reset
@@ -165,12 +163,10 @@ IKAOPM_timinggen #(
     .i_IC_n                     (i_IC_n                     ),
     .o_MRST_n                   (mrst_n                     ),
 
-    `ifdef IKAOPM_USER_DEFINED_CLOCK_ENABLES
     .i_phiM_PCEN_n              (i_phiM_PCEN_n              ),
+    `ifdef IKAOPM_USER_DEFINED_CLOCK_ENABLES
     .i_phi1_PCEN_n              (i_phi1_PCEN_n              ),
     .i_phi1_NCEN_n              (i_phi1_NCEN_n              ),
-    `else
-    .i_phiM_PCEN_n              (i_phiM_PCEN_n              ),
     `endif
 
     .o_phi1                     (o_phi1                     ),

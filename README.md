@@ -76,7 +76,8 @@ Pin number 8 and 9 of the YM2151 are used as GPO ports. They are referred to as 
 ## Compilation options
 * `IKAOPM_DEBUG` You can view the values inside like a static storage.
 * `IKAOPM_BUSY_FLAG_ENABLE` A busy flag for an asynchronous FIFO that performs delayed write for a faster CPU bus. This signal is equal to `o_D[7]`.
-* `IKAOPM_USER_DEFINED_CLOCK_ENABLES` For efficiency in clocking, you can use the clock enables used by IKAOPM from outside of the module. Read the comments in the IKAOPM.v for recommended timings.
+* `IKAOPM_USER_DEFINED_CLOCK_ENABLES` For efficiency in clocking, you can provide the clock enables used by IKAOPM from outside of the module. Read the comments in the IKAOPM.v for recommended timings.
 
 ## FPGA resource usage
-* Altera EP4CE6E22C8: 2231LEs, BRAM 6608 bits, fmax=73.83MHz(slow 85C)
+* Altera EP4CE6E22C8: 2231 LEs, 1330 registers, BRAM 6608 bits, fmax=73.83MHz(slow 85C)
+* Altera 5CSEBA6U23I7(MiSTer): 851 ALMs, 1490 registers, BRAM 2952 bits, 1 DSP block, fmax=143.64MHz(slow 100C)
