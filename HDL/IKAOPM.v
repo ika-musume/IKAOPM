@@ -40,8 +40,8 @@ module IKAOPM #(parameter FULLY_SYNCHRONOUS = 1, parameter FAST_RESET = 0) (
     output  wire            o_SH2,
 
     //output
-    output  wire            o_SO,    
-    output  wire    [15:0]  o_EMU_R_PO, o_EMU_L_PO
+    output  reg signed      [15:0]  o_EMU_R_EX, o_EMU_L_EX,
+    output  reg signed      [15:0]  o_EMU_R, o_EMU_L
 
     `ifdef IKAOPM_BUSY_FLAG_ENABLE
     , output  wire            o_EMU_BUSY_FLAG
@@ -448,8 +448,10 @@ IKAOPM_acc ACC (
 
     .o_SO                       (o_SO                       ),
 
-    .o_EMU_R_PO                 (o_EMU_R_PO                 ),
-    .o_EMU_L_PO                 (o_EMU_L_PO                 )
+    .o_EMU_R                    (o_EMU_R                    ),
+    .o_EMU_L                    (o_EMU_L                    ),
+    .o_EMU_R_EX                 (o_EMU_R_EX                 ),
+    .o_EMU_L_EX                 (o_EMU_L_EX                 )
 );
 
 
