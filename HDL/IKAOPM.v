@@ -40,6 +40,8 @@ module IKAOPM #(parameter FULLY_SYNCHRONOUS = 1, parameter FAST_RESET = 0) (
     output  wire            o_SH2,
 
     //output
+    output  wire            o_SO,
+    
     output  reg signed      [15:0]  o_EMU_R_EX, o_EMU_L_EX,
     output  reg signed      [15:0]  o_EMU_R, o_EMU_L
 
