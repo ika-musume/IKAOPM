@@ -271,7 +271,7 @@ always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     else if(outmux_sel_cntr == 4'd11)                       floating_sound_data <= sound_data_shift_amount[0];
     else if(outmux_sel_cntr == 4'd12)                       floating_sound_data <= sound_data_shift_amount[1];
     else if(outmux_sel_cntr == 4'd13)                       floating_sound_data <= sound_data_shift_amount[2];
-    else                                                    floating_sound_data <= 1'b0;
+    else                                                    floating_sound_data <= sound_data_lookaround_register[sound_data_output_tap];
 
     o_SO <= floating_sound_data;
 end

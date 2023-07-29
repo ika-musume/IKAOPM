@@ -232,6 +232,7 @@ always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
 end
 
 
+
 //
 //  decoder
 //

@@ -61,6 +61,8 @@ reg     [9:0]   cyc56r_phasemod_value; //get value from the end of the pipeline
 wire    [10:0]  cyc41c_modded_phase_adder = !mrst_n ? 10'd0 : i_OP_PHASEDATA + cyc56r_phasemod_value;
 
 
+
+
 //
 //  register part
 //
@@ -70,7 +72,7 @@ reg             cyc41r_level_fp_sign;
 
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     cyc41r_logsinrom_phase <= cyc41c_modded_phase_adder[8] ?  cyc41c_modded_phase_adder[7:0] : 
-                                                            ~cyc41c_modded_phase_adder[7:0];
+                                                             ~cyc41c_modded_phase_adder[7:0];
 
     cyc41r_level_fp_sign <= cyc41c_modded_phase_adder[9]; //discard carry
 end
@@ -304,7 +306,7 @@ end
 reg     [13:0]  cyc49r_level_signed;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     cyc49r_level_signed <= cyc48r_level_sign ? (~{cyc48r_level_negate, cyc48r_level_magnitude} + 14'd1) : 
-                                                    {cyc48r_level_negate, cyc48r_level_magnitude};
+                                                 {cyc48r_level_negate, cyc48r_level_magnitude};
 end
 
 
@@ -390,7 +392,7 @@ reg     [2:0]   cyc53r_algtype;
 reg     [13:0]  cyc53r_OP_current;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     cyc53r_algst <= cyc52r_algst;
-    cyc53r_algtype <=cyc52r_algtype;
+    cyc53r_algtype <= cyc52r_algtype;
 
     cyc53r_OP_current <= cyc52r_level_signed;
 end
@@ -518,7 +520,7 @@ end
 
 reg             cyc55r_self_fdbk_en;
 reg     [2:0]   cyc55r_fl;
-reg     [14:0]  cyc55r_op_sum;
+reg     [15:0]  cyc55r_op_sum;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     cyc55r_self_fdbk_en <= cyc54r_self_fdbk_en;
     cyc55r_fl <= cyc54r_self_fdbk_en ? i_FL : 3'd0;
