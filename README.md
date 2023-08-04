@@ -73,7 +73,7 @@ IKAOPM #(
 * `i_IC_n` is the synchronous reset. To flush every pipelines in the module, IC_n must be kept at zero for at least 64 phiM cycles. Note that while the `i_IC_n` is asserted, the `i_phiM_PCEN_n` must be operating.
 * `o_D_OE` is the output enable for FPGA's tri-state I/O driver.
 * `o_SO` is the YM3012-type serial lossy audio output.
-* `o_EMU_R_SAMPLE` and `o_EMU_L_SAMPLE` are external latch enable strobes. You can adjust pulse width by adjusting the parameter `SAMPLE_STROBE_LENGTH` in IKAOPM_acc.v. Because the YM2151 does not update samples simultaneously, there is the corresponding strobe for each of the two channels. Therefore, if you are configuring a system that requires both channels to be updated together, you can use only one channel's strobe. This is because the other channel's value will not be changed while one is being updated.
+* `o_EMU_R_SAMPLE` and `o_EMU_L_SAMPLE` are external latch enable strobes. You can adjust pulse width by altering the parameter `SAMPLE_STROBE_LENGTH` in IKAOPM_acc.v. Because the YM2151 does not update samples simultaneously, there is the corresponding strobe for each of the two channels. Therefore, if you are configuring a system that requires both channels to be updated together, you can use only one channel's strobe. This is because the other channel's value will not be changed while one is being updated.
 * `o_EMU_R_EX` and `o_EMU_L_EX` are the 16-bit signed full-range audio outputs. Not recommended.
 * `o_EMU_R` and `o_EMU_L` are the 16-bit signed lossy audio outputs. Recommended.
 
