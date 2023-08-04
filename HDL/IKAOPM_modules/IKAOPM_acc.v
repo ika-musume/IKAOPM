@@ -26,6 +26,7 @@ module IKAOPM_acc (
 
     output  reg             o_SO,
     
+    output  reg             o_EMU_R_SAMPLE, o_EMU_L_SAMPLE,
     output  reg signed      [15:0]  o_EMU_R_EX, o_EMU_L_EX,
     output  reg signed      [15:0]  o_EMU_R, o_EMU_L
 );
@@ -122,7 +123,29 @@ always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     else begin
         mcyc30_l_piso[14:0] <= mcyc30_l_piso[15:1]; //shift
     end
+end
 
+
+
+///////////////////////////////////////////////////////////
+//////  Parallel output control
+////
+
+localparam  SAMPLE_STROBE_LENGTH = 1; //adjust this value to stretch the strobe width
+
+reg     [SAMPLE_STROBE_LENGTH:0]   r_sample_det, l_sample_det;
+always @(posedge i_EMUCLK) begin
+    r_sample_det[0] <= cycle_13;
+    l_sample_det[0] <= i_CYCLE_29;
+    r_sample_det[SAMPLE_STROBE_LENGTH:1] <= r_sample_det[SAMPLE_STROBE_LENGTH-1:0];
+    l_sample_det[SAMPLE_STROBE_LENGTH:1] <= l_sample_det[SAMPLE_STROBE_LENGTH-1:0];
+
+    //negative edge detector + pulse stretcher
+    o_EMU_R_SAMPLE <= {|{r_sample_det[SAMPLE_STROBE_LENGTH:1]}, r_sample_det[0]} == 2'b10;
+    o_EMU_L_SAMPLE <= {|{l_sample_det[SAMPLE_STROBE_LENGTH:1]}, l_sample_det[0]} == 2'b10;
+end
+
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     if(cycle_13) begin
         o_EMU_R_EX <= {r_accumulator[17], r_accumulator[14:0]}; //extended output
 

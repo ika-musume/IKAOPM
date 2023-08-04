@@ -42,6 +42,7 @@ module IKAOPM #(parameter FULLY_SYNCHRONOUS = 1, parameter FAST_RESET = 0) (
     //output
     output  wire            o_SO,
 
+    output  wire            o_EMU_R_SAMPLE, o_EMU_L_SAMPLE,
     output  wire signed     [15:0]  o_EMU_R_EX, o_EMU_L_EX,
     output  wire signed     [15:0]  o_EMU_R, o_EMU_L
 
@@ -450,10 +451,13 @@ IKAOPM_acc ACC (
 
     .o_SO                       (o_SO                       ),
 
-    .o_EMU_R                    (o_EMU_R                    ),
-    .o_EMU_L                    (o_EMU_L                    ),
+    .o_EMU_R_SAMPLE             (o_EMU_R_SAMPLE             ),
     .o_EMU_R_EX                 (o_EMU_R_EX                 ),
-    .o_EMU_L_EX                 (o_EMU_L_EX                 )
+    .o_EMU_R                    (o_EMU_R                    ),
+
+    .o_EMU_L_SAMPLE             (o_EMU_L_SAMPLE             ),
+    .o_EMU_L_EX                 (o_EMU_L_EX                 ),
+    .o_EMU_L                    (o_EMU_L                    )
 );
 
 

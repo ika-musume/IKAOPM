@@ -34,6 +34,7 @@ IKAOPM #(
 
     .o_phi1                     (                           ),
 
+    //.o_EMU_BUSY_FLAG            (                           ), //compilation option
     .i_CS_n                     (                           ),
     .i_RD_n                     (                           ),
     .i_WR_n                     (                           ),
@@ -53,12 +54,13 @@ IKAOPM #(
 
     .o_SO                       (                           ),
 
-    .o_EMU_R                    (                           ),
-    .o_EMU_L                    (                           ),
+    .o_EMU_R_SAMPLE             (                           ),
     .o_EMU_R_EX                 (                           ),
-    .o_EMU_L_EX                 (                           )
+    .o_EMU_R                    (                           ),
 
-    //, .o_EMU_BUSY_FLAG                 (                           ) //compilation option
+    .o_EMU_L_SAMPLE             (                           ),
+    .o_EMU_L_EX                 (                           ),
+    .o_EMU_L                    (                           )
 );
 ```
 3. Attach your signals to the port. The direction and the polarity of the signals are described in the port names. The section below explains what the signals mean.
@@ -71,8 +73,10 @@ IKAOPM #(
 * `i_IC_n` is the synchronous reset. To flush every pipelines in the module, IC_n must be kept at zero for at least 64 phiM cycles. Note that while the `i_IC_n` is asserted, the `i_phiM_PCEN_n` must be operating.
 * `o_D_OE` is the output enable for FPGA's tri-state I/O driver.
 * `o_SO` is the YM3012-type serial lossy audio output.
-* `o_EMU_R` and `o_EMU_L` are the 16-bit signed lossy audio outputs. Recommended.
+* `o_EMU_R_SAMPLE` and `o_EMU_L_SAMPLE` are external latch enable strobes. You can adjust pulse width by adjusting the parameter `SAMPLE_STROBE_LENGTH` in IKAOPM_acc.v. Because the YM2151 does not update samples simultaneously, there is the corresponding strobe for each of the two channels. Therefore, if you are configuring a system that requires both channels to be updated together, you can use only one channel's strobe. This is because the other channel's value will not be changed while one is being updated.
 * `o_EMU_R_EX` and `o_EMU_L_EX` are the 16-bit signed full-range audio outputs. Not recommended.
+* `o_EMU_R` and `o_EMU_L` are the 16-bit signed lossy audio outputs. Recommended.
+
 
 ## CT2 and CT1 port description
 Pin number 8 and 9 of the YM2151 are used as GPO ports. They are referred to as CT2 and CT1 respectively, but unfortunately Yamaha doesn't seem to have taken the naming of them seriously. There are datasheets that have CT2 and CT1 reversed in order. Looking at the die shot, bit 7 of the 0x1B register is connected to the pin 8, and bit 6 is connected to the pin 9. I assume that in this core, **bit 7 of the 0x1B register = CT2 = pin 8, bit 6 of the same register = CT1 = pin 9**. In addition, **the pin that the internal data `lfo_clk` flows out of when test mode is turned on is CT1 = pin 9**.
