@@ -24,8 +24,11 @@ module IKAOPM_acc (
     input   wire    [13:0]  i_ACC_OPDATA,
     input   wire    [13:0]  i_ACC_NOISE,
 
-    output  reg     [15:0]  o_EMU_R_PO, o_EMU_L_PO,
-    output  reg             o_SO
+    output  reg             o_SO,
+    
+    output  reg             o_EMU_R_SAMPLE, o_EMU_L_SAMPLE,
+    output  reg signed      [15:0]  o_EMU_R_EX, o_EMU_L_EX,
+    output  reg signed      [15:0]  o_EMU_R, o_EMU_L
 );
 
 
@@ -120,9 +123,59 @@ always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     else begin
         mcyc30_l_piso[14:0] <= mcyc30_l_piso[15:1]; //shift
     end
+end
 
-    if(cycle_13) o_EMU_R_PO <= {r_accumulator[17], r_accumulator[14:0]};
-    if(i_CYCLE_29) o_EMU_L_PO <= {l_accumulator[17], l_accumulator[14:0]};
+
+
+///////////////////////////////////////////////////////////
+//////  Parallel output control
+////
+
+localparam  SAMPLE_STROBE_LENGTH = 1; //adjust this value to stretch the strobe width
+
+reg     [SAMPLE_STROBE_LENGTH:0]   r_sample_det, l_sample_det;
+always @(posedge i_EMUCLK) begin
+    r_sample_det[0] <= cycle_13;
+    l_sample_det[0] <= i_CYCLE_29;
+    r_sample_det[SAMPLE_STROBE_LENGTH:1] <= r_sample_det[SAMPLE_STROBE_LENGTH-1:0];
+    l_sample_det[SAMPLE_STROBE_LENGTH:1] <= l_sample_det[SAMPLE_STROBE_LENGTH-1:0];
+
+    //negative edge detector + pulse stretcher
+    o_EMU_R_SAMPLE <= {|{r_sample_det[SAMPLE_STROBE_LENGTH:1]}, r_sample_det[0]} == 2'b10;
+    o_EMU_L_SAMPLE <= {|{l_sample_det[SAMPLE_STROBE_LENGTH:1]}, l_sample_det[0]} == 2'b10;
+end
+
+always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
+    if(cycle_13) begin
+        o_EMU_R_EX <= {r_accumulator[17], r_accumulator[14:0]}; //extended output
+
+        casez(r_accumulator[14:9])
+            6'b000000: o_EMU_R <= {r_accumulator[17], r_accumulator[14:0]}; //small number
+            6'b000001: o_EMU_R <= {r_accumulator[17], r_accumulator[14:1], 1'b0}; 
+            6'b00001?: o_EMU_R <= {r_accumulator[17], r_accumulator[14:2], 2'b00}; 
+            6'b0001??: o_EMU_R <= {r_accumulator[17], r_accumulator[14:3], 3'b000}; 
+            6'b001???: o_EMU_R <= {r_accumulator[17], r_accumulator[14:4], 4'b0000};
+            6'b01????: o_EMU_R <= {r_accumulator[17], r_accumulator[14:5], 5'b00000};
+            6'b1?????: o_EMU_R <= {r_accumulator[17], r_accumulator[14:6], 6'b000000}; //large number
+            
+            default:   o_EMU_R <= {r_accumulator[17], r_accumulator[14:0]};
+        endcase
+    end
+    if(i_CYCLE_29) begin
+        o_EMU_L_EX <= {l_accumulator[17], l_accumulator[14:0]}; //extended output
+
+        casez(l_accumulator[14:9])
+            6'b000000: o_EMU_L <= {l_accumulator[17], l_accumulator[14:0]}; //small number
+            6'b000001: o_EMU_L <= {l_accumulator[17], l_accumulator[14:1], 1'b0}; 
+            6'b00001?: o_EMU_L <= {l_accumulator[17], l_accumulator[14:2], 2'b00}; 
+            6'b0001??: o_EMU_L <= {l_accumulator[17], l_accumulator[14:3], 3'b000}; 
+            6'b001???: o_EMU_L <= {l_accumulator[17], l_accumulator[14:4], 4'b0000};
+            6'b01????: o_EMU_L <= {l_accumulator[17], l_accumulator[14:5], 5'b00000};
+            6'b1?????: o_EMU_L <= {l_accumulator[17], l_accumulator[14:6], 6'b000000}; //large number
+            
+            default:   o_EMU_L <= {l_accumulator[17], l_accumulator[14:0]};
+        endcase
+    end
 end
 
 
@@ -221,15 +274,15 @@ always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
         sound_data_sign <= sound_data_bit_15_9[6];
 
         casez(sound_data_magnitude)
-            6'b000000: begin sound_data_output_tap <= 5'd6; sound_data_shift_amount <= 3'd1; end //small number
-            6'b000001: begin sound_data_output_tap <= 5'd5; sound_data_shift_amount <= 3'd2; end
-            6'b00001?: begin sound_data_output_tap <= 5'd4; sound_data_shift_amount <= 3'd3; end
+            6'b000000: begin sound_data_output_tap <= 5'd0; sound_data_shift_amount <= 3'd1; end //small number
+            6'b000001: begin sound_data_output_tap <= 5'd1; sound_data_shift_amount <= 3'd2; end
+            6'b00001?: begin sound_data_output_tap <= 5'd2; sound_data_shift_amount <= 3'd3; end
             6'b0001??: begin sound_data_output_tap <= 5'd3; sound_data_shift_amount <= 3'd4; end
-            6'b001???: begin sound_data_output_tap <= 5'd2; sound_data_shift_amount <= 3'd5; end
-            6'b01????: begin sound_data_output_tap <= 5'd1; sound_data_shift_amount <= 3'd6; end
-            6'b1?????: begin sound_data_output_tap <= 5'd0; sound_data_shift_amount <= 3'd7; end //large number
+            6'b001???: begin sound_data_output_tap <= 5'd4; sound_data_shift_amount <= 3'd5; end
+            6'b01????: begin sound_data_output_tap <= 5'd5; sound_data_shift_amount <= 3'd6; end
+            6'b1?????: begin sound_data_output_tap <= 5'd6; sound_data_shift_amount <= 3'd7; end //large number
             
-            default:   begin sound_data_output_tap <= 5'd6; sound_data_shift_amount <= 3'd1; end
+            default:   begin sound_data_output_tap <= 5'd0; sound_data_shift_amount <= 3'd1; end
         endcase
     end
 end
@@ -241,7 +294,7 @@ always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     else if(outmux_sel_cntr == 4'd11)                       floating_sound_data <= sound_data_shift_amount[0];
     else if(outmux_sel_cntr == 4'd12)                       floating_sound_data <= sound_data_shift_amount[1];
     else if(outmux_sel_cntr == 4'd13)                       floating_sound_data <= sound_data_shift_amount[2];
-    else                                                    floating_sound_data <= 1'b0;
+    else                                                    floating_sound_data <= sound_data_lookaround_register[sound_data_output_tap];
 
     o_SO <= floating_sound_data;
 end

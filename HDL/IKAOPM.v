@@ -3,12 +3,10 @@ module IKAOPM #(parameter FULLY_SYNCHRONOUS = 1, parameter FAST_RESET = 0) (
     input   wire            i_EMUCLK, //emulator master clock
 
     //clock endables
-    `ifdef IKAOPM_USER_DEFINED_CLOCK_ENABLES
     input   wire            i_phiM_PCEN_n, //phiM positive edge clock enable(negative logic)
+    `ifdef IKAOPM_USER_DEFINED_CLOCK_ENABLES
     input   wire            i_phi1_PCEN_n, //phi1 positive edge clock enable(negative logic)
     input   wire            i_phi1_NCEN_n, //phi1 negative edge clock enable(negative logic)
-    `else
-    input   wire            i_phiM_PCEN_n, //phiM positive edge clock enable(negative logic)
     `endif
 
     //chip reset
@@ -42,8 +40,11 @@ module IKAOPM #(parameter FULLY_SYNCHRONOUS = 1, parameter FAST_RESET = 0) (
     output  wire            o_SH2,
 
     //output
-    output  wire            o_SO,    
-    output  wire    [15:0]  o_EMU_R_PO, o_EMU_L_PO
+    output  wire            o_SO,
+
+    output  wire            o_EMU_R_SAMPLE, o_EMU_L_SAMPLE,
+    output  wire signed     [15:0]  o_EMU_R_EX, o_EMU_L_EX,
+    output  wire signed     [15:0]  o_EMU_R, o_EMU_L
 
     `ifdef IKAOPM_BUSY_FLAG_ENABLE
     , output  wire            o_EMU_BUSY_FLAG
@@ -165,12 +166,10 @@ IKAOPM_timinggen #(
     .i_IC_n                     (i_IC_n                     ),
     .o_MRST_n                   (mrst_n                     ),
 
-    `ifdef IKAOPM_USER_DEFINED_CLOCK_ENABLES
     .i_phiM_PCEN_n              (i_phiM_PCEN_n              ),
+    `ifdef IKAOPM_USER_DEFINED_CLOCK_ENABLES
     .i_phi1_PCEN_n              (i_phi1_PCEN_n              ),
     .i_phi1_NCEN_n              (i_phi1_NCEN_n              ),
-    `else
-    .i_phiM_PCEN_n              (i_phiM_PCEN_n              ),
     `endif
 
     .o_phi1                     (o_phi1                     ),
@@ -452,8 +451,13 @@ IKAOPM_acc ACC (
 
     .o_SO                       (o_SO                       ),
 
-    .o_EMU_R_PO                 (o_EMU_R_PO                 ),
-    .o_EMU_L_PO                 (o_EMU_L_PO                 )
+    .o_EMU_R_SAMPLE             (o_EMU_R_SAMPLE             ),
+    .o_EMU_R_EX                 (o_EMU_R_EX                 ),
+    .o_EMU_R                    (o_EMU_R                    ),
+
+    .o_EMU_L_SAMPLE             (o_EMU_L_SAMPLE             ),
+    .o_EMU_L_EX                 (o_EMU_L_EX                 ),
+    .o_EMU_L                    (o_EMU_L                    )
 );
 
 
