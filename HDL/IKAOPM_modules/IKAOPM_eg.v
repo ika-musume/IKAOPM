@@ -340,7 +340,7 @@ always @(*) begin
             ATTACK:         cyc8c_egparam = i_AR;
             FIRST_DECAY:    cyc8c_egparam = i_D1R;
             SECOND_DECAY:   cyc8c_egparam = i_D2R;
-            RELEASE:        cyc8c_egparam = {i_RR, 1'b0};
+            RELEASE:        cyc8c_egparam = {i_RR, 1'b1};
         endcase
     end
 end
