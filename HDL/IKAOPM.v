@@ -146,7 +146,7 @@ wire            timera_flag, timerb_flag, timera_ovfl;
 wire    [7:0]   test;
 wire            reg_phase_ch6_c2, reg_attenlevel_ch8_c2, reg_lfo_clk;
 
-//write busy flag(especially for external asynchronous fifo)
+//write busy flag(especially for an external asynchronous fifo)
 `ifdef IKAOPM_BUSY_FLAG_ENABLE
 assign  o_EMU_BUSY_FLAG = o_D[7];
 `endif
