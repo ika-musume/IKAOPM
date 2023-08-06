@@ -520,7 +520,7 @@ end
 
 reg             cyc55r_self_fdbk_en;
 reg     [2:0]   cyc55r_fl;
-reg     [15:0]  cyc55r_op_sum;
+reg     [14:0]  cyc55r_op_sum;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
     cyc55r_self_fdbk_en <= cyc54r_self_fdbk_en;
     cyc55r_fl <= cyc54r_self_fdbk_en ? i_FL : 3'd0;

@@ -89,3 +89,4 @@ Pin number 8 and 9 of the YM2151 are used as GPO ports. They are referred to as 
 ## FPGA resource usage
 * Altera EP4CE6E22C8: 2231 LEs, 1330 registers, BRAM 6608 bits, fmax=73.83MHz(slow 85C)
 * Altera 5CSEBA6U23I7(MiSTer): 851 ALMs, 1490 registers, BRAM 2952 bits, 1 DSP block, fmax=143.64MHz(slow 100C)
+* Xilinx XC7Z020CLG400(Zynq7020): 1174 LUTs, 116 LUTRAMs, 1579 registers, BRAM 2.5 blocks(8192 bits)

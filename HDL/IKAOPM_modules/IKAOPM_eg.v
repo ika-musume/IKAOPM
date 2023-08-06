@@ -333,7 +333,7 @@ end
 reg     [4:0]   cyc8c_egparam;
 always @(*) begin
     if(!mrst_n) begin
-        cyc8c_egparam <= 5'd31;
+        cyc8c_egparam = 5'd31;
     end
     else begin
         case(cyc6r_cyc9r_envstate_previous[1])

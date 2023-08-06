@@ -196,6 +196,8 @@ always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
             4'b??01: hicntr_complete <= i_LFRQ[2];
             4'b?011: hicntr_complete <= i_LFRQ[1];
             4'b0111: hicntr_complete <= i_LFRQ[0];
+            
+            default: hicntr_complete <= 1'b0;
         endcase
     end
     else hicntr_complete <= 1'b0; //disable
@@ -393,7 +395,7 @@ always @(*) begin
             2'd0: base_value_input = saw_value_stream;
         endcase
     end
-    else base_value_input <= 1'b0;
+    else base_value_input = 1'b0;
 end
 
 //base value shift register

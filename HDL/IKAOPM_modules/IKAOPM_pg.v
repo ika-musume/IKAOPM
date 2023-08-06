@@ -603,10 +603,10 @@ end
 //
 
 reg     [19:0]  cyc12r_previous_phase;
-reg     [20:0]  cyc12r_multiplied_pdelta; //131071*15 = 1_1101_1111_1111_1111_0001, max 21 bits, but discard MSB anyway
+reg     [19:0]  cyc12r_multiplied_pdelta; //131071*15 = 1_1101_1111_1111_1111_0001, max 21 bits, but discard MSB anyway
 reg             cyc12r_phase_rst;
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
-    if(cyc11r_mul == 4'b0) cyc12r_multiplied_pdelta <= {5'b00000, cyc11r_detuned_pdelta[16:1]}; // divide by 2
+    if(cyc11r_mul == 4'b0) cyc12r_multiplied_pdelta <= {4'b0000, cyc11r_detuned_pdelta[16:1]}; // divide by 2
     else begin
         cyc12r_multiplied_pdelta <= cyc11r_detuned_pdelta * cyc11r_mul;
     end
