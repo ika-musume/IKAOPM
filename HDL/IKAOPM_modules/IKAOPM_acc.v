@@ -132,48 +132,102 @@ end
 ////
 
 localparam  SAMPLE_STROBE_LENGTH = 1; //adjust this value to stretch the strobe width
-
-reg     [SAMPLE_STROBE_LENGTH:0]   r_sample_det, l_sample_det;
+reg     [SAMPLE_STROBE_LENGTH+1:0]   r_sample_det, l_sample_det;
 always @(posedge i_EMUCLK) begin
-    r_sample_det[0] <= cycle_13;
-    l_sample_det[0] <= i_CYCLE_29;
-    r_sample_det[SAMPLE_STROBE_LENGTH:1] <= r_sample_det[SAMPLE_STROBE_LENGTH-1:0];
-    l_sample_det[SAMPLE_STROBE_LENGTH:1] <= l_sample_det[SAMPLE_STROBE_LENGTH-1:0];
+    if(!i_MRST_n) begin
+        r_sample_det[0] <= 1'b0;
+        l_sample_det[0] <= 1'b0;
+    end
+    else begin
+        r_sample_det[0] <= cycle_13;
+        l_sample_det[0] <= i_CYCLE_29;
+    end
+
+    r_sample_det[SAMPLE_STROBE_LENGTH+1:1] <= r_sample_det[SAMPLE_STROBE_LENGTH:0];
+    l_sample_det[SAMPLE_STROBE_LENGTH+1:1] <= l_sample_det[SAMPLE_STROBE_LENGTH:0];
 
     //negative edge detector + pulse stretcher
-    o_EMU_R_SAMPLE <= {|{r_sample_det[SAMPLE_STROBE_LENGTH:1]}, r_sample_det[0]} == 2'b10;
-    o_EMU_L_SAMPLE <= {|{l_sample_det[SAMPLE_STROBE_LENGTH:1]}, l_sample_det[0]} == 2'b10;
+    o_EMU_R_SAMPLE <= {|{r_sample_det[SAMPLE_STROBE_LENGTH+1:2]}, r_sample_det[1]} == 2'b10;
+    o_EMU_L_SAMPLE <= {|{l_sample_det[SAMPLE_STROBE_LENGTH+1:2]}, l_sample_det[1]} == 2'b10;
 end
 
+
+reg signed  [15:0]  r_parallel, l_parallel, r_parallel_extended, l_parallel_extended; //parallel output intermediate storage
+reg         [2:0]   r_parallel_saturation_ctrl, l_parallel_saturation_ctrl; //parallel output saturation control
 always @(posedge i_EMUCLK) if(!phi1ncen_n) begin
-    if(cycle_13) begin
-        o_EMU_R_EX <= {r_accumulator[17], r_accumulator[14:0]}; //extended output
+    if(!i_MRST_n) begin
+        r_parallel_saturation_ctrl <= 3'b000;
+        r_parallel_extended <= 16'sd0;
+        r_parallel <= 16'sd0;
 
-        casez(r_accumulator[14:9])
-            6'b000000: o_EMU_R <= {r_accumulator[17], r_accumulator[14:0]}; //small number
-            6'b000001: o_EMU_R <= {r_accumulator[17], r_accumulator[14:1], 1'b0}; 
-            6'b00001?: o_EMU_R <= {r_accumulator[17], r_accumulator[14:2], 2'b00}; 
-            6'b0001??: o_EMU_R <= {r_accumulator[17], r_accumulator[14:3], 3'b000}; 
-            6'b001???: o_EMU_R <= {r_accumulator[17], r_accumulator[14:4], 4'b0000};
-            6'b01????: o_EMU_R <= {r_accumulator[17], r_accumulator[14:5], 5'b00000};
-            6'b1?????: o_EMU_R <= {r_accumulator[17], r_accumulator[14:6], 6'b000000}; //large number
-            
-            default:   o_EMU_R <= {r_accumulator[17], r_accumulator[14:0]};
-        endcase
+        l_parallel_saturation_ctrl <= 3'b000;
+        l_parallel_extended <= 16'sd0;
+        l_parallel <= 16'sd0;
     end
-    if(i_CYCLE_29) begin
-        o_EMU_L_EX <= {l_accumulator[17], l_accumulator[14:0]}; //extended output
+    else begin
+        if(cycle_13) begin
+            r_parallel_saturation_ctrl <= r_accumulator[17:15];
+            r_parallel_extended <= {r_accumulator[17], r_accumulator[14:0]}; //extended output, sign bit + least important 15 bits
 
-        casez(l_accumulator[14:9])
-            6'b000000: o_EMU_L <= {l_accumulator[17], l_accumulator[14:0]}; //small number
-            6'b000001: o_EMU_L <= {l_accumulator[17], l_accumulator[14:1], 1'b0}; 
-            6'b00001?: o_EMU_L <= {l_accumulator[17], l_accumulator[14:2], 2'b00}; 
-            6'b0001??: o_EMU_L <= {l_accumulator[17], l_accumulator[14:3], 3'b000}; 
-            6'b001???: o_EMU_L <= {l_accumulator[17], l_accumulator[14:4], 4'b0000};
-            6'b01????: o_EMU_L <= {l_accumulator[17], l_accumulator[14:5], 5'b00000};
-            6'b1?????: o_EMU_L <= {l_accumulator[17], l_accumulator[14:6], 6'b000000}; //large number
-            
-            default:   o_EMU_L <= {l_accumulator[17], l_accumulator[14:0]};
+            casez(r_accumulator[14:9] ^ {6{r_accumulator[17]}})
+                6'b000000: r_parallel <= {r_accumulator[17], r_accumulator[14:6], r_accumulator[5:0]}; //small number
+                6'b000001: r_parallel <= {r_accumulator[17], r_accumulator[14:6], r_accumulator[17] ? r_accumulator[5:0] | 6'b000001 : r_accumulator[5:0] & 6'b111110};
+                6'b00001?: r_parallel <= {r_accumulator[17], r_accumulator[14:6], r_accumulator[17] ? r_accumulator[5:0] | 6'b000011 : r_accumulator[5:0] & 6'b111100};
+                6'b0001??: r_parallel <= {r_accumulator[17], r_accumulator[14:6], r_accumulator[17] ? r_accumulator[5:0] | 6'b000111 : r_accumulator[5:0] & 6'b111000};
+                6'b001???: r_parallel <= {r_accumulator[17], r_accumulator[14:6], r_accumulator[17] ? r_accumulator[5:0] | 6'b001111 : r_accumulator[5:0] & 6'b110000};
+                6'b01????: r_parallel <= {r_accumulator[17], r_accumulator[14:6], r_accumulator[17] ? r_accumulator[5:0] | 6'b011111 : r_accumulator[5:0] & 6'b100000};
+                6'b1?????: r_parallel <= {r_accumulator[17], r_accumulator[14:6], r_accumulator[17] ? r_accumulator[5:0] | 6'b111111 : r_accumulator[5:0] & 6'b000000}; //large number
+                
+                default:   r_parallel <= {r_accumulator[17], r_accumulator[14:6], r_accumulator[5:0]};
+            endcase
+        end
+        if(i_CYCLE_29) begin
+            l_parallel_saturation_ctrl <= l_accumulator[17:15];
+            l_parallel_extended <= {l_accumulator[17], l_accumulator[14:0]}; //extended output, sign bit + least important 15 bits
+
+            casez(l_accumulator[14:9] ^ {6{l_accumulator[17]}})
+                6'b000000: l_parallel <= {l_accumulator[17], l_accumulator[14:6], l_accumulator[5:0]}; //small number
+                6'b000001: l_parallel <= {l_accumulator[17], l_accumulator[14:6], l_accumulator[17] ? l_accumulator[5:0] | 6'b000001 : l_accumulator[5:0] & 6'b111110};
+                6'b00001?: l_parallel <= {l_accumulator[17], l_accumulator[14:6], l_accumulator[17] ? l_accumulator[5:0] | 6'b000011 : l_accumulator[5:0] & 6'b111100};
+                6'b0001??: l_parallel <= {l_accumulator[17], l_accumulator[14:6], l_accumulator[17] ? l_accumulator[5:0] | 6'b000111 : l_accumulator[5:0] & 6'b111000};
+                6'b001???: l_parallel <= {l_accumulator[17], l_accumulator[14:6], l_accumulator[17] ? l_accumulator[5:0] | 6'b001111 : l_accumulator[5:0] & 6'b110000};
+                6'b01????: l_parallel <= {l_accumulator[17], l_accumulator[14:6], l_accumulator[17] ? l_accumulator[5:0] | 6'b011111 : l_accumulator[5:0] & 6'b100000};
+                6'b1?????: l_parallel <= {l_accumulator[17], l_accumulator[14:6], l_accumulator[17] ? l_accumulator[5:0] | 6'b111111 : l_accumulator[5:0] & 6'b000000}; //large number
+                
+                default:   l_parallel <= {l_accumulator[17], l_accumulator[14:6], l_accumulator[5:0]};
+            endcase
+        end
+    end
+end
+
+always @(posedge i_EMUCLK) begin
+    if(!i_MRST_n) begin
+        o_EMU_R <= 16'sd0;
+        o_EMU_R_EX <= 16'sd0;
+        o_EMU_L <= 16'sd0;
+        o_EMU_L_EX <= 16'sd0;
+    end
+    else begin
+        case(r_parallel_saturation_ctrl)
+            3'b000: begin o_EMU_R <= r_parallel; o_EMU_R_EX <= r_parallel_extended; end
+            3'b001: begin o_EMU_R <= 16'h7FFF;   o_EMU_R_EX <= 16'h7FFF; end //saturated to positive maximum
+            3'b010: begin o_EMU_R <= 16'h7FFF;   o_EMU_R_EX <= 16'h7FFF; end
+            3'b011: begin o_EMU_R <= 16'h7FFF;   o_EMU_R_EX <= 16'h7FFF; end
+            3'b100: begin o_EMU_R <= 16'h8000;   o_EMU_R_EX <= 16'h8000; end //saturated to negative maximum
+            3'b101: begin o_EMU_R <= 16'h8000;   o_EMU_R_EX <= 16'h8000; end
+            3'b110: begin o_EMU_R <= 16'h8000;   o_EMU_R_EX <= 16'h8000; end
+            3'b111: begin o_EMU_R <= r_parallel; o_EMU_R_EX <= r_parallel_extended; end
+        endcase
+
+        case(l_parallel_saturation_ctrl)
+            3'b000: begin o_EMU_L <= l_parallel; o_EMU_L_EX <= l_parallel_extended; end
+            3'b001: begin o_EMU_L <= 16'h7FFF;   o_EMU_L_EX <= 16'h7FFF; end //saturated to positive maximum
+            3'b010: begin o_EMU_L <= 16'h7FFF;   o_EMU_L_EX <= 16'h7FFF; end
+            3'b011: begin o_EMU_L <= 16'h7FFF;   o_EMU_L_EX <= 16'h7FFF; end
+            3'b100: begin o_EMU_L <= 16'h8000;   o_EMU_L_EX <= 16'h8000; end //saturated to negative maximum
+            3'b101: begin o_EMU_L <= 16'h8000;   o_EMU_L_EX <= 16'h8000; end
+            3'b110: begin o_EMU_L <= 16'h8000;   o_EMU_L_EX <= 16'h8000; end
+            3'b111: begin o_EMU_L <= l_parallel; o_EMU_L_EX <= l_parallel_extended; end
         endcase
     end
 end
