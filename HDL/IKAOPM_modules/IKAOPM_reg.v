@@ -757,7 +757,7 @@ end
 ////
 
 wire        [7:0]   internal_data = o_TEST[7] ? {i_REG_PHASE_CH6_C2, i_REG_ATTENLEVEL_CH8_C2, i_REG_OPDATA[13:8]} : i_REG_OPDATA[7:0];
-assign  o_D = o_TEST[6] ? internal_data : {write_busy, 5'b00000, i_TIMERA_FLAG, i_TIMERB_FLAG};
+assign  o_D = o_TEST[6] ? internal_data : {write_busy, 5'b00000, i_TIMERB_FLAG, i_TIMERA_FLAG};
 
 assign  o_D_OE = ~|{~mrst_n, i_A0, i_RD_n, i_CS_n};
 
