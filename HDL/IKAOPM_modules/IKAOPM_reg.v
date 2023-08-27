@@ -349,7 +349,7 @@ always @(posedge i_EMUCLK or negedge mrst_n) begin
         hireg_data <= 8'hFF;
     end
     else begin
-        if(!phi1pcen_n) begin
+        if(!phi1ncen_n) begin
             if(hireg_datareg_en) hireg_data <= bus_inlatch;
         end
     end
@@ -358,7 +358,7 @@ end
 //hireg data valid flag, reset when the data input is loreg
 reg             hireg_data_valid;
 always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
+    if(!phi1pcen_n) begin
         hireg_data_valid <= hireg_datareg_en | (hireg_data_valid & ~addr_ld);
     end
 end
