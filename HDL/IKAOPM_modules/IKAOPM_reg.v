@@ -122,7 +122,7 @@ end
 //3-stage DFF chain will synchronize the data then.
 
 //latch outputs
-wire    [7:0]   bus_inlatch;
+wire    [7:0]   dbus_inlatch_temp;
 wire            dreg_rq_inlatch, areg_rq_inlatch;
 
 //Synchronizer DFF
@@ -166,18 +166,34 @@ always @(posedge i_EMUCLK) begin
     end
 end
 
+//Stable data bus value; without this, a data value will overwrite a address value on a fast write cycle(6502@8MHz).
+//The actual YM2151 is slow, so when the CPU writes a new value, it takes a significant amount of time for the old value
+//to change(<20 ns). But an FPGA is fast. So the value has already changed before the address register samples the value.
+reg     [7:0]   dbus_inlatch; 
+always @(posedge i_EMUCLK) begin
+    if(!phi1ncen_n) begin
+        if(!i_MRST_n) begin
+            dbus_inlatch <= 8'h00;
+        end
+        else begin
+            if(areg_rq_synced1 | dreg_rq_synced1) dbus_inlatch <= dbus_inlatch_temp;
+        end
+    end
+end
+
+
 
 generate
 if(FULLY_SYNCHRONOUS == 0) begin : FULLY_SYNCHRONOUS_0_busctrl
-    wire            bus_inlatch_en = ~|{i_CS_n, i_WR_n};
+    wire            dbus_inlatch_temp_en = ~|{i_CS_n, i_WR_n};
     wire            dreg_req_inlatch_set = ~(|{i_CS_n, i_WR_n, ~i_A0, ~mrst_n} | dreg_rq_synced1);
     wire            dreg_req_inlatch_rst = dreg_rq_synced1 | ~mrst_n;
     wire            areg_req_inlatch_set = ~(|{i_CS_n, i_WR_n,  i_A0, ~mrst_n} | areg_rq_synced1);
     wire            areg_req_inlatch_rst = areg_rq_synced1 | ~mrst_n;
 
     //D latch
-    primitive_dlatch #(.WIDTH(8)) u_bus_inlatch (
-        .i_EN(bus_inlatch_en), .i_D(i_D), .o_Q(bus_inlatch)
+    primitive_dlatch #(.WIDTH(8)) u_dbus_inlatch_temp (
+        .i_EN(dbus_inlatch_temp_en), .i_D(i_D), .o_Q(dbus_inlatch_temp)
     );
 
     //SR latch
@@ -211,16 +227,16 @@ else begin : FULLY_SYNCHRONOUS_1_busctrl
     wire            a0 = a0_syncchain[1];
     wire    [7:0]   din = din_syncchain[1];
 
-    wire            bus_inlatch_en = ~|{cs_n, wr_n};
+    wire            dbus_inlatch_temp_en = ~|{cs_n, wr_n};
     wire            dreg_req_inlatch_set = ~(|{cs_n, wr_n, ~a0, ~mrst_n} | dreg_rq_synced1);
     wire            dreg_req_inlatch_rst = dreg_rq_synced1 | ~mrst_n;
     wire            areg_req_inlatch_set = ~(|{cs_n, wr_n, a0, ~mrst_n} | areg_rq_synced1);
     wire            areg_req_inlatch_rst = areg_rq_synced1 | ~mrst_n;
 
     //D latch
-    primitive_syncdlatch #(.WIDTH(8)) u_bus_inlatch (
+    primitive_syncdlatch #(.WIDTH(8)) u_dbus_inlatch_temp (
         .i_EMUCLK(i_EMUCLK), .i_RST_n(i_MRST_n),
-        .i_EN(bus_inlatch_en), .i_D(din), .o_Q(bus_inlatch)
+        .i_EN(dbus_inlatch_temp_en), .i_D(din), .o_Q(dbus_inlatch_temp)
     );
 
     //SR latch
@@ -252,52 +268,52 @@ assign  o_LFRQ_UPDATE = reg18_en; //LFO frequency update flag;
 
 reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h10)) u_reg10 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
-    .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg10_en)
+    .i_ADDR(dbus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg10_en)
 );
 
 reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h11)) u_reg11 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
-    .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg11_en)
+    .i_ADDR(dbus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg11_en)
 );
 
 reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h12)) u_reg12 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
-    .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg12_en)
+    .i_ADDR(dbus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg12_en)
 );
 
 reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h14)) u_reg14 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
-    .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg14_en)
+    .i_ADDR(dbus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg14_en)
 );
 
 reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h01)) u_reg01 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
-    .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg01_en)
+    .i_ADDR(dbus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg01_en)
 );
 
 reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h0f)) u_reg0f (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
-    .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg0f_en)
+    .i_ADDR(dbus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg0f_en)
 );
 
 reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h19)) u_reg19 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
-    .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg19_en)
+    .i_ADDR(dbus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg19_en)
 );
 
 reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h18)) u_reg18 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
-    .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg18_en)
+    .i_ADDR(dbus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg18_en)
 );
 
 reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h1B)) u_reg1b (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
-    .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg1b_en)
+    .i_ADDR(dbus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg1b_en)
 );
 
 reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h08)) u_reg08 (
     .i_EMUCLK(i_EMUCLK), .i_phi1_NCEN_n(phi1ncen_n),
-    .i_ADDR(bus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg08_en)
+    .i_ADDR(dbus_inlatch), .i_ADDR_LD(addr_ld), .i_DATA_LD(data_ld), .o_REG_LD(reg08_en)
 );
 
 
@@ -311,7 +327,7 @@ reg_submdl_loreg_decoder #(.TARGET_ADDR(8'h08)) u_reg08 (
 //
 
 //hireg temporary address register load enable
-wire            hireg_addrreg_en = (addr_ld & (bus_inlatch[7:5] != 3'b000)); //not 000X_XXXX
+wire            hireg_addrreg_en = (addr_ld & (dbus_inlatch[7:5] != 3'b000)); //not 000X_XXXX
 
 //hireg "address" temporary register with async reset
 reg     [7:0]   hireg_addr;
@@ -321,7 +337,7 @@ always @(posedge i_EMUCLK or negedge mrst_n) begin
     end
     else begin
         if(!phi1pcen_n) begin
-            if(hireg_addrreg_en) hireg_addr <= bus_inlatch;
+            if(hireg_addrreg_en) hireg_addr <= dbus_inlatch;
         end
     end
 end
@@ -349,8 +365,8 @@ always @(posedge i_EMUCLK or negedge mrst_n) begin
         hireg_data <= 8'hFF;
     end
     else begin
-        if(!phi1pcen_n) begin
-            if(hireg_datareg_en) hireg_data <= bus_inlatch;
+        if(!phi1ncen_n) begin
+            if(hireg_datareg_en) hireg_data <= dbus_inlatch;
         end
     end
 end
@@ -358,7 +374,7 @@ end
 //hireg data valid flag, reset when the data input is loreg
 reg             hireg_data_valid;
 always @(posedge i_EMUCLK) begin
-    if(!phi1ncen_n) begin
+    if(!phi1pcen_n) begin
         hireg_data_valid <= hireg_datareg_en | (hireg_data_valid & ~addr_ld);
     end
 end
@@ -432,8 +448,8 @@ reg             csm_reg;
 reg     [6:0]   kon_temp_reg;
 
 //timer flag reset
-assign  o_TIMERA_FRST = (reg14_en & bus_inlatch[4]) | ~mrst_n;
-assign  o_TIMERB_FRST = (reg14_en & bus_inlatch[5]) | ~mrst_n;
+assign  o_TIMERA_FRST = (reg14_en & dbus_inlatch[4]) | ~mrst_n;
+assign  o_TIMERB_FRST = (reg14_en & dbus_inlatch[5]) | ~mrst_n;
 
 always @(posedge i_EMUCLK) begin
     if(!phi1pcen_n) begin //positive edge!!
@@ -462,30 +478,30 @@ always @(posedge i_EMUCLK) begin
             kon_temp_reg    <= 7'b0000_000;
         end
         else begin
-            o_TEST          <= reg01_en ? bus_inlatch      : o_TEST;
+            o_TEST          <= reg01_en ? dbus_inlatch      : o_TEST;
 
-            ct_reg          <= reg1b_en ? bus_inlatch[7:6] : ct_reg;
+            ct_reg          <= reg1b_en ? dbus_inlatch[7:6] : ct_reg;
             
-            o_NE            <= reg0f_en ? bus_inlatch[7]   : o_NE;
-            o_NFRQ          <= reg0f_en ? bus_inlatch[4:0] : o_NFRQ;
+            o_NE            <= reg0f_en ? dbus_inlatch[7]   : o_NE;
+            o_NFRQ          <= reg0f_en ? dbus_inlatch[4:0] : o_NFRQ;
 
-            o_CLKA1         <= reg10_en ? bus_inlatch      : o_CLKA1;
-            o_CLKA2         <= reg11_en ? bus_inlatch[1:0] : o_CLKA2;
-            o_CLKB          <= reg12_en ? bus_inlatch      : o_CLKB;
-            o_TIMERA_RUN    <= reg14_en ? bus_inlatch[0]   : o_TIMERA_RUN;
-            o_TIMERB_RUN    <= reg14_en ? bus_inlatch[1]   : o_TIMERB_RUN;
-            o_TIMERA_IRQ_EN <= reg14_en ? bus_inlatch[2]   : o_TIMERA_IRQ_EN;
-            o_TIMERB_IRQ_EN <= reg14_en ? bus_inlatch[3]   : o_TIMERB_IRQ_EN;
+            o_CLKA1         <= reg10_en ? dbus_inlatch      : o_CLKA1;
+            o_CLKA2         <= reg11_en ? dbus_inlatch[1:0] : o_CLKA2;
+            o_CLKB          <= reg12_en ? dbus_inlatch      : o_CLKB;
+            o_TIMERA_RUN    <= reg14_en ? dbus_inlatch[0]   : o_TIMERA_RUN;
+            o_TIMERB_RUN    <= reg14_en ? dbus_inlatch[1]   : o_TIMERB_RUN;
+            o_TIMERA_IRQ_EN <= reg14_en ? dbus_inlatch[2]   : o_TIMERA_IRQ_EN;
+            o_TIMERB_IRQ_EN <= reg14_en ? dbus_inlatch[3]   : o_TIMERB_IRQ_EN;
 
-            o_LFRQ          <= reg18_en ? bus_inlatch      : o_LFRQ;
-            o_PMD           <= reg19_en ? (bus_inlatch[7] == 1'b1) ? bus_inlatch[6:0] : o_PMD :
+            o_LFRQ          <= reg18_en ? dbus_inlatch      : o_LFRQ;
+            o_PMD           <= reg19_en ? (dbus_inlatch[7] == 1'b1) ? dbus_inlatch[6:0] : o_PMD :
                                           o_PMD;
-            o_AMD           <= reg19_en ? (bus_inlatch[7] == 1'b0) ? bus_inlatch[6:0] : o_AMD :
+            o_AMD           <= reg19_en ? (dbus_inlatch[7] == 1'b0) ? dbus_inlatch[6:0] : o_AMD :
                                           o_AMD;
-            o_W             <= reg1b_en ? bus_inlatch[1:0] : o_W;
+            o_W             <= reg1b_en ? dbus_inlatch[1:0] : o_W;
 
-            csm_reg         <= reg14_en ? bus_inlatch[7]   : csm_reg;
-            kon_temp_reg    <= reg08_en ? bus_inlatch[6:0] : kon_temp_reg;
+            csm_reg         <= reg14_en ? dbus_inlatch[7]   : csm_reg;
+            kon_temp_reg    <= reg08_en ? dbus_inlatch[6:0] : kon_temp_reg;
         end
     end
 end
