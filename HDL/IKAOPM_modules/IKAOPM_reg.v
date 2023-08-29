@@ -185,15 +185,15 @@ end
 
 generate
 if(FULLY_SYNCHRONOUS == 0) begin : FULLY_SYNCHRONOUS_0_busctrl
-    wire            dbus_inlatch_en = ~|{i_CS_n, i_WR_n};
+    wire            dbus_inlatch_temp_en = ~|{i_CS_n, i_WR_n};
     wire            dreg_req_inlatch_set = ~(|{i_CS_n, i_WR_n, ~i_A0, ~mrst_n} | dreg_rq_synced1);
     wire            dreg_req_inlatch_rst = dreg_rq_synced1 | ~mrst_n;
     wire            areg_req_inlatch_set = ~(|{i_CS_n, i_WR_n,  i_A0, ~mrst_n} | areg_rq_synced1);
     wire            areg_req_inlatch_rst = areg_rq_synced1 | ~mrst_n;
 
     //D latch
-    primitive_dlatch #(.WIDTH(8)) u_dbus_inlatch (
-        .i_EN(dbus_inlatch_en), .i_D(i_D), .o_Q(dbus_inlatch_temp)
+    primitive_dlatch #(.WIDTH(8)) u_dbus_inlatch_temp (
+        .i_EN(dbus_inlatch_temp_en), .i_D(i_D), .o_Q(dbus_inlatch_temp)
     );
 
     //SR latch
@@ -227,16 +227,16 @@ else begin : FULLY_SYNCHRONOUS_1_busctrl
     wire            a0 = a0_syncchain[1];
     wire    [7:0]   din = din_syncchain[1];
 
-    wire            dbus_inlatch_en = ~|{cs_n, wr_n};
+    wire            dbus_inlatch_temp_en = ~|{cs_n, wr_n};
     wire            dreg_req_inlatch_set = ~(|{cs_n, wr_n, ~a0, ~mrst_n} | dreg_rq_synced1);
     wire            dreg_req_inlatch_rst = dreg_rq_synced1 | ~mrst_n;
     wire            areg_req_inlatch_set = ~(|{cs_n, wr_n, a0, ~mrst_n} | areg_rq_synced1);
     wire            areg_req_inlatch_rst = areg_rq_synced1 | ~mrst_n;
 
     //D latch
-    primitive_syncdlatch #(.WIDTH(8)) u_dbus_inlatch (
+    primitive_syncdlatch #(.WIDTH(8)) u_dbus_inlatch_temp (
         .i_EMUCLK(i_EMUCLK), .i_RST_n(i_MRST_n),
-        .i_EN(dbus_inlatch_en), .i_D(din), .o_Q(dbus_inlatch_temp)
+        .i_EN(dbus_inlatch_temp_en), .i_D(din), .o_Q(dbus_inlatch_temp)
     );
 
     //SR latch
