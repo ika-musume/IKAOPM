@@ -22,7 +22,8 @@ The steps below show how to instantiate the IKAOPM module in Verilog:
 //Verilog module instantiation example
 IKAOPM #(
     .FULLY_SYNCHRONOUS          (1                          ),
-    .FAST_RESET                 (0                          )
+    .FAST_RESET                 (0                          ),
+    .USE_BRAM                   (0                          )
 ) u_ikaopm_0 (
     .i_EMUCLK                   (                           ),
 
@@ -68,6 +69,7 @@ IKAOPM #(
 
 * `FULLY_SYNCHRONOUS` **1** makes the entire module synchronized(default, recommended). A 2-stage synchronizer is added to all asynchronous control signal inputs. Hence, `i_EMUCLK` at 3.58 MHz, all write operations are delayed by 2 clocks. If **0**, 10 latches are used. There are two unsafe D-latches to emulate an SR-latch for a write request, and an 8-bit D-latch to temporarily store a data bus write value. When using the latches, you must ensure that the enable signals are given the appropriate clock or global attribute. Quartus displays several warnings and treats these signals as GCLK. Because the latch enable signals are considered clocks, the timing analyzer will complain that additional constraints should be added to the bus control signals. I have verified that these asynchronous circuits work on an actual chip, but timing issues may exist.
 * `FAST_RESET` When set to **0**, assertion of the `i_IC_n` for at least 64 cycles of phiM **should be guaranteed during the operation of `i_EMUCLK` and `i_phiM_PCEN_n`** to ensure reset of all pipelines in the IKAOPM. If it is **1**, then if `i_IC_n` is logic low, it forces phi1_cen, the internal divided clock enable, to be enabled so that the pipelines reset at the same rate as the `i_EMUCLK`. Therefore, `i_phiM_PCEN_n` does not need to operate at this time. 
+* `USE_BRAM` When set to **1**, shift registers are implemented by block RAMs, reducing the usage of general logic cells (LUT + flip-flop). Default is **0** - use the general logic to implement shift registers.
 * `i_EMUCLK` is your system clock.
 * `i_phiM_PCEN_n` is the clock enable(negative logic) for positive edge of the phiM.
 * `i_IC_n` is the synchronous reset. To flush every pipelines in the module, IC_n must be kept at zero for at least 64 phiM cycles. Note that while the `i_IC_n` is asserted, the `i_phiM_PCEN_n` must be operating.
@@ -90,3 +92,4 @@ Pin number 8 and 9 of the YM2151 are used as GPO ports. They are referred to as 
 * Altera EP4CE6E22C8: 2231 LEs, 1330 registers, BRAM 6608 bits, fmax=73.83MHz(slow 85C)
 * Altera 5CSEBA6U23I7(MiSTer): 851 ALMs, 1490 registers, BRAM 2952 bits, 1 DSP block, fmax=143.64MHz(slow 100C)
 * Xilinx XC7Z020CLG400(Zynq7020): 1174 LUTs, 116 LUTRAMs, 1579 registers, BRAM 2.5 blocks(8192 bits)
+* Lattice ICE40UP5K-SG48: with USE_BRAM=1: 4516 LC (85%), 10 RAM blocks.
