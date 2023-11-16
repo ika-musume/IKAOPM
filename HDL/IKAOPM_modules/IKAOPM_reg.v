@@ -732,13 +732,15 @@ else begin: d32reg_mode_bram
     (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(rege0_ff_en), .i_D(d1l_in), .o_Q_TAP(o_D1L));
 
     primitive_sr_bram #(.WIDTH(1), .LENGTH(32), .TAP(32)) u_amen_reg 
-    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(rega0_bf_en), .i_D(amen_in), .o_Q_TAP());
+    (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(rega0_bf_en), .i_D(amen_in), .o_Q_TAP(amen_out));
 
     primitive_sr_bram #(.WIDTH(2), .LENGTH(32), .TAP(32)) u_ks_reg 
     (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(reg80_9f_en), .i_D(ks_in), .o_Q_TAP(o_KS));
 
     primitive_sr_bram #(.WIDTH(7), .LENGTH(32), .TAP(32)) u_tl_reg 
     (.i_EMUCLK(i_EMUCLK), .i_CEN_n(phi1ncen_n), .i_CNTRRST(d32reg_cntr_rst), .i_WR(reg60_7f_en), .i_D(tl_in), .o_Q_TAP(o_TL));
+
+    assign  o_AMS = ams_out & {2{amen_out}};
 end
 endgenerate
 
@@ -776,7 +778,6 @@ wire        [7:0]   internal_data = o_TEST[7] ? {i_REG_PHASE_CH6_C2, i_REG_ATTEN
 assign  o_D = o_TEST[6] ? internal_data : {write_busy, 5'b00000, i_TIMERB_FLAG, i_TIMERA_FLAG};
 
 assign  o_D_OE = ~|{~mrst_n, ~i_A0, i_RD_n, i_CS_n};
-
 
 endmodule
 

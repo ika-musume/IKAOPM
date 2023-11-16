@@ -1,4 +1,5 @@
-module IKAOPM #(parameter FULLY_SYNCHRONOUS = 1, parameter FAST_RESET = 0) (
+module IKAOPM #(parameter FULLY_SYNCHRONOUS = 1, parameter FAST_RESET = 0,
+                parameter USE_BRAM = 0) (
     //chip clock
     input   wire            i_EMUCLK, //emulator master clock
 
@@ -205,7 +206,7 @@ IKAOPM_timinggen #(
 
 
 IKAOPM_reg #(
-    .USE_BRAM_FOR_D32REG        (0                          ),
+    .USE_BRAM_FOR_D32REG        (USE_BRAM                   ),
     .FULLY_SYNCHRONOUS          (FULLY_SYNCHRONOUS          )
 ) REG (
     .i_EMUCLK                   (i_EMUCLK                   ),
@@ -338,7 +339,7 @@ IKAOPM_lfo LFO (
 
 
 IKAOPM_pg #(
-    .USE_BRAM_FOR_PHASEREG      (0                          )
+    .USE_BRAM_FOR_PHASEREG      (USE_BRAM                   )
 ) PG (
     .i_EMUCLK                   (i_EMUCLK                   ),
 
