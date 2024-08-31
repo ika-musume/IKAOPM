@@ -1,7 +1,7 @@
 # IKAOPM
 YM2151 Verilog core for FPGA implementation. It was reverse-engineered with only Yamaha's datasheet and the [die shot](https://siliconpr0n.org/archive/doku.php?id=mcmaster:yamaha:ym2151) from siliconpr0n. **This core does not reference any existing hard/soft core.** © 2023 Sehyeon Kim(Raki)
 
-<p align=center><img alt="header image" src="./resources/ikamusume_dx7.jpg" height="auto" width="640"></p>
+<p align=center><img alt="header image" src="./docs/ikamusume_dx7.jpg" height="auto" width="640"></p>
 
 Copyrighted work. Permitted to be used as the header image. Painted by [SEONGSU](https://twitter.com/seongsu_twit).
 
